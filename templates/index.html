@@ -467,7 +467,8 @@
         let currentChunkIndex = -1;
         let currentWordIndex = -1;
         let selectedModel = 'edge-tts-andrew';
-        let isSpeedChanging = false; // Flag to prevent chunk progression during speed changes
+        let isSpeedChanging = false; // Flag to prevent rapid speed changes
+        let speedChangeTimeout = null; // Debounce timeout for speed changes
         
         // Audio control variables
         let currentPlaybackRate = 1.0;
@@ -1790,9 +1791,9 @@
                     return false;
                 },
                 
-                setPlaybackRate(rate) {
+                setPlaybackRate(rate, oldRate = null) {
                     console.log(`🎵 ===== SPEED CHANGE DEBUG START =====`);
-                    console.log(`🎵 setPlaybackRate: ${currentPlaybackRate}x → ${rate}x`);
+                    console.log(`🎵 setPlaybackRate: ${oldRate || currentPlaybackRate}x → ${rate}x`);
                     console.log(`🎵 Current state: playing=${isPlaying}, paused=${isPaused}, chunk=${currentChunkIndex}`);
                     console.log(`🎵 Audio duration: ${audioDuration}s, pausedAt: ${pausedAt}s`);
                     console.log(`🎵 HTML Audio exists: ${!!this.htmlAudio}, Current source exists: ${!!this.currentSource}`);
@@ -1800,19 +1801,28 @@
                     // If no audio is playing, just update the rate for future playback
                     if (!isPlaying && !isPaused) {
                         console.log('🎵 No audio active, just updating rate for future');
-                        currentPlaybackRate = rate;
+                        // currentPlaybackRate is already updated in changePlaybackRate
                         console.log(`🎵 ===== SPEED CHANGE DEBUG END (NO AUDIO) =====`);
                         return;
                     }
                     
                     // Get the ACTUAL current playback rate from the audio source
+                    // Use the oldRate parameter if provided, otherwise try to detect from audio elements
                     let actualCurrentRate = 1.0;
-                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                        actualCurrentRate = this.htmlAudio.playbackRate || 1.0;
+                    if (oldRate !== null) {
+                        // Use the provided old rate for accurate detection
+                        actualCurrentRate = oldRate;
+                        console.log(`🎵 Using provided old rate: ${actualCurrentRate}`);
+                    } else if (this.htmlAudio && this.htmlAudio.playbackRate) {
+                        actualCurrentRate = this.htmlAudio.playbackRate;
+                        console.log(`🎵 Detected from HTML audio: ${actualCurrentRate}`);
                     } else if (this.currentSource && this.currentSource.playbackRate) {
-                        actualCurrentRate = this.currentSource.playbackRate.value || 1.0;
+                        actualCurrentRate = this.currentSource.playbackRate.value;
+                        console.log(`🎵 Detected from Web Audio: ${actualCurrentRate}`);
                     } else {
-                        actualCurrentRate = currentPlaybackRate; // fallback to stored value
+                        // Fallback - this shouldn't happen with oldRate parameter
+                        actualCurrentRate = 1.0; // assume Web Audio was being used
+                        console.log(`🎵 Fallback to 1.0 (assuming Web Audio)`);
                     }
                     
                     console.log(`🎵 Actual current audio rate: ${actualCurrentRate}, requested rate: ${rate}`);
@@ -1830,10 +1840,6 @@
                     
                     console.log(`🎵 Method check: was HTML: ${wasUsingHtmlAudio}, should HTML: ${shouldUseHtmlAudio}`);
                     console.log(`🎵 Method switch needed: ${wasUsingHtmlAudio !== shouldUseHtmlAudio}`);
-                    
-                    // Update the rate immediately
-                    const oldRate = currentPlaybackRate;
-                    currentPlaybackRate = rate;
                     
                     // Case 1: No method switch needed - just update rate in place
                     if (wasUsingHtmlAudio === shouldUseHtmlAudio) {
@@ -1888,6 +1894,14 @@
                             // Force a restart in this case
                             console.log('🎵 Forcing restart due to no active source');
                         }
+                        
+                        // Clear speed changing flag immediately for immediate changes
+                        isSpeedChanging = false;
+                        if (speedChangeTimeout) {
+                            clearTimeout(speedChangeTimeout);
+                            speedChangeTimeout = null;
+                        }
+                        console.log('🎵 Speed change flag cleared immediately (immediate rate change)');
                         
                         console.log(`🎵 ===== SPEED CHANGE DEBUG END (IMMEDIATE UPDATE) =====`);
                         return;
@@ -2237,7 +2251,7 @@
             }
             
             // Update play/pause button
-            updatePlayPauseIcon('play');
+            updatePlayPauseButtons('play');
             
             // Clear chunk highlighting
             clearChunkHighlighting();
@@ -2556,7 +2570,7 @@
 
         function changePlaybackRate(newRate) {
             console.log(`=== SPEED CHANGE START: ${currentPlaybackRate}x → ${newRate}x ===`);
-            console.log(`Current state: isPlaying=${isPlaying}, isPaused=${isPaused}, chunk=${currentChunkIndex}`);
+            console.log(`Current state: isPlaying=${isPlaying}, isPaused=${isPaused}, chunk=${currentChunkIndex}, speedChanging=${isSpeedChanging}`);
             
             // Validate the new rate
             if (!isFinite(newRate) || newRate <= 0 || newRate > 3.0) {
@@ -2564,18 +2578,51 @@
                 return;
             }
             
-            // Update the rate first
+            // Prevent rapid speed changes
+            if (isSpeedChanging) {
+                console.log('🎵 Speed change already in progress, ignoring rapid change request');
+                return;
+            }
+            
+            // Clear any existing speed change timeout
+            if (speedChangeTimeout) {
+                clearTimeout(speedChangeTimeout);
+                speedChangeTimeout = null;
+            }
+            
+            // Set speed changing flag
+            isSpeedChanging = true;
+            
+            // Save the old rate before updating
+            const oldRate = currentPlaybackRate;
+            
+            // Update the rate 
             currentPlaybackRate = newRate;
             
             // Save the speed preference immediately
             saveUserPreferences();
             console.log(`Speed preference saved: ${newRate}x`);
             
-            if (gaplessPlayer) {
-                gaplessPlayer.setPlaybackRate(newRate);
-            } else {
-                console.warn('No gapless player available for speed change');
+            try {
+                if (gaplessPlayer) {
+                    // Pass the old rate so setPlaybackRate can properly determine current method
+                    gaplessPlayer.setPlaybackRate(newRate, oldRate);
+                } else {
+                    console.warn('No gapless player available for speed change');
+                }
+            } catch (error) {
+                console.error('🎵 Error during speed change:', error);
+                // Reset flag on error
+                isSpeedChanging = false;
+                throw error;
             }
+            
+            // Clear the speed changing flag after a delay to allow the change to settle
+            speedChangeTimeout = setTimeout(() => {
+                isSpeedChanging = false;
+                console.log('🎵 Speed change flag cleared - ready for next change');
+            }, 1000); // 1 second delay
+            
             console.log(`=== SPEED CHANGE END ===`);
         }
 

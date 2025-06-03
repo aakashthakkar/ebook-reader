@@ -4,10 +4,12 @@ FROM --platform=linux/amd64 python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies including git for cloning
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
+    git \
+    curl \
     libffi-dev \
     libssl-dev \
     pkg-config \
@@ -18,15 +20,13 @@ RUN apt-get update && apt-get install -y \
     libespeak-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Clone the repository from GitHub
+RUN git clone https://github.com/aakashthakkar/ebook-reader.git . && \
+    rm -rf .git
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
 
 # Create a non-root user for security
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

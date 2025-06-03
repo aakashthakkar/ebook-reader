@@ -78,52 +78,56 @@
             50% { opacity: 1; }
         }
         
-        /* Sticky Audio Player */
-        .audio-controls-sticky {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 800px;
-            z-index: 9999;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            padding: 16px;
-            transition: all 0.3s ease;
-            animation: slideDown 0.4s ease-out;
+        /* Remove debug helper */
+        .audio-controls-sticky::before {
+            display: none;
         }
         
-        @keyframes slideDown {
+        /* Completely rewrite sticky positioning - move outside main container */
+        #sticky-audio-player {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            width: 320px !important;
+            max-width: calc(100vw - 40px) !important;
+            z-index: 999999 !important;
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(15px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            border-radius: 12px !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+            padding: 16px !important;
+            transition: all 0.3s ease !important;
+            animation: slideInRight 0.4s ease-out !important;
+            transform: none !important;
+            margin: 0 !important;
+            display: none !important;
+        }
+        
+        #sticky-audio-player.active {
+            display: block !important;
+        }
+        
+        @keyframes slideInRight {
             from {
-                transform: translateX(-50%) translateY(-20px);
+                transform: translateX(100px);
                 opacity: 0;
             }
             to {
-                transform: translateX(-50%) translateY(0);
+                transform: translateX(0);
                 opacity: 1;
             }
         }
         
-        .audio-controls-sticky .max-w-2xl {
-            max-width: 100%;
-            margin: 0;
-        }
-        
-        .audio-controls-sticky .bg-gray-800\/90 {
-            background: transparent;
-            padding: 0;
-            border: none;
-            box-shadow: none;
-            border-radius: 0;
-        }
-        
-        /* Remove body padding since we're truly floating now */
-        body.sticky-player-active {
-            /* No padding needed for floating player */
+        /* Ensure responsive design */
+        @media (max-width: 640px) {
+            #sticky-audio-player {
+                top: 10px !important;
+                right: 10px !important;
+                left: 10px !important;
+                width: auto !important;
+                max-width: none !important;
+            }
         }
     </style>
 </head>
@@ -150,7 +154,7 @@
         <div class="text-center mb-12">
             <h2 class="text-4xl font-bold text-white mb-4">Interactive Reading & Listening</h2>
             <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-                Upload your PDF, then click any word to start listening from that position. Audio generates on-demand and plays seamlessly.
+                Upload your PDF and click any word to start listening from that position. Choose your voice from the audio player controls.
             </p>
         </div>
 
@@ -166,6 +170,17 @@
                 <p class="text-lg text-gray-300 mb-2">Drop your PDF here or click to browse</p>
                 <p class="text-sm text-gray-500">Maximum file size: 100MB</p>
                 <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                
+                <!-- Upload Loading Indicator -->
+                <div id="upload-loading" class="hidden mt-4">
+                    <div class="flex items-center justify-center text-blue-300">
+                        <div class="spinner h-6 w-6 border-2 border-blue-300 border-t-transparent rounded-full mr-3"></div>
+                        <span id="upload-loading-text">Processing PDF...</span>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-400">
+                        This may take a few moments for large files
+                    </div>
+                </div>
             </div>
 
             <div id="file-info" class="hidden mt-4 p-4 bg-green-500/20 rounded-lg border border-green-500/30">
@@ -215,10 +230,15 @@
                     <i data-lucide="mouse-pointer-click" class="mr-3"></i>
                     Click Any Word to Start Playing
                 </h3>
+                <button id="read-another-pdf-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all duration-200 flex items-center space-x-2">
+                    <i data-lucide="upload" class="h-4 w-4"></i>
+                    <span>Read Another PDF</span>
+                </button>
             </div>
             
             <!-- Modern Audio Player - Prominent Position -->
-            <div id="audio-controls" class="hidden mb-8">
+            <!-- HIDDEN: Using only sticky player now -->
+            <div id="audio-controls" class="hidden mb-8" style="display: none !important;">
                 <div class="max-w-2xl mx-auto">
                     <div class="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-600 shadow-2xl">
                         <!-- Progress Bar -->
@@ -235,41 +255,9 @@
                         
                         <!-- Main Controls -->
                         <div class="flex items-center justify-center space-x-8 mb-6">
-                            <!-- Rewind 15s -->
-                            <button id="skip-back-15" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Rewind 15 seconds">
-                                <div class="relative">
-                                    <i data-lucide="rotate-ccw" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
-                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">15</span>
-                                </div>
-                            </button>
-                            
-                            <!-- Rewind 10s -->
-                            <button id="skip-back-10" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Rewind 10 seconds">
-                                <div class="relative">
-                                    <i data-lucide="rewind" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
-                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">10</span>
-                                </div>
-                            </button>
-                            
                             <!-- Play/Pause Button -->
                             <button id="play-pause-btn" class="p-5 rounded-full bg-blue-600 hover:bg-blue-700 transition-all duration-200 shadow-lg hover:scale-105">
                                 <i data-lucide="pause" class="h-10 w-10 text-white"></i>
-                            </button>
-                            
-                            <!-- Forward 10s -->
-                            <button id="skip-forward-10" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Forward 10 seconds">
-                                <div class="relative">
-                                    <i data-lucide="fast-forward" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
-                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">10</span>
-                                </div>
-                            </button>
-                            
-                            <!-- Forward 15s -->
-                            <button id="skip-forward-15" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Forward 15 seconds">
-                                <div class="relative">
-                                    <i data-lucide="rotate-cw" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
-                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">15</span>
-                                </div>
                             </button>
                         </div>
                         
@@ -365,12 +353,9 @@
                     <div>
                         <h4 class="text-white text-sm font-semibold mb-2">Keyboard Shortcuts:</h4>
                         <div class="text-xs text-gray-300 space-y-1">
-                            <div><kbd class="bg-gray-700 px-1 rounded">Space</kbd> Stop</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">←</kbd> Back 10s</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">→</kbd> Forward 10s</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">J</kbd> Back 15s</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">L</kbd> Forward 15s</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">+/-</kbd> Speed</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">Space</kbd> Play/Pause</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">+/-</kbd> Speed Control</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">Esc</kbd> Stop</div>
                         </div>
                     </div>
                 </div>
@@ -413,6 +398,52 @@
         </div>
     </footer>
 
+    <!-- Independent Sticky Audio Player (outside all containers) -->
+    <div id="sticky-audio-player">
+        <!-- Compact Controls Only -->
+        <div class="flex flex-col space-y-3">
+            <!-- Top row: Play/Pause and Stop -->
+            <div class="flex items-center justify-between">
+                <!-- Play/Pause Button -->
+                <button id="sticky-play-pause-btn" class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 transition-all duration-200 shadow-lg">
+                    <i data-lucide="pause" class="h-6 w-6 text-white"></i>
+                </button>
+                
+                <!-- Stop Button -->
+                <button id="sticky-stop-btn" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-all duration-200 flex items-center space-x-1">
+                    <i data-lucide="square" class="h-3 w-3"></i>
+                    <span>Stop</span>
+                </button>
+            </div>
+            
+            <!-- Bottom row: Voice and Speed controls -->
+            <div class="flex items-center justify-between space-x-2">
+                <!-- Voice Selection -->
+                <div class="flex items-center space-x-2 flex-1">
+                    <i data-lucide="mic" class="h-4 w-4 text-gray-400"></i>
+                    <select id="sticky-voice-select" class="bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-blue-500 outline-none flex-1">
+                        {% for key, model in models.items() %}
+                        <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Speed Control -->
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="gauge" class="h-4 w-4 text-gray-400"></i>
+                    <select id="sticky-speed-select" class="bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-blue-500 outline-none">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1.0" selected>1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Initialize Lucide icons
         lucide.createIcons();
@@ -430,6 +461,7 @@
         let currentChunkIndex = -1;
         let currentWordIndex = -1;
         let selectedModel = 'edge-tts-andrew';
+        let isSpeedChanging = false; // Flag to prevent chunk progression during speed changes
         
         // Audio control variables
         let currentPlaybackRate = 1.0;
@@ -454,10 +486,6 @@
         const stopBtn = document.getElementById('stop-btn');
         const audioControls = document.getElementById('audio-controls');
         const speedSelect = document.getElementById('speed-select');
-        const skipBack15 = document.getElementById('skip-back-15');
-        const skipBack10 = document.getElementById('skip-back-10');
-        const skipForward10 = document.getElementById('skip-forward-10');
-        const skipForward15 = document.getElementById('skip-forward-15');
         const playPauseBtn = document.getElementById('play-pause-btn');
         const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
@@ -473,6 +501,16 @@
         const errorMessage = document.getElementById('error-message');
         const retryBtn = document.getElementById('retry-btn');
 
+        // Sticky Audio Player elements
+        const stickyAudioPlayer = document.getElementById('sticky-audio-player');
+        const stickyPlayPauseBtn = document.getElementById('sticky-play-pause-btn');
+        const stickySpeedSelect = document.getElementById('sticky-speed-select');
+        const stickyVoiceSelect = document.getElementById('sticky-voice-select');
+        const stickyStopBtn = document.getElementById('sticky-stop-btn');
+        const uploadLoading = document.getElementById('upload-loading');
+        const uploadLoadingText = document.getElementById('upload-loading-text');
+        const readAnotherPdfBtn = document.getElementById('read-another-pdf-btn');
+
         // Debug: Log DOM elements to ensure they exist
         console.log('DOM Elements Check:', {
             playPauseBtn: !!playPauseBtn,
@@ -483,11 +521,11 @@
             totalTimeSpan: !!totalTimeSpan,
             audioControls: !!audioControls,
             speedSelect: !!speedSelect,
-            skipBack15: !!skipBack15,
-            skipBack10: !!skipBack10,
-            skipForward10: !!skipForward10,
-            skipForward15: !!skipForward15,
-            stopBtn: !!stopBtn
+            stopBtn: !!stopBtn,
+            stickyAudioPlayer: !!stickyAudioPlayer,
+            stickyPlayPauseBtn: !!stickyPlayPauseBtn,
+            stickyVoiceSelect: !!stickyVoiceSelect,
+            readAnotherPdfBtn: !!readAnotherPdfBtn
         });
 
         // Upload area events
@@ -535,7 +573,17 @@
             formData.append('file', file);
 
             try {
-                showLoading('Extracting text from PDF...');
+                // Show upload-specific loading
+                if (uploadLoading) {
+                    uploadLoading.classList.remove('hidden');
+                }
+                if (uploadLoadingText) {
+                    uploadLoadingText.textContent = 'Uploading and processing PDF...';
+                }
+                
+                // Hide upload area clickable state
+                uploadArea.style.pointerEvents = 'none';
+                uploadArea.style.opacity = '0.7';
                 
                 const response = await fetch('/api/upload', {
                     method: 'POST',
@@ -555,19 +603,33 @@
                 textLength.textContent = `${data.text_length.toLocaleString()} characters`;
                 wordCount.textContent = `${words.length.toLocaleString()} words`;
                 
-                // Show file info and voice selection
+                // Show file info but skip voice selection - go directly to text display
                 fileInfo.classList.remove('hidden');
-                voiceSelection.classList.remove('hidden');
                 
-                // Setup text display
+                // Setup text display immediately (no voice selection step)
                 setupTextDisplay();
                 
-                hideLoading();
+                // Hide upload loading
+                if (uploadLoading) {
+                    uploadLoading.classList.add('hidden');
+                }
+                
+                // Reset upload area
+                uploadArea.style.pointerEvents = 'auto';
+                uploadArea.style.opacity = '1';
+                
                 hideError();
 
             } catch (error) {
+                console.error('Upload error:', error);
                 showError('Failed to process PDF: ' + error.message);
-                hideLoading();
+                
+                // Hide upload loading and reset upload area
+                if (uploadLoading) {
+                    uploadLoading.classList.add('hidden');
+                }
+                uploadArea.style.pointerEvents = 'auto';
+                uploadArea.style.opacity = '1';
             }
         }
 
@@ -577,6 +639,11 @@
             displayCurrentPage();
             textDisplay.classList.remove('hidden');
             setupPaginationListeners();
+            
+            // Hide upload section after successful processing (voice selection no longer used)
+            if (uploadArea && uploadArea.parentElement) {
+                uploadArea.parentElement.classList.add('hidden');
+            }
         }
 
         // Calculate pagination
@@ -628,6 +695,12 @@
                     playFromWord(wordIndex);
                 });
             });
+            
+            // Force update page select UI to show current page
+            console.log(`📄 Displaying page ${currentPage} of ${totalPages}, words ${startWord}-${endWord-1}`);
+            if (pageSelect) {
+                pageSelect.value = currentPage;
+            }
         }
 
         // Setup pagination event listeners
@@ -635,6 +708,7 @@
             prevPageBtn.addEventListener('click', () => {
                 if (currentPage > 1) {
                     currentPage--;
+                    console.log(`📄 Previous page clicked, now on page ${currentPage}`);
                     updatePaginationButtons();
                     displayCurrentPage();
                 }
@@ -643,6 +717,7 @@
             nextPageBtn.addEventListener('click', () => {
                 if (currentPage < totalPages) {
                     currentPage++;
+                    console.log(`📄 Next page clicked, now on page ${currentPage}`);
                     updatePaginationButtons();
                     displayCurrentPage();
                 }
@@ -650,6 +725,7 @@
             
             pageSelect.addEventListener('change', (e) => {
                 currentPage = parseInt(e.target.value);
+                console.log(`📄 Page select changed to page ${currentPage}`);
                 updatePaginationButtons();
                 displayCurrentPage();
             });
@@ -657,6 +733,7 @@
             wordsPerPageSelect.addEventListener('change', (e) => {
                 wordsPerPage = e.target.value;
                 currentPage = 1;
+                console.log(`📄 Words per page changed to ${wordsPerPage}, reset to page 1`);
                 calculatePagination();
                 displayCurrentPage();
             });
@@ -666,6 +743,7 @@
         function updatePaginationButtons() {
             prevPageBtn.disabled = currentPage === 1;
             nextPageBtn.disabled = currentPage === totalPages;
+            console.log(`📄 Updated pagination buttons - page ${currentPage}/${totalPages}`);
         }
 
         // Play audio starting from a specific word
@@ -689,12 +767,8 @@
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                // Get selected voice model
-                const modelInput = document.querySelector('input[name="model"]:checked');
-                if (!modelInput) {
-                    throw new Error('No voice model selected');
-                }
-                selectedModel = modelInput.value;
+                // Use voice from sticky player selection (no need to check radio buttons)
+                console.log(`Using voice from sticky player: ${selectedModel}`);
                 
                 // Calculate which 100-word chunk this word belongs to
                 const chunkIndex = Math.floor(wordIndex / 100);
@@ -708,24 +782,17 @@
                 currentWordIndex = wordIndex;
                 currentChunkIndex = chunkIndex;
                 isPlaying = true;
+                isPaused = false;
                 
-                // Show audio controls
-                audioControls.classList.remove('hidden');
-                audioControls.classList.add('audio-controls-sticky');
-                document.body.classList.add('sticky-player-active');
-                
-                // Update play/pause button to show pause icon (with null checks)
-                if (playPauseBtn) {
-                    const playIcon = playPauseBtn.querySelector('i');
-                    if (playIcon) {
-                        playIcon.setAttribute('data-lucide', 'pause');
-                        lucide.createIcons();
-                    } else {
-                        console.warn('Play icon element not found');
-                    }
-                } else {
-                    console.warn('Play/pause button not found');
+                // Show ONLY the sticky player (no main audio controls)
+                if (stickyAudioPlayer) {
+                    stickyAudioPlayer.classList.add('active');
                 }
+                
+                // Update sticky play/pause button to show pause icon - with delay for DOM
+                setTimeout(() => {
+                    updatePlayPauseButtons('pause');
+                }, 50);
                 
                 // Load and play current chunk
                 showLoading(`Generating audio for 100 words starting from "${words[wordIndex]}"...`);
@@ -857,7 +924,8 @@
                 },
                 
                 async play(audioUrl, chunkIndex, startOffset = 0) {
-                    console.log(`Starting playback for chunk ${chunkIndex} at offset ${startOffset}s`);
+                    console.log(`🎵 PLAY METHOD START: chunk=${chunkIndex}, startOffset=${startOffset.toFixed(3)}s`);
+                    console.log(`🎵 Current rate: ${currentPlaybackRate}x, should use HTML: ${currentPlaybackRate !== 1.0}`);
                     
                     // Stop any existing source first to prevent multiple streams
                     this.stopCurrentSource();
@@ -869,10 +937,12 @@
                     try {
                         // Use HTML audio for pitch preservation when speed != 1.0
                         if (this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                            console.log('Using HTML audio for pitch preservation at speed:', currentPlaybackRate);
+                            console.log('🎵 Using HTML audio for pitch preservation at speed:', currentPlaybackRate);
+                            console.log(`🎵 Start offset for HTML audio: ${startOffset.toFixed(3)}s`);
                             
                             // Create or reuse HTML audio element
                             if (!this.htmlAudio) {
+                                console.log('🎵 Creating new HTML audio element');
                                 this.htmlAudio = new Audio();
                                 this.htmlAudio.preload = 'auto';
                                 
@@ -891,10 +961,14 @@
                                         console.log('webkitPreservesPitch property set to true');
                                     }
                                 }
+                            } else {
+                                console.log('🎵 Reusing existing HTML audio element');
                             }
                             
+                            console.log(`🎵 Setting HTML audio src and properties...`);
                             this.htmlAudio.src = audioUrl;
                             this.htmlAudio.playbackRate = currentPlaybackRate;
+                            console.log(`🎵 Setting currentTime to ${startOffset.toFixed(3)}s`);
                             this.htmlAudio.currentTime = startOffset;
                             
                             // Ensure pitch preservation is enabled (try all variants)
@@ -908,8 +982,9 @@
                                 this.htmlAudio.webkitPreservesPitch = true;
                             }
                             
-                            console.log('HTML audio settings:', {
+                            console.log('🎵 HTML audio settings:', {
                                 playbackRate: this.htmlAudio.playbackRate,
+                                currentTime: this.htmlAudio.currentTime,
                                 preservesPitch: this.htmlAudio.preservesPitch,
                                 mozPreservesPitch: this.htmlAudio.mozPreservesPitch,
                                 webkitPreservesPitch: this.htmlAudio.webkitPreservesPitch
@@ -917,9 +992,13 @@
                             
                             // Handle when chunk finishes
                             this.htmlAudio.onended = () => {
-                                if (!this.isPaused && !this.isDestroyed && isPlaying) {
-                                    console.log(`Chunk ${chunkIndex} finished playing via HTML audio`);
+                                console.log(`🎵 HTML Audio chunk ${chunkIndex} ended, checking if should continue...`);
+                                console.log(`🎵 State check: isPaused=${this.isPaused}, isDestroyed=${this.isDestroyed}, isPlaying=${isPlaying}, isSpeedChanging=${isSpeedChanging}`);
+                                if (!this.isPaused && !this.isDestroyed && isPlaying && !isSpeedChanging) {
+                                    console.log(`🎵 Moving to next chunk after ${chunkIndex}`);
                                     playNextChunk(chunkIndex);
+                                } else {
+                                    console.log(`🎵 Not continuing: audio ended but should not continue (speedChanging=${isSpeedChanging})`);
                                 }
                             };
                             
@@ -933,7 +1012,10 @@
                             // Handle loading
                             this.htmlAudio.onloadeddata = () => {
                                 audioDuration = this.htmlAudio.duration;
-                                totalTimeSpan.textContent = this.formatTime(audioDuration);
+                                console.log(`🎵 HTML Audio loaded: duration=${audioDuration}s, will start at ${this.htmlAudio.currentTime}s`);
+                                if (totalTimeSpan) {
+                                    totalTimeSpan.textContent = this.formatTime(audioDuration);
+                                }
                                 console.log('🎵 HTML Audio loaded and starting playback at', currentPlaybackRate + 'x speed');
                                 console.log('🎵 Pitch preservation settings:', {
                                     preservesPitch: this.htmlAudio.preservesPitch,
@@ -942,17 +1024,20 @@
                                 });
                                 this.htmlAudio.play().then(() => {
                                     console.log('🎵 HTML Audio playback started successfully');
+                                    console.log(`🎵 Actual start position: ${this.htmlAudio.currentTime.toFixed(3)}s`);
                                 }).catch(error => {
                                     console.error('🎵 HTML Audio playback failed:', error);
                                 });
                                 this.startTimeTracking();
                             };
                             
+                            console.log(`🎵 PLAY METHOD END (HTML AUDIO SETUP)`);
                             return;
                         }
                         
                         // Use Web Audio API for normal speed (1.0x) playback
-                        console.log('Using Web Audio API for normal speed playback');
+                        console.log('🎵 Using Web Audio API for normal speed playback');
+                        console.log(`🎵 Start offset for Web Audio: ${startOffset.toFixed(3)}s`);
                         
                         // ALWAYS load and decode the new audio for this chunk
                         const response = await fetch(audioUrl);
@@ -962,13 +1047,16 @@
                         
                         // Check if we were stopped while loading
                         if (this.isDestroyed) {
-                            console.log('Playback was stopped while loading');
+                            console.log('🎵 Playback was stopped while loading');
                             return;
                         }
                         
                         // Store duration
                         audioDuration = this.currentBuffer.duration;
-                        totalTimeSpan.textContent = this.formatTime(audioDuration);
+                        console.log(`🎵 Web Audio buffer loaded: duration=${audioDuration}s, will start at ${startOffset.toFixed(3)}s`);
+                        if (totalTimeSpan) {
+                            totalTimeSpan.textContent = this.formatTime(audioDuration);
+                        }
                         
                         // Create new source
                         this.currentSource = this.audioContext.createBufferSource();
@@ -978,23 +1066,30 @@
                         
                         // Handle when chunk finishes
                         this.currentSource.onended = () => {
-                            if (!this.isPaused && !this.isDestroyed && isPlaying) {
-                                console.log(`Chunk ${chunkIndex} finished playing`);
+                            console.log(`🎵 Web Audio chunk ${chunkIndex} ended, checking if should continue...`);
+                            console.log(`🎵 State check: isPaused=${this.isPaused}, isDestroyed=${this.isDestroyed}, isPlaying=${isPlaying}, isSpeedChanging=${isSpeedChanging}`);
+                            if (!this.isPaused && !this.isDestroyed && isPlaying && !isSpeedChanging) {
+                                console.log(`🎵 Moving to next chunk after ${chunkIndex}`);
                                 playNextChunk(chunkIndex);
+                            } else {
+                                console.log(`🎵 Not continuing: audio ended but should not continue (speedChanging=${isSpeedChanging})`);
                             }
                         };
                         
                         // Start playback from specified offset
                         this.startTime = this.audioContext.currentTime - startOffset;
+                        console.log(`🎵 Web Audio timing: contextTime=${this.audioContext.currentTime.toFixed(3)}s, startTime=${this.startTime.toFixed(3)}s, offset=${startOffset.toFixed(3)}s`);
                         this.currentSource.start(0, startOffset);
                         
                         // Start time tracking
                         this.startTimeTracking();
                         
-                        console.log(`Successfully started chunk ${chunkIndex} at ${currentPlaybackRate}x speed from ${startOffset}s`);
+                        console.log(`🎵 Successfully started chunk ${chunkIndex} at ${currentPlaybackRate}x speed from ${startOffset}s`);
+                        console.log(`🎵 PLAY METHOD END (WEB AUDIO STARTED)`);
                         
                     } catch (error) {
-                        console.error('Error playing audio:', error);
+                        console.error('🎵 Error playing audio:', error);
+                        console.error('🎵 Error stack:', error.stack);
                         throw error;
                     }
                 },
@@ -1074,63 +1169,179 @@
                 
                 setPlaybackRate(rate) {
                     const previousRate = currentPlaybackRate;
-                    currentPlaybackRate = rate;
                     
-                    // If we're currently playing and the rate type changes (1.0 vs non-1.0), restart playback
-                    const wasUsingHtmlAudio = previousRate !== 1.0;
-                    const shouldUseHtmlAudio = rate !== 1.0;
+                    console.log(`🎵 ===== SPEED CHANGE DEBUG START =====`);
+                    console.log(`🎵 setPlaybackRate: ${previousRate}x → ${rate}x`);
+                    console.log(`🎵 Current state: playing=${isPlaying}, paused=${isPaused}, chunk=${currentChunkIndex}`);
+                    console.log(`🎵 Audio duration: ${audioDuration}s, pausedAt: ${pausedAt}s`);
+                    console.log(`🎵 HTML Audio exists: ${!!this.htmlAudio}, Current source exists: ${!!this.currentSource}`);
                     
-                    if ((isPlaying || isPaused) && wasUsingHtmlAudio !== shouldUseHtmlAudio) {
-                        console.log(`Speed changed from ${previousRate}x to ${rate}x - switching audio method`);
-                        
-                        // Save current position
-                        const currentTime = this.getCurrentTime();
-                        const wasPlaying = isPlaying && !isPaused;
-                        
-                        // Stop current playback
-                        this.stopCurrentSource();
-                        
-                        // Get current chunk info
-                        if (currentChunkIndex >= 0) {
-                            const chunkStartWord = currentChunkIndex * 100;
-                            const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
-                            const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
-                            
-                            // Restart with new method
-                            loadChunk(currentChunkIndex, chunkText).then(audioUrl => {
-                                this.play(audioUrl, currentChunkIndex, currentTime).then(() => {
-                                    if (!wasPlaying) {
-                                        // If it was paused, pause it again
-                                        setTimeout(() => this.pause(), 50);
-                                    }
-                                });
-                            }).catch(error => {
-                                console.error('Error restarting playback with new speed:', error);
-                            });
-                        }
+                    // If no audio is playing, just update the rate for future playback
+                    if (!isPlaying && !isPaused) {
+                        console.log('🎵 No audio active, just updating rate for future');
+                        currentPlaybackRate = rate;
+                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (NO AUDIO) =====`);
                         return;
                     }
                     
-                    // If not switching methods, just update the rate
-                    if (this.htmlAudio && shouldUseHtmlAudio) {
-                        this.htmlAudio.playbackRate = rate;
-                        
-                        // Ensure pitch preservation is enabled (try all variants)
-                        if ('preservesPitch' in this.htmlAudio) {
-                            this.htmlAudio.preservesPitch = true;
-                        }
-                        if ('mozPreservesPitch' in this.htmlAudio) {
-                            this.htmlAudio.mozPreservesPitch = true;
-                        }
-                        if ('webkitPreservesPitch' in this.htmlAudio) {
-                            this.htmlAudio.webkitPreservesPitch = true;
-                        }
-                        
-                        console.log('Updated playback rate to', rate, 'with pitch preservation');
+                    // If changing from/to same rate, do nothing
+                    if (previousRate === rate) {
+                        console.log('🎵 Same rate, no change needed');
+                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (SAME RATE) =====`);
+                        return;
                     }
                     
-                    if (this.currentSource && this.currentSource.playbackRate && !shouldUseHtmlAudio) {
-                        this.currentSource.playbackRate.value = rate;
+                    // Determine audio method requirements
+                    const wasUsingHtmlAudio = previousRate !== 1.0;
+                    const shouldUseHtmlAudio = rate !== 1.0;
+                    
+                    console.log(`🎵 Method check: was HTML: ${wasUsingHtmlAudio}, should HTML: ${shouldUseHtmlAudio}`);
+                    console.log(`🎵 Method switch needed: ${wasUsingHtmlAudio !== shouldUseHtmlAudio}`);
+                    
+                    // Case 1: No method switch needed - just update rate in place
+                    if (wasUsingHtmlAudio === shouldUseHtmlAudio) {
+                        console.log('🎵 Same method, updating rate in place - NO RESTART');
+                        currentPlaybackRate = rate;
+                        
+                        if (this.htmlAudio && shouldUseHtmlAudio) {
+                            // Just change HTML audio rate
+                            console.log(`🎵 Updating HTML audio rate from ${this.htmlAudio.playbackRate} to ${rate}`);
+                            console.log(`🎵 HTML audio current time before: ${this.htmlAudio.currentTime}s`);
+                            this.htmlAudio.playbackRate = rate;
+                            console.log(`🎵 HTML audio rate after: ${this.htmlAudio.playbackRate}, current time after: ${this.htmlAudio.currentTime}s`);
+                        } else if (this.currentSource && this.currentSource.playbackRate) {
+                            // Just change Web Audio rate
+                            console.log(`🎵 Updating Web Audio rate from ${this.currentSource.playbackRate.value} to ${rate}`);
+                            const timeBefore = this.getCurrentTime();
+                            this.currentSource.playbackRate.value = rate;
+                            const timeAfter = this.getCurrentTime();
+                            console.log(`🎵 Web Audio time before: ${timeBefore}s, after: ${timeAfter}s`);
+                        }
+                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (IN-PLACE UPDATE) =====`);
+                        return;
+                    }
+                    
+                    // Case 2: Method switch required - restart with exact position preservation
+                    console.log('🎵 Method switch required - restarting with EXACT position');
+                    console.log(`🎵 About to capture position for restart...`);
+                    
+                    // **CRITICAL FIX:** Set speed changing flag to prevent chunk progression
+                    isSpeedChanging = true;
+                    const originalChunkIndex = currentChunkIndex; // Preserve original chunk
+                    console.log(`🎵 🚫 SPEED CHANGE FLAG SET - preventing chunk progression, original chunk: ${originalChunkIndex}`);
+                    
+                    // Save current state with maximum precision
+                    let currentTime = 0;
+                    let wasActuallyPlaying = isPlaying && !isPaused;
+                    
+                    try {
+                        // Get current position with highest available precision
+                        if (this.htmlAudio && wasUsingHtmlAudio) {
+                            // Use HTML audio's currentTime (most accurate for HTML playback)
+                            currentTime = this.htmlAudio.currentTime || 0;
+                            console.log(`🎵 Got time from HTML audio: ${currentTime.toFixed(3)}s`);
+                            console.log(`🎵 HTML audio state: paused=${this.htmlAudio.paused}, duration=${this.htmlAudio.duration}s, playbackRate=${this.htmlAudio.playbackRate}`);
+                        } else if (this.isPaused) {
+                            // Use stored pause position
+                            currentTime = pausedAt || 0;
+                            console.log(`🎵 Got time from pausedAt: ${currentTime.toFixed(3)}s`);
+                        } else {
+                            // Calculate from Web Audio context
+                            currentTime = this.getCurrentTime();
+                            console.log(`🎵 Got time from getCurrentTime: ${currentTime.toFixed(3)}s`);
+                            console.log(`🎵 Web Audio context time: ${this.audioContext?.currentTime}s, startTime: ${this.startTime}s`);
+                        }
+                        
+                        // Clamp time to valid range (0 to audio duration)
+                        const originalTime = currentTime;
+                        if (audioDuration > 0) {
+                            currentTime = Math.max(0, Math.min(currentTime, audioDuration - 0.1));
+                        }
+                        console.log(`🎵 Time clamping: original=${originalTime.toFixed(3)}s, clamped=${currentTime.toFixed(3)}s, audioDuration=${audioDuration}s`);
+                        
+                        console.log(`🎵 Final restart state: time=${currentTime.toFixed(3)}s, wasPlaying=${wasActuallyPlaying}, ORIGINAL chunk=${originalChunkIndex}`);
+                        
+                        // Update rate immediately
+                        console.log(`🎵 Updating currentPlaybackRate from ${currentPlaybackRate} to ${rate}`);
+                        currentPlaybackRate = rate;
+                        
+                        // Stop current playback completely
+                        console.log(`🎵 Stopping current source...`);
+                        this.stopCurrentSource();
+                        console.log(`🎵 Current source stopped`);
+                        
+                        // Wait for complete cleanup - use shorter delay but ensure chunk progression is blocked
+                        console.log(`🎵 Waiting 50ms for cleanup before restart...`);
+                        setTimeout(() => {
+                            console.log(`🎵 Cleanup delay complete, attempting restart with ORIGINAL chunk ${originalChunkIndex}...`);
+                            
+                            // **CRITICAL:** Use original chunk index, not current which may have changed
+                            if (originalChunkIndex >= 0 && originalChunkIndex < Math.ceil(words.length / 100)) {
+                                const chunkStartWord = originalChunkIndex * 100;
+                                const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
+                                const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
+                                
+                                console.log(`🎵 Restarting ORIGINAL chunk ${originalChunkIndex} from EXACT position ${currentTime.toFixed(3)}s`);
+                                console.log(`🎵 Chunk words: ${chunkStartWord}-${chunkEndWord-1} (${chunkText.substring(0, 50)}...)`);
+                                
+                                // **CRITICAL:** Restore the original chunk index before restart
+                                currentChunkIndex = originalChunkIndex;
+                                console.log(`🎵 ✅ Restored currentChunkIndex to original: ${currentChunkIndex}`);
+                                
+                                // Load and restart from EXACT position
+                                loadChunk(originalChunkIndex, chunkText).then(audioUrl => {
+                                    console.log(`🎵 Original chunk ${originalChunkIndex} loaded, calling play() with offset ${currentTime.toFixed(3)}s`);
+                                    return this.play(audioUrl, originalChunkIndex, currentTime);
+                                }).then(() => {
+                                    console.log('🎵 Successfully restarted at new speed');
+                                    console.log(`🎵 New playback state: isPlaying=${isPlaying}, isPaused=${isPaused}, rate=${currentPlaybackRate}`);
+                                    
+                                    // **CRITICAL:** Clear speed changing flag AFTER successful restart
+                                    isSpeedChanging = false;
+                                    console.log(`🎵 ✅ SPEED CHANGE FLAG CLEARED - chunk progression re-enabled`);
+                                    
+                                    // If it was paused before, pause it again after a delay
+                                    if (!wasActuallyPlaying) {
+                                        console.log(`🎵 Original state was paused, will re-pause in 200ms`);
+                                        setTimeout(() => {
+                                            console.log('🎵 Re-pausing as it was paused before speed change');
+                                            this.pause();
+                                        }, 200);
+                                    }
+                                    console.log(`🎵 ===== SPEED CHANGE DEBUG END (RESTART SUCCESS) =====`);
+                                }).catch(error => {
+                                    console.error('🎵 Error restarting with new speed:', error);
+                                    console.error('🎵 Error stack:', error.stack);
+                                    // **CRITICAL:** Clear flag even on error
+                                    isSpeedChanging = false;
+                                    console.log(`🎵 ❌ SPEED CHANGE FLAG CLEARED (after error)`);
+                                    // Fallback: try to continue somehow
+                                    isPlaying = false;
+                                    isPaused = false;
+                                    console.log(`🎵 ===== SPEED CHANGE DEBUG END (RESTART ERROR) =====`);
+                                });
+                            } else {
+                                console.error('🎵 Invalid original chunk index for restart:', originalChunkIndex);
+                                console.error('🎵 Total chunks:', Math.ceil(words.length / 100), 'words length:', words.length);
+                                // **CRITICAL:** Clear flag even on error
+                                isSpeedChanging = false;
+                                console.log(`🎵 ❌ SPEED CHANGE FLAG CLEARED (invalid chunk)`);
+                                // Reset state
+                                isPlaying = false;
+                                isPaused = false;
+                                console.log(`🎵 ===== SPEED CHANGE DEBUG END (INVALID CHUNK) =====`);
+                            }
+                        }, 50); // Shorter delay since we're blocking progression
+                        
+                    } catch (error) {
+                        console.error('🎵 Error during speed change:', error);
+                        console.error('🎵 Error stack:', error.stack);
+                        // **CRITICAL:** Clear flag even on exception
+                        isSpeedChanging = false;
+                        console.log(`🎵 ❌ SPEED CHANGE FLAG CLEARED (after exception)`);
+                        // Fallback: just update the rate and continue
+                        currentPlaybackRate = rate;
+                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (EXCEPTION) =====`);
                     }
                 },
                 
@@ -1211,9 +1422,13 @@
                     if (audioDuration > 0) {
                         const time = isPaused ? pausedAt : currentAudioTime;
                         const progress = (time / audioDuration) * 100;
-                        progressBar.style.width = `${progress}%`;
-                        progressHandle.style.left = `${progress}%`;
-                        currentTimeSpan.textContent = this.formatTime(time);
+                        
+                        // Update main progress bar (hidden but still functional for internal tracking)
+                        if (progressBar && progressHandle && currentTimeSpan) {
+                            progressBar.style.width = `${progress}%`;
+                            progressHandle.style.left = `${progress}%`;
+                            currentTimeSpan.textContent = this.formatTime(time);
+                        }
                     }
                 },
                 
@@ -1355,9 +1570,9 @@
             const targetPage = Math.ceil((wordIndex + 1) / wordsPerPageNum);
             
             if (targetPage !== currentPage) {
+                console.log(`📄 Auto-navigating from page ${currentPage} to page ${targetPage} for word ${wordIndex}`);
                 currentPage = targetPage;
                 updatePaginationButtons();
-                pageSelect.value = currentPage;
                 displayCurrentPage();
             }
         }
@@ -1386,27 +1601,19 @@
                 wordSpan.classList.remove('word-current', 'word-speaking', 'word-next', 'word-playing-chunk', 'word-next-chunk');
             });
             
-            // Hide audio controls
-            audioControls.classList.add('hidden');
-            audioControls.classList.remove('audio-controls-sticky');
-            document.body.classList.remove('sticky-player-active');
+            // Hide ONLY sticky player
+            if (stickyAudioPlayer) {
+                stickyAudioPlayer.classList.remove('active');
+            }
             
             // Reset speed control
-            speedSelect.value = '1.0';
+            if (stickySpeedSelect) {
+                stickySpeedSelect.value = '1.0';
+            }
             currentPlaybackRate = 1.0;
             
-            // Reset play/pause button to show play icon
-            if (playPauseBtn) {
-                const playIcon = playPauseBtn.querySelector('i');
-                if (playIcon) {
-                    playIcon.setAttribute('data-lucide', 'play');
-                    lucide.createIcons();
-                } else {
-                    console.warn('Play icon element not found in stopPlayback');
-                }
-            } else {
-                console.warn('Play/pause button not found in stopPlayback');
-            }
+            // Reset sticky play/pause button to show play icon
+            updatePlayPauseButtons('play');
             
             console.log('Playback stopped successfully');
         }
@@ -1474,161 +1681,106 @@
             stopBtn.addEventListener('click', stopPlayback);
         }
 
-        // Voice model change
-        document.addEventListener('change', (e) => {
-            if (e.target.name === 'model') {
-                selectedModel = e.target.value;
-                // Clear cache when voice changes
-                audioCache.forEach(url => URL.revokeObjectURL(url));
-                audioCache.clear();
-                console.log('Voice changed, cleared audio cache');
-            }
-        });
-
         // Audio control event listeners
         if (speedSelect) {
             speedSelect.addEventListener('change', (e) => {
                 const newRate = parseFloat(e.target.value);
-                console.log(`Changing playback rate to ${newRate}x`);
+                console.log(`🎵 Main speed dropdown changed to: ${newRate}x`);
+                console.log(`🎵 Current state before speed change - isPlaying: ${isPlaying}, isPaused: ${isPaused}, chunk: ${currentChunkIndex}`);
                 
-                if (gaplessPlayer) {
-                    gaplessPlayer.setPlaybackRate(newRate);
+                // Sync sticky speed select
+                if (stickySpeedSelect) {
+                    stickySpeedSelect.value = newRate;
                 }
                 
-                // Debug audio settings after rate change
+                changePlaybackRate(newRate);
+                
+                // Log state after speed change
                 setTimeout(() => {
-                    debugAudioSettings();
-                }, 100);
+                    console.log(`🎵 State after speed change - isPlaying: ${isPlaying}, isPaused: ${isPaused}, chunk: ${currentChunkIndex}`);
+                }, 150);
+            });
+        }
+
+        if (stickySpeedSelect) {
+            stickySpeedSelect.addEventListener('change', (e) => {
+                const newRate = parseFloat(e.target.value);
+                console.log(`🎵 Sticky speed select changed to ${newRate}x`);
                 
-                // Update status text
-                if (isPlaying && statusText) {
-                    const pitchInfo = newRate !== 1.0 ? ' • Pitch preserved' : '';
-                    statusText.textContent = `Playing chunk ${currentChunkIndex + 1} • ${newRate}x speed${pitchInfo}`;
+                // Sync main speed select if it exists
+                if (speedSelect) {
+                    speedSelect.value = newRate;
                 }
+                
+                changePlaybackRate(newRate);
             });
         }
 
-        if (skipBack15) {
-            skipBack15.addEventListener('click', () => {
-                if (gaplessPlayer && (isPlaying || isPaused)) {
-                    gaplessPlayer.seekTo(-15);
-                    console.log('Skipped back 15 seconds');
-                }
-            });
-        }
-
-        if (skipBack10) {
-            skipBack10.addEventListener('click', () => {
-                if (gaplessPlayer && (isPlaying || isPaused)) {
-                    gaplessPlayer.seekTo(-10);
-                    console.log('Skipped back 10 seconds');
-                }
-            });
-        }
-
-        if (skipForward10) {
-            skipForward10.addEventListener('click', () => {
-                if (gaplessPlayer && (isPlaying || isPaused)) {
-                    gaplessPlayer.seekTo(10);
-                    console.log('Skipped forward 10 seconds');
-                }
-            });
-        }
-
-        if (skipForward15) {
-            skipForward15.addEventListener('click', () => {
-                if (gaplessPlayer && (isPlaying || isPaused)) {
-                    gaplessPlayer.seekTo(15);
-                    console.log('Skipped forward 15 seconds');
-                }
-            });
-        }
-
-        // Fixed keyboard shortcuts for audio controls
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Only handle shortcuts when playing and not typing in input fields
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            // Only handle shortcuts if no input is focused
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
             
-            switch (e.key) {
-                case ' ': // Spacebar - Pause/Resume/Stop toggle
-                    e.preventDefault();
-                    if (isPlaying) {
-                        // Pause playback
-                        if (gaplessPlayer) {
-                            gaplessPlayer.pause();
-                            
-                            // Update button to show play icon
-                            const playIcon = playPauseBtn?.querySelector('i');
-                            if (playIcon) {
-                                playIcon.setAttribute('data-lucide', 'play');
-                                lucide.createIcons();
-                            }
-                            
-                            statusText.textContent = `Paused at chunk ${currentChunkIndex + 1}`;
-                        }
-                    } else if (isPaused) {
-                        // Resume playback
-                        if (gaplessPlayer && gaplessPlayer.resume()) {
-                            // Update button to show pause icon
-                            const playIcon = playPauseBtn?.querySelector('i');
-                            if (playIcon) {
-                                playIcon.setAttribute('data-lucide', 'pause');
-                                lucide.createIcons();
-                            }
-                            
-                            statusText.textContent = `Playing chunk ${currentChunkIndex + 1}`;
-                        }
-                    } else if (currentWordIndex >= 0) {
-                        // Start new playback
-                        playFromWord(currentWordIndex);
-                    }
-                    break;
-                case 'ArrowLeft': // Left arrow - Skip back 10s
-                    e.preventDefault();
-                    if (gaplessPlayer && (isPlaying || isPaused)) {
-                        gaplessPlayer.seekTo(-10);
-                    }
-                    break;
-                case 'ArrowRight': // Right arrow - Skip forward 10s
-                    e.preventDefault();
-                    if (gaplessPlayer && (isPlaying || isPaused)) {
-                        gaplessPlayer.seekTo(10);
-                    }
-                    break;
-                case 'j': // J - Skip back 15s
-                case 'J':
-                    e.preventDefault();
-                    if (gaplessPlayer && (isPlaying || isPaused)) {
-                        gaplessPlayer.seekTo(-15);
-                    }
-                    break;
-                case 'l': // L - Skip forward 15s
-                case 'L':
-                    e.preventDefault();
-                    if (gaplessPlayer && (isPlaying || isPaused)) {
-                        gaplessPlayer.seekTo(15);
-                    }
-                    break;
-                case '-': // Minus - Decrease speed
-                case '_':
-                    e.preventDefault();
-                    const currentSpeed = parseFloat(speedSelect.value);
-                    const newSpeed = Math.max(0.5, currentSpeed - 0.25);
-                    speedSelect.value = newSpeed.toString();
-                    speedSelect.dispatchEvent(new Event('change'));
-                    break;
-                case '=': // Plus/Equal - Increase speed
-                case '+':
-                    e.preventDefault();
-                    const currentSpeedUp = parseFloat(speedSelect.value);
-                    const newSpeedUp = Math.min(2.0, currentSpeedUp + 0.25);
-                    speedSelect.value = newSpeedUp.toString();
-                    speedSelect.dispatchEvent(new Event('change'));
-                    break;
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                console.log('Spacebar pressed. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
+                
+                if (isPlaying && !isPaused) {
+                    // Currently playing, so pause
+                    pausePlayback();
+                } else if (isPaused) {
+                    // Currently paused, so resume
+                    resumePlayback();
+                } else if (currentWordIndex >= 0) {
+                    // Not playing at all, start from current word
+                    playFromWord(currentWordIndex);
+                } else {
+                    console.log('No audio loaded to play');
+                }
             }
         });
 
-        // Utility functions
+        // Sticky Player Event Listeners
+        if (stickyPlayPauseBtn) {
+            stickyPlayPauseBtn.addEventListener('click', () => {
+                console.log('Sticky play/pause button clicked. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
+                
+                if (isPlaying && !isPaused) {
+                    // Currently playing, so pause
+                    pausePlayback();
+                } else if (isPaused) {
+                    // Currently paused, so resume
+                    resumePlayback();
+                } else if (currentWordIndex >= 0) {
+                    // Not playing at all, start from current word
+                    playFromWord(currentWordIndex);
+                } else {
+                    console.log('No audio loaded to play');
+                }
+            });
+        }
+
+        if (stickyStopBtn) {
+            stickyStopBtn.addEventListener('click', stopPlayback);
+        }
+
+        if (stickySpeedSelect) {
+            stickySpeedSelect.addEventListener('change', (e) => {
+                const newRate = parseFloat(e.target.value);
+                changePlaybackRate(newRate);
+            });
+        }
+
+        // Voice selection event listener  
+        if (stickyVoiceSelect) {
+            stickyVoiceSelect.addEventListener('change', (e) => {
+                handleVoiceChange(e.target.value);
+            });
+        }
+
+        // Helper functions
         function base64ToBlob(base64, mimeType) {
             const byteCharacters = atob(base64);
             const byteNumbers = new Array(byteCharacters.length);
@@ -1670,9 +1822,370 @@
             }
         }
 
+        // Helper functions for sticky player controls
+        function pausePlayback() {
+            console.log('🎵 pausePlayback called. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
+            
+            if (gaplessPlayer && isPlaying && !isPaused) {
+                const pauseTime = gaplessPlayer.pause();
+                isPaused = true;
+                isPlaying = false;
+                pausedAt = pauseTime || 0;
+                
+                console.log('🎵 Playback paused at', pausedAt, 'State now - isPlaying:', isPlaying, 'isPaused:', isPaused);
+                
+                // Update sticky play/pause button to show play icon - with delay for DOM
+                setTimeout(() => {
+                    updatePlayPauseButtons('play');
+                }, 20);
+                
+            } else {
+                console.log('🎵 Cannot pause - invalid state or no player');
+            }
+        }
+
+        function resumePlayback() {
+            console.log('🎵 resumePlayback called. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
+            
+            if (gaplessPlayer && isPaused && gaplessPlayer.resume()) {
+                isPaused = false;
+                isPlaying = true;
+                
+                console.log('🎵 Playback resumed. State now - isPlaying:', isPlaying, 'isPaused:', isPaused);
+                
+                // Update sticky play/pause button to show pause icon - with delay for DOM
+                setTimeout(() => {
+                    updatePlayPauseButtons('pause');
+                }, 20);
+                
+            } else {
+                console.log('🎵 Cannot resume - invalid state or resume failed');
+            }
+        }
+
+        function updatePlayPauseButtons(state) {
+            const iconName = state === 'play' ? 'play' : 'pause';
+            
+            console.log('Updating play/pause button icon to:', iconName);
+            console.log('Current button state check:', {
+                stickyPlayPauseBtn: !!stickyPlayPauseBtn,
+                hasIcon: !!stickyPlayPauseBtn?.querySelector('i')
+            });
+            
+            // Update sticky player button with robust approach
+            if (stickyPlayPauseBtn) {
+                try {
+                    // Clear all existing content and rebuild
+                    stickyPlayPauseBtn.innerHTML = '';
+                    
+                    // Create completely new icon element
+                    const newIcon = document.createElement('i');
+                    newIcon.setAttribute('data-lucide', iconName);
+                    newIcon.className = 'h-6 w-6 text-white';
+                    
+                    // Add the new icon to the button
+                    stickyPlayPauseBtn.appendChild(newIcon);
+                    
+                    // Force recreation of ALL icons on page
+                    setTimeout(() => {
+                        lucide.createIcons();
+                        console.log(`Icon updated successfully to ${iconName}`);
+                    }, 10);
+                    
+                } catch (error) {
+                    console.error('Error updating play/pause button:', error);
+                }
+            } else {
+                console.warn('Sticky play/pause button not found');
+            }
+        }
+
+        function changePlaybackRate(newRate) {
+            console.log(`=== SPEED CHANGE START: ${currentPlaybackRate}x → ${newRate}x ===`);
+            console.log(`Current state: isPlaying=${isPlaying}, isPaused=${isPaused}, chunk=${currentChunkIndex}`);
+            
+            if (gaplessPlayer) {
+                gaplessPlayer.setPlaybackRate(newRate);
+            } else {
+                console.warn('No gapless player available for speed change');
+            }
+            console.log(`=== SPEED CHANGE END ===`);
+        }
+
+        function seekTo(newTime) {
+            if (!gaplessPlayer || audioDuration === 0) return;
+            
+            const currentTime = isPaused ? pausedAt : currentAudioTime;
+            const seekOffset = newTime - currentTime;
+            gaplessPlayer.seekTo(seekOffset);
+        }
+
+        // Voice selection change handler
+        function handleVoiceChange(newVoice) {
+            const oldVoice = selectedModel;
+            selectedModel = newVoice;
+            
+            console.log(`Voice changed from ${oldVoice} to ${newVoice}`);
+            
+            // Clear cache when voice changes
+            audioCache.forEach(url => URL.revokeObjectURL(url));
+            audioCache.clear();
+            console.log('Cleared audio cache due to voice change');
+            
+            // If audio is currently playing or paused, restart with new voice
+            if ((isPlaying || isPaused) && currentChunkIndex >= 0) {
+                console.log('Restarting playback with new voice...');
+                
+                // Save current state
+                const currentTime = gaplessPlayer ? gaplessPlayer.getCurrentTime() : 0;
+                const wasPlaying = isPlaying && !isPaused;
+                const savedChunkIndex = currentChunkIndex;
+                const savedWordIndex = currentWordIndex;
+                
+                console.log(`Saving state: chunk ${savedChunkIndex}, time ${currentTime}s, wasPlaying: ${wasPlaying}`);
+                
+                // Stop current playback
+                if (gaplessPlayer) {
+                    gaplessPlayer.stop();
+                }
+                
+                // Reset state
+                isPlaying = false;
+                isPaused = false;
+                
+                // Generate new audio with new voice for current chunk
+                const chunkStartWord = savedChunkIndex * 100;
+                const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
+                const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
+                
+                // Show loading indicator for voice change
+                showLoading(`Generating audio with new voice...`);
+                
+                // Load new audio chunk with new voice
+                loadChunk(savedChunkIndex, chunkText).then(audioUrl => {
+                    hideLoading();
+                    
+                    // Restart playback from the same position
+                    if (gaplessPlayer) {
+                        // Update the state back
+                        currentChunkIndex = savedChunkIndex;
+                        currentWordIndex = savedWordIndex;
+                        isPlaying = true;
+                        isPaused = false;
+                        
+                        // Show sticky player
+                        if (stickyAudioPlayer) {
+                            stickyAudioPlayer.classList.add('active');
+                        }
+                        
+                        // Play from saved position
+                        gaplessPlayer.play(audioUrl, savedChunkIndex, currentTime).then(() => {
+                            if (!wasPlaying) {
+                                // If it was paused, pause it again
+                                setTimeout(() => {
+                                    pausePlayback();
+                                }, 100);
+                            } else {
+                                // Update button to show pause icon
+                                updatePlayPauseButtons('pause');
+                            }
+                            
+                            // Update highlighting to match current playback
+                            updateChunkHighlighting();
+                            
+                        }).catch(error => {
+                            console.error('Error restarting playback with new voice:', error);
+                            showError('Failed to restart playback with new voice: ' + error.message);
+                        });
+                    }
+                }).catch(error => {
+                    hideLoading();
+                    console.error('Error loading new voice audio:', error);
+                    showError('Failed to generate audio with new voice: ' + error.message);
+                });
+            }
+        }
+
+        // Setup error retry button
         if (retryBtn) {
             retryBtn.addEventListener('click', hideError);
         }
+
+        // Setup "Read Another PDF" button
+        if (readAnotherPdfBtn) {
+            readAnotherPdfBtn.addEventListener('click', resetToUpload);
+        }
+
+        // Initialize voice selection to default
+        if (stickyVoiceSelect) {
+            selectedModel = stickyVoiceSelect.value || 'edge-tts-andrew';
+            console.log('Initial voice selection:', selectedModel);
+        }
+
+        // Function to reset to upload state
+        function resetToUpload() {
+            // Stop any current playback
+            stopPlayback();
+            
+            // Hide text display
+            textDisplay.classList.add('hidden');
+            
+            // Show only upload section (voice selection no longer needed)
+            if (uploadArea && uploadArea.parentElement) {
+                uploadArea.parentElement.classList.remove('hidden');
+            }
+            
+            // Hide file info
+            if (fileInfo) {
+                fileInfo.classList.add('hidden');
+            }
+            
+            // Reset global variables
+            extractedText = '';
+            words = [];
+            currentPage = 1;
+            audioCache.clear();
+            
+            // Reset voice selection to default
+            selectedModel = 'edge-tts-andrew';
+            if (stickyVoiceSelect) {
+                stickyVoiceSelect.value = 'edge-tts-andrew';
+            }
+            
+            // Reset upload area
+            uploadArea.style.pointerEvents = 'auto';
+            uploadArea.style.opacity = '1';
+            if (uploadLoading) {
+                uploadLoading.classList.add('hidden');
+            }
+            
+            // Reset file input
+            if (pdfInput) {
+                pdfInput.value = '';
+            }
+        }
+
+        // Chaos testing monitoring and logging
+        let chaosTestLog = [];
+        let lastLoggedState = null;
+        let monitoringInterval = null;
+        
+        // Enhanced monitoring function
+        function monitorSystemState() {
+            const currentState = {
+                timestamp: Date.now(),
+                isPlaying: isPlaying,
+                isPaused: isPaused,
+                isSpeedChanging: isSpeedChanging,
+                currentChunkIndex: currentChunkIndex,
+                currentWordIndex: currentWordIndex,
+                selectedModel: selectedModel,
+                currentPlaybackRate: currentPlaybackRate,
+                audioDuration: audioDuration,
+                pausedAt: pausedAt,
+                currentAudioTime: gaplessPlayer ? gaplessPlayer.getCurrentTime() : 0,
+                cacheSize: audioCache.size,
+                stickyPlayerVisible: stickyAudioPlayer ? stickyAudioPlayer.classList.contains('active') : false,
+                htmlAudioActive: gaplessPlayer?.htmlAudio ? !gaplessPlayer.htmlAudio.paused : false,
+                webAudioActive: gaplessPlayer?.currentSource ? true : false,
+                playingMethod: currentPlaybackRate !== 1.0 ? 'HTML Audio' : 'Web Audio',
+                currentPage: currentPage,
+                totalPages: totalPages,
+                wordsPerPage: wordsPerPage
+            };
+            
+            // Only log if state has changed significantly
+            if (!lastLoggedState || hasSignificantStateChange(lastLoggedState, currentState)) {
+                const logEntry = {
+                    ...currentState,
+                    changes: lastLoggedState ? getStateChanges(lastLoggedState, currentState) : ['Initial state']
+                };
+                
+                chaosTestLog.push(logEntry);
+                console.log('🎭 CHAOS MONITOR:', logEntry);
+                
+                // Keep only last 100 log entries to prevent memory issues
+                if (chaosTestLog.length > 100) {
+                    chaosTestLog = chaosTestLog.slice(-100);
+                }
+                
+                lastLoggedState = { ...currentState };
+            }
+            
+            return currentState;
+        }
+        
+        function hasSignificantStateChange(oldState, newState) {
+            const significantFields = [
+                'isPlaying', 'isPaused', 'isSpeedChanging', 'currentChunkIndex', 
+                'selectedModel', 'currentPlaybackRate', 'playingMethod', 'htmlAudioActive', 'webAudioActive'
+            ];
+            
+            for (const field of significantFields) {
+                if (oldState[field] !== newState[field]) {
+                    return true;
+                }
+            }
+            
+            // Check for significant time changes (more than 0.5 seconds)
+            if (Math.abs(oldState.currentAudioTime - newState.currentAudioTime) > 0.5) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        function getStateChanges(oldState, newState) {
+            const changes = [];
+            
+            Object.keys(newState).forEach(key => {
+                if (key === 'timestamp' || key === 'changes') return;
+                
+                if (oldState[key] !== newState[key]) {
+                    changes.push(`${key}: ${oldState[key]} → ${newState[key]}`);
+                }
+            });
+            
+            return changes;
+        }
+        
+        function startChaosMonitoring() {
+            console.log('🎭 Starting chaos testing monitoring...');
+            monitoringInterval = setInterval(() => {
+                monitorSystemState();
+            }, 100); // Monitor every 100ms
+            
+            // Initial state log
+            monitorSystemState();
+        }
+        
+        function stopChaosMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                console.log('🎭 Stopped chaos testing monitoring');
+            }
+        }
+        
+        function exportChaosTestLog() {
+            const logData = {
+                testRun: new Date().toISOString(),
+                totalEntries: chaosTestLog.length,
+                log: chaosTestLog
+            };
+            
+            console.log('🎭 CHAOS TEST LOG EXPORT:', logData);
+            return logData;
+        }
+        
+        // Expose chaos testing functions to window for browser automation
+        window.chaosTest = {
+            start: startChaosMonitoring,
+            stop: stopChaosMonitoring,
+            export: exportChaosTestLog,
+            getState: monitorSystemState,
+            getLog: () => chaosTestLog
+        };
     </script>
 </body>
 </html> 

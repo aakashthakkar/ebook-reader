@@ -1,255 +1,226 @@
-# PDF to Audio Converter
+# PDF to Audio eBook Reader
 
-A modern web application that converts PDF documents to high-quality audio using state-of-the-art AI text-to-speech models. Built with Flask and featuring a beautiful, responsive UI.
+A sophisticated web application that converts PDF documents into interactive audiobooks with click-to-play functionality. Upload any PDF, and click on any word to start listening from that position with high-quality text-to-speech.
 
-## Features
+## 🎯 Features
 
-- 🎯 **PDF Text Extraction**: Automatically extracts text from PDF documents using multiple parsing methods
-- 📚 **Book Support**: Handle large PDFs up to 100MB and 2 million characters (equivalent to ~800 page books)
-- 🤖 **Multiple AI Models**: Choose from various TTS models including Dia-1.6B, Bark, and ESPnet
-- 🎵 **High-Quality Audio**: Generate natural-sounding speech with emotion and voice control
-- 📱 **Responsive Design**: Modern, mobile-friendly interface with drag & drop support
-- ⚡ **Smart Processing**: Automatic text chunking for long documents with progress tracking
-- 💾 **Easy Download**: Download generated audio files in multiple formats
+### Core Functionality
+- **Smart PDF Text Extraction**: Dual-engine text extraction using both `pdfplumber` and `PyPDF2` for maximum compatibility
+- **Interactive Click-to-Play**: Click any word in the extracted text to start audio playback from that exact position
+- **On-Demand Audio Generation**: Audio is generated in real-time using Microsoft Edge TTS as you navigate through the text
+- **Multiple High-Quality Voices**: Choose from 6 different neural voices including Andrew, Jenny, Aria, Guy, and Christopher
+- **Real-Time Visual Feedback**: Current word highlighting and chunk-based progress tracking during playback
 
-## Supported Models
+### User Experience
+- **Modern Web Interface**: Beautiful, responsive UI built with Tailwind CSS and Lucide icons
+- **Drag & Drop Upload**: Easy PDF upload with visual feedback
+- **Floating Audio Controls**: Sticky audio player that follows you as you scroll
+- **Large File Support**: Handles PDFs up to 100MB in size
+- **Word-Level Navigation**: Precise control over audio playback position
 
-### Dia 1.6B (Nari Labs) - Recommended
-- **Features**: High-quality dialogue generation with voice cloning
-- **Requirements**: ~10GB VRAM, GPU recommended
-- **Specialty**: Realistic dialogue with speaker alternation and non-verbal sounds
-- **Local Model**: Can use your downloaded model at `./llm/dia-v0_1.pth`
-
-### Bark (Suno AI)
-- **Features**: Multilingual TTS with various speakers and emotions
-- **Requirements**: ~8GB VRAM, GPU recommended
-- **Specialty**: Multiple languages and expressive speech
-
-### ESPnet TTS
-- **Features**: General-purpose text-to-speech
-- **Requirements**: CPU compatible
-- **Specialty**: Lightweight and fast processing
-
-## Installation
-
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
-- (Optional) NVIDIA GPU with CUDA for better performance
+### Technical Features
+- **RESTful API**: Clean API endpoints for PDF processing and audio generation
+- **Chunked Processing**: Intelligent text chunking for optimal performance (100-word chunks)
+- **Base64 Audio Streaming**: Efficient audio delivery without file storage
+- **Docker Support**: Complete containerization with Docker and docker-compose
+- **Environment Configuration**: Flexible configuration via environment variables
 
 ## 🚀 Quick Start
 
-### Option 1: Local Development
+### Prerequisites
+- Python 3.7 or higher
+- pip (Python package installer)
 
-1. **Clone the repository**:
+### Installation
+
+1. **Clone and Navigate**
    ```bash
-   git clone <repository-url>
-   cd TTS
+   git clone <your-repo-url>
+   cd ebook-reader
    ```
 
-2. **Install dependencies**:
+2. **Set Up Virtual Environment**
+   
+   For Fish shell users:
+   ```fish
+   python -m venv venv
+   source venv/bin/activate.fish
+   ```
+   
+   For Bash/Zsh users:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Run the application**:
+4. **Configure Environment (Optional)**
+   Create a `.env` file in the project root:
+   ```bash
+   # .env
+   DEBUG=True
+   HOST=0.0.0.0
+   PORT=8000
+   SECRET_KEY=your-secret-key-here
+   ```
+
+5. **Run the Application**
    ```bash
    python app.py
    ```
+   
+   Access the application at: `http://localhost:8000`
 
-4. **Open your browser** to `http://localhost:8000`
+## 🐳 Docker Deployment
 
-### Option 2: Docker Deployment
+### Using Docker Compose (Recommended)
+```bash
+docker-compose up --build
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd TTS
-   ```
+### Manual Docker Build
+```bash
+docker build -t ebook-reader .
+docker run -p 8000:8000 ebook-reader
+```
 
-2. **Using Docker Compose** (Recommended):
-   ```bash
-   docker-compose up -d
-   ```
+## 📖 Usage Guide
 
-3. **Or build and run manually**:
-   ```bash
-   docker build -t pdf-tts .
-   docker run -p 8000:8000 pdf-tts
-   ```
+### Web Interface
+1. **Upload PDF**: Drag and drop or click to select a PDF file
+2. **Choose Voice**: Select from 6 available neural voices (Andrew is recommended)
+3. **Interactive Reading**: Click any word to start audio playback from that position
+4. **Control Playback**: Use the floating audio controls to pause, resume, or navigate
 
-4. **Access the application** at `http://localhost:8000`
+### Available Voices
+- **Andrew (Neural)** - ⭐ Recommended: High-quality English male voice
+- **Andrew (Multilingual)** - Advanced multilingual support
+- **Jenny (Neural)** - Friendly and considerate female voice
+- **Aria (Neural)** - Positive and confident female voice
+- **Guy (Neural)** - Passionate male voice for engaging content
+- **Christopher (Neural)** - Reliable and authoritative male voice
 
-## Usage
+## 🔌 API Reference
 
-1. **Upload PDF**: Drag and drop or click to upload your PDF file (max 100MB - perfect for books!)
-2. **Choose Model**: Select your preferred AI model from the dropdown
-3. **Generate Audio**: Click "Generate Audio" and wait for processing (large texts are automatically chunked)
-4. **Listen & Download**: Play the generated audio and download if desired
+### Upload PDF
+**Endpoint**: `POST /api/upload`
 
-### Tips for Best Results
+**Request**: Multipart form data with PDF file
+```bash
+curl -X POST -F "file=@document.pdf" http://localhost:8000/api/upload
+```
 
-#### For Dia Model:
-- Text is automatically formatted with speaker tags `[S1]` and `[S2]` for dialogue
-- Optimal input length: 5-20 seconds of speech (roughly 50-200 words)
-- Supports non-verbal sounds like `(laughs)`, `(coughs)`, etc.
+**Response**:
+```json
+{
+  "text": "Extracted text content...",
+  "filename": "document.pdf",
+  "text_length": 12345
+}
+```
 
-#### For Bark Model:
-- Works well with natural, conversational text
-- Supports multiple languages
-- Can generate various emotions and tones
+### Generate Audio
+**Endpoint**: `POST /api/generate-audio`
 
-## Configuration
+**Request**:
+```json
+{
+  "text": "Text to convert to speech",
+  "model": "edge-tts-andrew"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "audio_data": "base64-encoded-audio-data",
+  "sample_rate": 24000,
+  "duration": 5.23,
+  "text": "Original text",
+  "voice_used": "Andrew (Neural)"
+}
+```
+
+## ⚙️ Configuration
 
 ### Environment Variables
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEBUG` | `True` | Enable debug mode |
+| `HOST` | `0.0.0.0` | Server host address |
+| `PORT` | `8000` | Server port |
+| `SECRET_KEY` | Auto-generated | Flask secret key |
 
-Create a `.env` file in the root directory:
+### Application Limits
+- **Max PDF Size**: 100MB
+- **Max Text Length**: 2 million characters
+- **Audio Chunk Size**: 100 words
+- **Sample Rate**: 24kHz
 
-```env
-# HuggingFace Token (for model downloads)
-HF_TOKEN=your_token_here
-
-# Model Configuration
-DEFAULT_MODEL=dia-1.6b
-LOCAL_MODEL_PATH=./llm/dia-v0_1.pth
-
-# Server Configuration
-HOST=0.0.0.0
-PORT=5000
-FLASK_DEBUG=True
-
-# GPU Configuration
-DEVICE=auto  # auto, cpu, cuda
-COMPUTE_DTYPE=float16
-```
-
-### Using Local Dia Model
-
-If you have the Dia model downloaded locally:
-
-1. Place the model file at `./llm/dia-v0_1.pth`
-2. The application will automatically detect and use the local model
-3. This reduces download time and ensures consistent performance
-
-## API Endpoints
-
-### REST API
-
-- `POST /api/upload` - Upload and extract text from PDF
-- `POST /api/generate` - Generate audio from text
-- `GET /api/download/<filename>` - Download generated audio
-- `GET /api/models` - Get available models
-- `GET /health` - Health check
-
-### Example API Usage
-
-```bash
-# Upload PDF
-curl -X POST -F "file=@document.pdf" http://localhost:8000/api/upload
-
-# Generate audio
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"text":"Hello world","model":"dia-1.6b"}' \
-  http://localhost:8000/api/generate
-```
-
-## Hardware Requirements
-
-### Minimum Requirements
-- **CPU**: 4 cores, 2.0 GHz
-- **RAM**: 8GB
-- **Storage**: 2GB free space
-
-### Recommended for Dia/Bark Models
-- **GPU**: NVIDIA RTX 3080 or better
-- **VRAM**: 10GB+ for Dia, 8GB+ for Bark
-- **RAM**: 16GB+
-- **Storage**: 5GB+ free space
-
-### CPU-Only Mode
-- Use ESPnet TTS model for CPU-only processing
-- Longer processing times but no GPU required
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Model Download Fails**
-   - Check internet connection
-   - Verify HuggingFace token if using gated models
-   - Ensure sufficient disk space
-
-2. **CUDA/GPU Issues**
-   - Install CUDA toolkit compatible with PyTorch
-   - Set `DEVICE=cpu` in `.env` for CPU-only mode
-   - Check GPU memory usage with `nvidia-smi`
-
-3. **PDF Text Extraction Issues**
-   - Ensure PDF contains extractable text (not just images)
-   - Try different PDF files to test
-   - Check file size (max 100MB)
-
-4. **Audio Generation Errors**
-   - Check available system memory
-   - Try shorter text inputs
-   - Switch to a different model
-
-### Performance Optimization
-
-- **GPU Usage**: Ensure CUDA is properly installed
-- **Memory**: Close other applications to free up RAM/VRAM
-- **Text Length**: Keep inputs between 50-500 words for best results
-- **Model Selection**: Use ESPnet for faster processing on CPU
-
-## Development
+## 🛠️ Development
 
 ### Project Structure
 ```
-TTS/
-├── app.py               # Main Flask application
-├── config.py            # Configuration settings
-├── requirements.txt     # Python dependencies
+ebook-reader/
+├── app.py              # Main Flask application
+├── config.py           # Configuration and voice models
+├── requirements.txt    # Python dependencies
 ├── templates/
-│   └── index.html      # Web interface
-├── Dockerfile          # Docker build configuration
-├── docker-compose.yml  # Docker Compose setup
-├── .dockerignore       # Docker ignore rules
-├── .env                # Environment variables
-└── README.md           # This file
+│   └── index.html     # Web interface
+├── Dockerfile         # Docker configuration
+├── docker-compose.yml # Docker Compose setup
+└── README.md          # This file
 ```
 
-### Contributing
+### Key Dependencies
+- **Flask**: Web framework and API server
+- **pdfplumber**: Primary PDF text extraction
+- **PyPDF2**: Fallback PDF text extraction
+- **edge-tts**: Microsoft Edge Text-to-Speech
+- **soundfile**: Audio file processing
+- **numpy**: Numerical operations for audio
+
+### Adding New Voices
+Edit `config.py` and add new voice configurations to `AVAILABLE_MODELS`:
+```python
+'new-voice-key': {
+    'name': 'Voice Name',
+    'description': 'Voice description',
+    'voice_id': 'edge-tts-voice-id',
+    'speed': 'Real-time streaming',
+    'sample_rate': 24000,
+    'type': 'edge-tts'
+}
+```
+
+## 📝 License
+
+MIT License - see LICENSE file for details
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push to branch: `git push origin feature-name`
 5. Submit a pull request
 
-## License
+## 🐛 Troubleshooting
 
-This project is for educational and research purposes. Please respect the individual licenses of the AI models used:
+### Common Issues
+- **Audio not playing**: Check browser audio permissions and volume
+- **PDF upload fails**: Ensure PDF is not corrupted and under 100MB
+- **Voice not loading**: Verify internet connection for Edge TTS service
+- **Virtual environment issues**: Make sure you're using the correct activation script for your shell
 
-- **Dia Model**: Apache 2.0 License
-- **Bark Model**: Check Suno AI licensing
-- **ESPnet**: Apache 2.0 License
-
-## Acknowledgments
-
-- [Nari Labs](https://github.com/nari-labs/dia) for the Dia TTS model
-- [Suno AI](https://github.com/suno-ai/bark) for the Bark model
-- [ESPnet](https://github.com/espnet/espnet) for the TTS framework
-- [Hugging Face](https://huggingface.co/) for model hosting and transformers library
-
-## Support
-
-If you encounter issues or have questions:
-
-1. Check the troubleshooting section above
-2. Search existing GitHub issues
-3. Create a new issue with detailed information
-4. Include error logs and system specifications
-
----
-
-**Note**: This application requires significant computational resources for optimal performance. Consider using cloud GPU instances for production deployments. 
+### Support
+For issues and questions, please create an issue in the repository with:
+- Operating system and version
+- Python version
+- Error messages or logs
+- Steps to reproduce the problem

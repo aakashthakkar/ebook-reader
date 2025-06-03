@@ -2,9 +2,18 @@
 # Use official Python image with explicit platform support
 FROM python:3.11-slim
 
-# Print architecture info for debugging
+# Build arguments for cache busting - forces fresh git clone
+ARG CACHEBUST=1
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
+
+# Print architecture and build info for debugging
 RUN echo "Building for architecture: $(uname -m)" && \
     echo "Platform: $(uname -s)" && \
+    echo "Build date: ${BUILD_DATE}" && \
+    echo "Git commit: ${GIT_COMMIT}" && \
+    echo "Cache bust: ${CACHEBUST}" && \
+    echo "Current GMT time: $(date -u +"%Y-%m-%d %H:%M:%S GMT")" && \
     python3 --version
 
 # Set working directory
@@ -36,10 +45,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /tmp/* \
     && rm -rf /var/tmp/*
 
-# Clone the repository from GitHub
-RUN git clone https://github.com/aakashthakkar/ebook-reader.git . && \
+# Clone the latest main branch from GitHub with cache busting
+# The CACHEBUST arg ensures this layer is never cached
+RUN echo "Cache bust value: ${CACHEBUST}" && \
+    echo "Cloning latest main branch from GitHub..." && \
+    git clone --depth 1 --branch main https://github.com/aakashthakkar/ebook-reader.git . && \
+    echo "Successfully cloned repository" && \
+    echo "Current commit:" && \
+    git log -1 --oneline || echo "No git history available" && \
     rm -rf .git && \
-    ls -la
+    echo "Repository contents:" && \
+    ls -la && \
+    echo "Python files found:" && \
+    find . -name "*.py" -type f
 
 # Upgrade pip and install Python dependencies
 RUN python -m pip install --upgrade pip setuptools wheel && \

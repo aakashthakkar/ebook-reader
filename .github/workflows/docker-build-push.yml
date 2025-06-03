@@ -50,7 +50,15 @@ jobs:
           type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
-          type=raw,value={{date 'YYYYMMDD'}},enable={{is_default_branch}}
+          type=raw,value={{date 'YYYYMMDD-HHMM'}},enable={{is_default_branch}}
+
+    - name: 🕐 Set build time
+      id: time
+      run: |
+        echo "build_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $GITHUB_OUTPUT
+        echo "gmt_time=$(date -u +"%H:%M:%S GMT")" >> $GITHUB_OUTPUT
+        echo "cache_bust=$(date +%s)" >> $GITHUB_OUTPUT
+        echo "date_tag=$(date -u +"%Y%m%d-%H%M")" >> $GITHUB_OUTPUT
 
     - name: 🏗️ Build and push Docker image
       uses: docker/build-push-action@v5
@@ -64,6 +72,12 @@ jobs:
           org.opencontainers.image.source=https://github.com/${{ github.repository }}
           org.opencontainers.image.description=PDF to Audio eBook Reader with click-to-play functionality
           org.opencontainers.image.licenses=MIT
+          build.time.gmt=${{ steps.time.outputs.gmt_time }}
+          build.date.tag=${{ steps.time.outputs.date_tag }}
+        build-args: |
+          CACHEBUST=${{ steps.time.outputs.cache_bust }}
+          BUILD_DATE=${{ steps.time.outputs.build_date }}
+          GIT_COMMIT=${{ github.sha }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 

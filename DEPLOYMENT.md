@@ -136,4 +136,44 @@ Consider adding:
 - **Staging deployments** for testing
 - **Release workflows** with semantic versioning
 - **Integration tests** before deployment
-- **Slack/Discord notifications** for build status 
+- **Slack/Discord notifications** for build status
+
+## Docker Image Tags 🏷️
+
+The Docker images are automatically tagged with multiple formats for flexibility:
+
+- `latest` - Always points to the most recent successful build from main branch
+- `YYYYMMDD-HHMM` - **NEW**: Timestamped builds with GMT time (hour:minute precision)
+  - Example: `20250603-1910` = June 3rd, 2025 at 19:10 GMT
+  - Allows multiple builds per day to be distinguished
+- `YYYYMMDD` - **Legacy**: Date-only tags (deprecated in favor of time-specific tags)
+
+### Examples:
+```bash
+# Latest version
+docker run -p 8000:8000 thakkaraakash/ebook-reader:latest
+
+# Specific timestamped build (with GMT time)
+docker run -p 8000:8000 thakkaraakash/ebook-reader:20250603-1910
+
+# All images include these labels for tracking:
+# - build.time.gmt: "19:10:11 GMT"
+# - build.date.tag: "20250603-1910"
+# - org.opencontainers.image.created: "2025-06-03T19:10:11Z"
+# - org.opencontainers.image.revision: <git-commit-hash>
+```
+
+## Build Process 🔄
+
+### Cache Busting for Latest Code
+The build process includes several mechanisms to ensure you **always get the latest code** from GitHub:
+
+1. **`--no-cache` flag**: Disables Docker layer caching
+2. **Dynamic build arguments**: Each build gets unique timestamps
+3. **Fresh git clone**: Always clones latest main branch from GitHub
+4. **GitHub API integration**: Fetches latest commit hash for verification
+
+### Build Arguments:
+- `CACHEBUST`: Unix timestamp ensuring no cache reuse
+- `BUILD_DATE`: ISO 8601 formatted build timestamp  
+- `GIT_COMMIT`: Latest commit hash from GitHub main branch 

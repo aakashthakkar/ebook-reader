@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Audio - Click to Play (v6.0)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        .upload-area {
+            transition: all 0.3s ease;
+        }
+        .upload-area.dragover {
+            border-color: #3b82f6;
+            background-color: #dbeafe;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Word highlighting for audio segments */
+        .word {
+            display: inline;
+            cursor: pointer;
+            padding: 1px 2px;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .word:hover {
+            background-color: rgba(59, 130, 246, 0.3);
+            transform: scale(1.02);
+        }
+        
+        .word-current {
+            background-color: rgba(34, 197, 94, 0.6) !important;
+            color: white;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        
+        .word-next {
+            background-color: rgba(59, 130, 246, 0.4) !important;
+            border: 1px solid #3b82f6;
+        }
+        
+        .word-playing-chunk {
+            background-color: rgba(34, 197, 94, 0.3) !important;
+        }
+        
+        .word-next-chunk {
+            background-color: rgba(59, 130, 246, 0.2) !important;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .loading-text {
+            opacity: 0.6;
+            animation: fadeInOut 1.5s infinite;
+        }
+        
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        /* Sticky Audio Player */
+        .audio-controls-sticky {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 800px;
+            z-index: 9999;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            padding: 16px;
+            transition: all 0.3s ease;
+            animation: slideDown 0.4s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .audio-controls-sticky .max-w-2xl {
+            max-width: 100%;
+            margin: 0;
+        }
+        
+        .audio-controls-sticky .bg-gray-800\/90 {
+            background: transparent;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        
+        /* Remove body padding since we're truly floating now */
+        body.sticky-player-active {
+            /* No padding needed for floating player */
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
+    <!-- Header -->
+    <nav class="bg-black/20 backdrop-blur-sm border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <i data-lucide="headphones" class="h-8 w-8 text-purple-400 mr-3"></i>
+                    <h1 class="text-xl font-bold text-white">PDF to Audio - Click to Play</h1>
+                    <span class="ml-3 px-2 py-1 bg-blue-500 text-blue-900 text-xs rounded-full font-bold">v6.0 CLICK-TO-PLAY</span>
+                </div>
+                <div class="text-sm text-gray-300">
+                    Click any word to start playing from that position
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Hero Section -->
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold text-white mb-4">Interactive Reading & Listening</h2>
+            <p class="text-xl text-gray-300 max-w-3xl mx-auto">
+                Upload your PDF, then click any word to start listening from that position. Audio generates on-demand and plays seamlessly.
+            </p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
+            <h3 class="text-2xl font-semibold text-white mb-6 flex items-center">
+                <i data-lucide="upload" class="mr-3"></i>
+                Step 1: Upload PDF
+            </h3>
+            
+            <div id="upload-area" class="upload-area border-2 border-dashed border-gray-400 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 transition-all">
+                <i data-lucide="file-text" class="h-16 w-16 text-gray-400 mx-auto mb-4"></i>
+                <p class="text-lg text-gray-300 mb-2">Drop your PDF here or click to browse</p>
+                <p class="text-sm text-gray-500">Maximum file size: 100MB</p>
+                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+            </div>
+
+            <div id="file-info" class="hidden mt-4 p-4 bg-green-500/20 rounded-lg border border-green-500/30">
+                <div class="flex items-center text-green-300">
+                    <i data-lucide="check-circle" class="mr-2"></i>
+                    <span id="file-name"></span>
+                </div>
+                <div class="text-sm text-green-200 mt-1">
+                    <span id="text-length"></span> characters • <span id="word-count"></span> words
+                </div>
+            </div>
+        </div>
+
+        <!-- Voice Selection -->
+        <div id="voice-selection" class="hidden bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
+            <h3 class="text-2xl font-semibold text-white mb-6 flex items-center">
+                <i data-lucide="settings" class="mr-3"></i>
+                Step 2: Choose Voice
+            </h3>
+            
+            <div class="grid gap-4">
+                {% for key, model in models.items() %}
+                <label class="flex items-start p-4 {% if key == 'edge-tts-andrew' %}bg-gradient-to-br from-green-800/60 to-green-700/60 border-green-500/50{% else %}bg-white/5 border-white/10{% endif %} rounded-lg border cursor-pointer hover:{% if key == 'edge-tts-andrew' %}from-green-700/70 to-green-600/70{% else %}bg-white/10{% endif %} transition-all">
+                    <input type="radio" name="model" value="{{ key }}" class="mt-1 mr-4" {% if key == 'edge-tts-andrew' %}checked{% endif %}>
+                    <div class="flex-1">
+                        <div class="flex items-center">
+                            <h4 class="text-lg font-medium text-white">{{ model.name }}</h4>
+                            {% if key == 'edge-tts-andrew' %}
+                            <span class="ml-2 px-2 py-1 bg-green-500 text-green-900 text-xs rounded-full font-bold">RECOMMENDED</span>
+                            {% endif %}
+                        </div>
+                        <p class="{% if key == 'edge-tts-andrew' %}text-green-100{% else %}text-gray-300{% endif %} text-sm mt-1">{{ model.description }}</p>
+                        <div class="flex items-center mt-2 text-xs">
+                            <i data-lucide="zap" class="h-3 w-3 mr-1 text-green-400"></i>
+                            <span class="text-green-400">{{ model.speed }}</span>
+                        </div>
+                    </div>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Text Display with Click-to-Play -->
+        <div id="text-display" class="hidden bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-semibold text-white flex items-center">
+                    <i data-lucide="mouse-pointer-click" class="mr-3"></i>
+                    Click Any Word to Start Playing
+                </h3>
+            </div>
+            
+            <!-- Modern Audio Player - Prominent Position -->
+            <div id="audio-controls" class="hidden mb-8">
+                <div class="max-w-2xl mx-auto">
+                    <div class="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-600 shadow-2xl">
+                        <!-- Progress Bar -->
+                        <div class="mb-6">
+                            <div class="flex items-center justify-between text-sm text-gray-400 mb-3">
+                                <span id="current-time">0:00</span>
+                                <span id="total-time">0:00</span>
+                            </div>
+                            <div class="relative w-full h-3 bg-gray-600 rounded-full cursor-pointer" id="progress-container">
+                                <div id="progress-bar" class="absolute left-0 top-0 h-full bg-blue-500 rounded-full transition-all duration-150"></div>
+                                <div id="progress-handle" class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-5 h-5 bg-white rounded-full shadow-lg cursor-pointer transition-all duration-150 border-2 border-blue-500" style="left: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Main Controls -->
+                        <div class="flex items-center justify-center space-x-8 mb-6">
+                            <!-- Rewind 15s -->
+                            <button id="skip-back-15" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Rewind 15 seconds">
+                                <div class="relative">
+                                    <i data-lucide="rotate-ccw" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
+                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">15</span>
+                                </div>
+                            </button>
+                            
+                            <!-- Rewind 10s -->
+                            <button id="skip-back-10" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Rewind 10 seconds">
+                                <div class="relative">
+                                    <i data-lucide="rewind" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
+                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">10</span>
+                                </div>
+                            </button>
+                            
+                            <!-- Play/Pause Button -->
+                            <button id="play-pause-btn" class="p-5 rounded-full bg-blue-600 hover:bg-blue-700 transition-all duration-200 shadow-lg hover:scale-105">
+                                <i data-lucide="pause" class="h-10 w-10 text-white"></i>
+                            </button>
+                            
+                            <!-- Forward 10s -->
+                            <button id="skip-forward-10" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Forward 10 seconds">
+                                <div class="relative">
+                                    <i data-lucide="fast-forward" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
+                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">10</span>
+                                </div>
+                            </button>
+                            
+                            <!-- Forward 15s -->
+                            <button id="skip-forward-15" class="group p-3 rounded-full bg-gray-700/60 hover:bg-gray-600/60 transition-all duration-200" title="Forward 15 seconds">
+                                <div class="relative">
+                                    <i data-lucide="rotate-cw" class="h-6 w-6 text-gray-300 group-hover:text-white"></i>
+                                    <span class="absolute -bottom-2 -right-1 text-xs font-bold text-gray-400 group-hover:text-white">15</span>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <!-- Secondary Controls -->
+                        <div class="flex items-center justify-between">
+                            <!-- Speed Control -->
+                            <div class="flex items-center space-x-3">
+                                <i data-lucide="gauge" class="h-5 w-5 text-gray-400"></i>
+                                <select id="speed-select" class="bg-gray-700 text-white text-sm rounded-lg px-3 py-2 border border-gray-600 focus:border-blue-500 outline-none">
+                                    <option value="0.5">0.5x</option>
+                                    <option value="0.75">0.75x</option>
+                                    <option value="1.0" selected>1.0x</option>
+                                    <option value="1.25">1.25x</option>
+                                    <option value="1.5">1.5x</option>
+                                    <option value="2.0">2.0x</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Status and Stop -->
+                            <div class="flex items-center space-x-4">
+                                <div id="audio-status" class="text-sm text-gray-400">
+                                    <span id="status-text">Playing...</span>
+                                </div>
+                                <button id="stop-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-all duration-200 flex items-center space-x-2">
+                                    <i data-lucide="square" class="h-4 w-4"></i>
+                                    <span>Stop</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Progress indicator -->
+            <div id="loading-indicator" class="hidden mb-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                <div class="flex items-center text-blue-300">
+                    <div class="spinner h-4 w-4 border-2 border-blue-300 border-t-transparent rounded-full mr-2"></div>
+                    <span id="loading-text">Generating audio...</span>
+                </div>
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div class="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
+                <div class="flex items-center space-x-2">
+                    <button id="prev-page" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i data-lucide="chevron-left" class="h-4 w-4"></i>
+                    </button>
+                    <span class="text-gray-300 text-sm">Page</span>
+                    <select id="page-select" class="bg-gray-700 text-white px-2 py-1 rounded text-sm border border-gray-600">
+                        <option value="1">1</option>
+                    </select>
+                    <span class="text-gray-300 text-sm">of <span id="total-pages">1</span></span>
+                    <button id="next-page" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        <i data-lucide="chevron-right" class="h-4 w-4"></i>
+                    </button>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-gray-400 text-sm">Words per page:</span>
+                    <select id="words-per-page" class="bg-gray-700 text-white px-2 py-1 rounded text-sm border border-gray-600">
+                        <option value="500">500</option>
+                        <option value="1000" selected>1000</option>
+                        <option value="2000">2000</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Text Content -->
+            <div class="bg-black/30 rounded-lg p-6">
+                <div id="text-content" class="text-gray-300 text-base leading-relaxed min-h-96"></div>
+            </div>
+            
+            <!-- Legend -->
+            <div class="mt-4 p-4 bg-gray-800/50 rounded-lg">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="text-white text-sm font-semibold mb-2">Color Legend:</h4>
+                        <div class="flex flex-wrap gap-4 text-xs">
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded word-current mr-2"></div>
+                                <span class="text-gray-300">Currently Playing (100 words)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded word-next mr-2"></div>
+                                <span class="text-gray-300">Next Segment (ready)</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-4 h-4 rounded bg-blue-600/30 border border-blue-600 mr-2"></div>
+                                <span class="text-gray-300">Clickable word (hover)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-white text-sm font-semibold mb-2">Keyboard Shortcuts:</h4>
+                        <div class="text-xs text-gray-300 space-y-1">
+                            <div><kbd class="bg-gray-700 px-1 rounded">Space</kbd> Stop</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">←</kbd> Back 10s</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">→</kbd> Forward 10s</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">J</kbd> Back 15s</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">L</kbd> Forward 15s</div>
+                            <div><kbd class="bg-gray-700 px-1 rounded">+/-</kbd> Speed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="error-section" class="hidden bg-red-500/20 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30">
+            <h3 class="text-xl font-semibold text-red-300 mb-4 flex items-center">
+                <i data-lucide="alert-circle" class="mr-3"></i>
+                Error
+            </h3>
+            <p id="error-message" class="text-red-200"></p>
+            <button id="retry-btn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-all">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-black/20 backdrop-blur-sm border-t border-white/10 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center text-gray-400">
+                <p class="mb-2">Click-to-Play PDF Reader - Powered by Edge TTS</p>
+                <div class="flex justify-center items-center space-x-4 text-sm">
+                    <span class="flex items-center">
+                        <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-1"></i>
+                        Click to Start
+                    </span>
+                    <span class="flex items-center">
+                        <i data-lucide="zap" class="h-4 w-4 mr-1"></i>
+                        On-Demand Generation
+                    </span>
+                    <span class="flex items-center">
+                        <i data-lucide="volume-2" class="h-4 w-4 mr-1"></i>
+                        Seamless Playback
+                    </span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Global variables
+        let extractedText = '';
+        let words = [];
+        let currentPage = 1;
+        let wordsPerPage = 1000;
+        let totalPages = 1;
+        let audioCache = new Map(); // Browser-managed audio cache
+        let gaplessPlayer = null;
+        let isPlaying = false;
+        let isPaused = false;
+        let currentChunkIndex = -1;
+        let currentWordIndex = -1;
+        let selectedModel = 'edge-tts-andrew';
+        
+        // Audio control variables
+        let currentPlaybackRate = 1.0;
+        let currentAudioTime = 0;
+        let audioDuration = 0;
+        let pausedAt = 0; // Track where we paused for resume
+        
+        // DOM elements
+        const uploadArea = document.getElementById('upload-area');
+        const pdfInput = document.getElementById('pdf-input');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const textLength = document.getElementById('text-length');
+        const wordCount = document.getElementById('word-count');
+        const voiceSelection = document.getElementById('voice-selection');
+        const textDisplay = document.getElementById('text-display');
+        const textContent = document.getElementById('text-content');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const loadingText = document.getElementById('loading-text');
+        const audioStatus = document.getElementById('audio-status');
+        const statusText = document.getElementById('status-text');
+        const stopBtn = document.getElementById('stop-btn');
+        const audioControls = document.getElementById('audio-controls');
+        const speedSelect = document.getElementById('speed-select');
+        const skipBack15 = document.getElementById('skip-back-15');
+        const skipBack10 = document.getElementById('skip-back-10');
+        const skipForward10 = document.getElementById('skip-forward-10');
+        const skipForward15 = document.getElementById('skip-forward-15');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressHandle = document.getElementById('progress-handle');
+        const currentTimeSpan = document.getElementById('current-time');
+        const totalTimeSpan = document.getElementById('total-time');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const pageSelect = document.getElementById('page-select');
+        const totalPagesSpan = document.getElementById('total-pages');
+        const wordsPerPageSelect = document.getElementById('words-per-page');
+        const errorSection = document.getElementById('error-section');
+        const errorMessage = document.getElementById('error-message');
+        const retryBtn = document.getElementById('retry-btn');
+
+        // Debug: Log DOM elements to ensure they exist
+        console.log('DOM Elements Check:', {
+            playPauseBtn: !!playPauseBtn,
+            progressContainer: !!progressContainer,
+            progressBar: !!progressBar,
+            progressHandle: !!progressHandle,
+            currentTimeSpan: !!currentTimeSpan,
+            totalTimeSpan: !!totalTimeSpan,
+            audioControls: !!audioControls,
+            speedSelect: !!speedSelect,
+            skipBack15: !!skipBack15,
+            skipBack10: !!skipBack10,
+            skipForward10: !!skipForward10,
+            skipForward15: !!skipForward15,
+            stopBtn: !!stopBtn
+        });
+
+        // Upload area events
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', () => {
+            pdfInput.click();
+        });
+
+        pdfInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Handle file upload
+        async function handleFile(file) {
+            if (!file.type.includes('pdf')) {
+                showError('Please select a PDF file.');
+                return;
+            }
+
+            if (file.size > 100 * 1024 * 1024) {
+                showError('File size too large. Maximum size is 100MB.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showLoading('Extracting text from PDF...');
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Upload failed');
+                }
+
+                extractedText = data.text;
+                words = extractedText.split(/\s+/);
+                
+                fileName.textContent = data.filename;
+                textLength.textContent = `${data.text_length.toLocaleString()} characters`;
+                wordCount.textContent = `${words.length.toLocaleString()} words`;
+                
+                // Show file info and voice selection
+                fileInfo.classList.remove('hidden');
+                voiceSelection.classList.remove('hidden');
+                
+                // Setup text display
+                setupTextDisplay();
+                
+                hideLoading();
+                hideError();
+
+            } catch (error) {
+                showError('Failed to process PDF: ' + error.message);
+                hideLoading();
+            }
+        }
+
+        // Setup text display with pagination
+        function setupTextDisplay() {
+            calculatePagination();
+            displayCurrentPage();
+            textDisplay.classList.remove('hidden');
+            setupPaginationListeners();
+        }
+
+        // Calculate pagination
+        function calculatePagination() {
+            if (wordsPerPage === 'all') {
+                totalPages = 1;
+            } else {
+                totalPages = Math.ceil(words.length / parseInt(wordsPerPage));
+            }
+            
+            // Update UI
+            totalPagesSpan.textContent = totalPages;
+            pageSelect.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = i;
+                if (i === currentPage) option.selected = true;
+                pageSelect.appendChild(option);
+            }
+            
+            updatePaginationButtons();
+        }
+
+        // Display current page of words
+        function displayCurrentPage() {
+            let startWord, endWord;
+            
+            if (wordsPerPage === 'all') {
+                startWord = 0;
+                endWord = words.length;
+            } else {
+                const wordsPerPageNum = parseInt(wordsPerPage);
+                startWord = (currentPage - 1) * wordsPerPageNum;
+                endWord = Math.min(startWord + wordsPerPageNum, words.length);
+            }
+            
+            const pageWords = words.slice(startWord, endWord);
+            
+            textContent.innerHTML = pageWords.map((word, pageIndex) => {
+                const globalIndex = startWord + pageIndex;
+                return `<span class="word" data-word-index="${globalIndex}">${word}</span>`;
+            }).join(' ');
+            
+            // Add click listeners to words
+            textContent.querySelectorAll('.word').forEach(wordSpan => {
+                wordSpan.addEventListener('click', () => {
+                    const wordIndex = parseInt(wordSpan.dataset.wordIndex);
+                    playFromWord(wordIndex);
+                });
+            });
+        }
+
+        // Setup pagination event listeners
+        function setupPaginationListeners() {
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updatePaginationButtons();
+                    displayCurrentPage();
+                }
+            });
+            
+            nextPageBtn.addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updatePaginationButtons();
+                    displayCurrentPage();
+                }
+            });
+            
+            pageSelect.addEventListener('change', (e) => {
+                currentPage = parseInt(e.target.value);
+                updatePaginationButtons();
+                displayCurrentPage();
+            });
+            
+            wordsPerPageSelect.addEventListener('change', (e) => {
+                wordsPerPage = e.target.value;
+                currentPage = 1;
+                calculatePagination();
+                displayCurrentPage();
+            });
+        }
+
+        // Update pagination button states
+        function updatePaginationButtons() {
+            prevPageBtn.disabled = currentPage === 1;
+            nextPageBtn.disabled = currentPage === totalPages;
+        }
+
+        // Play audio starting from a specific word
+        async function playFromWord(wordIndex) {
+            try {
+                console.log(`Starting playback from word ${wordIndex}`);
+                
+                // Validate DOM elements before proceeding
+                if (!audioControls) {
+                    throw new Error('Audio controls element not found');
+                }
+                if (!playPauseBtn) {
+                    throw new Error('Play/pause button element not found');
+                }
+                
+                // CRITICAL: Stop any existing playback first
+                if (isPlaying) {
+                    console.log('Stopping existing playback before starting new one');
+                    stopPlayback();
+                    // Give a small delay to ensure cleanup
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                // Get selected voice model
+                const modelInput = document.querySelector('input[name="model"]:checked');
+                if (!modelInput) {
+                    throw new Error('No voice model selected');
+                }
+                selectedModel = modelInput.value;
+                
+                // Calculate which 100-word chunk this word belongs to
+                const chunkIndex = Math.floor(wordIndex / 100);
+                const chunkStartWord = chunkIndex * 100;
+                const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
+                const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
+                
+                console.log(`Playing from word ${wordIndex}, chunk ${chunkIndex} (words ${chunkStartWord}-${chunkEndWord-1})`);
+                
+                // Update current positions
+                currentWordIndex = wordIndex;
+                currentChunkIndex = chunkIndex;
+                isPlaying = true;
+                
+                // Show audio controls
+                audioControls.classList.remove('hidden');
+                audioControls.classList.add('audio-controls-sticky');
+                document.body.classList.add('sticky-player-active');
+                
+                // Update play/pause button to show pause icon (with null checks)
+                if (playPauseBtn) {
+                    const playIcon = playPauseBtn.querySelector('i');
+                    if (playIcon) {
+                        playIcon.setAttribute('data-lucide', 'pause');
+                        lucide.createIcons();
+                    } else {
+                        console.warn('Play icon element not found');
+                    }
+                } else {
+                    console.warn('Play/pause button not found');
+                }
+                
+                // Load and play current chunk
+                showLoading(`Generating audio for 100 words starting from "${words[wordIndex]}"...`);
+                statusText.textContent = `Loading chunk ${chunkIndex + 1}...`;
+                
+                const audioUrl = await loadChunk(chunkIndex, chunkText);
+                
+                // Initialize Web Audio player if needed
+                if (!gaplessPlayer) {
+                    initializeWebAudioPlayer();
+                }
+                
+                // Start playing current chunk
+                await playChunk(audioUrl, chunkIndex);
+                
+                // Preload next chunk in background
+                if (chunkIndex + 1 < Math.ceil(words.length / 100)) {
+                    preloadNextChunk(chunkIndex + 1);
+                }
+                
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error playing from word:', error);
+                console.error('Error stack:', error.stack);
+                showError('Failed to start playback: ' + error.message);
+                stopPlayback();
+                hideLoading();
+            }
+        }
+
+        // Load audio for a specific chunk
+        async function loadChunk(chunkIndex, chunkText) {
+            // Check cache first
+            if (audioCache.has(chunkIndex)) {
+                console.log(`Using cached audio for chunk ${chunkIndex}`);
+                return audioCache.get(chunkIndex);
+            }
+            
+            console.log(`Loading chunk ${chunkIndex} from backend...`);
+            
+            const response = await fetch('/api/generate-audio', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: chunkText,
+                    model: selectedModel
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to generate audio');
+            }
+            
+            const data = await response.json();
+            
+            // Convert base64 to blob URL
+            const audioBlob = base64ToBlob(data.audio_data, 'audio/wav');
+            const audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Cache the audio
+            audioCache.set(chunkIndex, audioUrl);
+            
+            console.log(`Cached chunk ${chunkIndex}, cache size: ${audioCache.size}`);
+            
+            return audioUrl;
+        }
+
+        // Preload next chunk in background
+        async function preloadNextChunk(chunkIndex) {
+            try {
+                if (audioCache.has(chunkIndex)) {
+                    console.log(`Chunk ${chunkIndex} already cached`);
+                    return;
+                }
+                
+                const chunkStartWord = chunkIndex * 100;
+                const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
+                const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
+                
+                console.log(`Preloading chunk ${chunkIndex} in background...`);
+                await loadChunk(chunkIndex, chunkText);
+                
+            } catch (error) {
+                console.warn(`Failed to preload chunk ${chunkIndex}:`, error);
+            }
+        }
+
+        // Initialize Web Audio player with pitch preservation support
+        function initializeWebAudioPlayer() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            
+            // Check browser support for preservesPitch
+            const testAudio = new Audio();
+            const supportsPreservesPitch = 'preservesPitch' in testAudio || 
+                                         'mozPreservesPitch' in testAudio || 
+                                         'webkitPreservesPitch' in testAudio;
+            
+            console.log('Browser supports preservesPitch:', supportsPreservesPitch);
+            
+            gaplessPlayer = {
+                audioContext: new AudioContext(),
+                currentSource: null,
+                currentBuffer: null,
+                startTime: 0,
+                isPaused: false,
+                isDestroyed: false,
+                htmlAudio: null, // Add HTML audio element for pitch preservation
+                useHtmlAudio: true, // Flag to use HTML audio for pitch preservation
+                
+                // Safely stop any existing audio source
+                stopCurrentSource() {
+                    if (this.currentSource) {
+                        try {
+                            this.currentSource.stop();
+                            this.currentSource.disconnect();
+                        } catch (e) {
+                            console.log('Source already stopped:', e.message);
+                        }
+                        this.currentSource = null;
+                    }
+                    
+                    // Also stop HTML audio if being used
+                    if (this.htmlAudio) {
+                        this.htmlAudio.pause();
+                        this.htmlAudio.currentTime = 0;
+                    }
+                },
+                
+                async play(audioUrl, chunkIndex, startOffset = 0) {
+                    console.log(`Starting playback for chunk ${chunkIndex} at offset ${startOffset}s`);
+                    
+                    // Stop any existing source first to prevent multiple streams
+                    this.stopCurrentSource();
+                    
+                    // Reset state
+                    this.isDestroyed = false;
+                    this.isPaused = false;
+                    
+                    try {
+                        // Use HTML audio for pitch preservation when speed != 1.0
+                        if (this.useHtmlAudio && currentPlaybackRate !== 1.0) {
+                            console.log('Using HTML audio for pitch preservation at speed:', currentPlaybackRate);
+                            
+                            // Create or reuse HTML audio element
+                            if (!this.htmlAudio) {
+                                this.htmlAudio = new Audio();
+                                this.htmlAudio.preload = 'auto';
+                                
+                                // Check if preservesPitch is supported
+                                if ('preservesPitch' in this.htmlAudio) {
+                                    this.htmlAudio.preservesPitch = true;
+                                    console.log('preservesPitch property set to true');
+                                } else {
+                                    console.warn('preservesPitch property not supported in this browser');
+                                    // Try alternative property names
+                                    if ('mozPreservesPitch' in this.htmlAudio) {
+                                        this.htmlAudio.mozPreservesPitch = true;
+                                        console.log('mozPreservesPitch property set to true');
+                                    } else if ('webkitPreservesPitch' in this.htmlAudio) {
+                                        this.htmlAudio.webkitPreservesPitch = true;
+                                        console.log('webkitPreservesPitch property set to true');
+                                    }
+                                }
+                            }
+                            
+                            this.htmlAudio.src = audioUrl;
+                            this.htmlAudio.playbackRate = currentPlaybackRate;
+                            this.htmlAudio.currentTime = startOffset;
+                            
+                            // Ensure pitch preservation is enabled (try all variants)
+                            if ('preservesPitch' in this.htmlAudio) {
+                                this.htmlAudio.preservesPitch = true;
+                            }
+                            if ('mozPreservesPitch' in this.htmlAudio) {
+                                this.htmlAudio.mozPreservesPitch = true;
+                            }
+                            if ('webkitPreservesPitch' in this.htmlAudio) {
+                                this.htmlAudio.webkitPreservesPitch = true;
+                            }
+                            
+                            console.log('HTML audio settings:', {
+                                playbackRate: this.htmlAudio.playbackRate,
+                                preservesPitch: this.htmlAudio.preservesPitch,
+                                mozPreservesPitch: this.htmlAudio.mozPreservesPitch,
+                                webkitPreservesPitch: this.htmlAudio.webkitPreservesPitch
+                            });
+                            
+                            // Handle when chunk finishes
+                            this.htmlAudio.onended = () => {
+                                if (!this.isPaused && !this.isDestroyed && isPlaying) {
+                                    console.log(`Chunk ${chunkIndex} finished playing via HTML audio`);
+                                    playNextChunk(chunkIndex);
+                                }
+                            };
+                            
+                            // Handle time updates
+                            this.htmlAudio.ontimeupdate = () => {
+                                if (!this.isPaused && !this.isDestroyed) {
+                                    this.updateProgressBar();
+                                }
+                            };
+                            
+                            // Handle loading
+                            this.htmlAudio.onloadeddata = () => {
+                                audioDuration = this.htmlAudio.duration;
+                                totalTimeSpan.textContent = this.formatTime(audioDuration);
+                                console.log('🎵 HTML Audio loaded and starting playback at', currentPlaybackRate + 'x speed');
+                                console.log('🎵 Pitch preservation settings:', {
+                                    preservesPitch: this.htmlAudio.preservesPitch,
+                                    mozPreservesPitch: this.htmlAudio.mozPreservesPitch,
+                                    webkitPreservesPitch: this.htmlAudio.webkitPreservesPitch
+                                });
+                                this.htmlAudio.play().then(() => {
+                                    console.log('🎵 HTML Audio playback started successfully');
+                                }).catch(error => {
+                                    console.error('🎵 HTML Audio playback failed:', error);
+                                });
+                                this.startTimeTracking();
+                            };
+                            
+                            return;
+                        }
+                        
+                        // Use Web Audio API for normal speed (1.0x) playback
+                        console.log('Using Web Audio API for normal speed playback');
+                        
+                        // ALWAYS load and decode the new audio for this chunk
+                        const response = await fetch(audioUrl);
+                        const arrayBuffer = await response.arrayBuffer();
+                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                        this.currentBuffer = audioBuffer;
+                        
+                        // Check if we were stopped while loading
+                        if (this.isDestroyed) {
+                            console.log('Playback was stopped while loading');
+                            return;
+                        }
+                        
+                        // Store duration
+                        audioDuration = this.currentBuffer.duration;
+                        totalTimeSpan.textContent = this.formatTime(audioDuration);
+                        
+                        // Create new source
+                        this.currentSource = this.audioContext.createBufferSource();
+                        this.currentSource.buffer = this.currentBuffer;
+                        this.currentSource.playbackRate.value = currentPlaybackRate;
+                        this.currentSource.connect(this.audioContext.destination);
+                        
+                        // Handle when chunk finishes
+                        this.currentSource.onended = () => {
+                            if (!this.isPaused && !this.isDestroyed && isPlaying) {
+                                console.log(`Chunk ${chunkIndex} finished playing`);
+                                playNextChunk(chunkIndex);
+                            }
+                        };
+                        
+                        // Start playback from specified offset
+                        this.startTime = this.audioContext.currentTime - startOffset;
+                        this.currentSource.start(0, startOffset);
+                        
+                        // Start time tracking
+                        this.startTimeTracking();
+                        
+                        console.log(`Successfully started chunk ${chunkIndex} at ${currentPlaybackRate}x speed from ${startOffset}s`);
+                        
+                    } catch (error) {
+                        console.error('Error playing audio:', error);
+                        throw error;
+                    }
+                },
+                
+                pause() {
+                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
+                        // Pause HTML audio
+                        pausedAt = this.htmlAudio.currentTime;
+                        this.htmlAudio.pause();
+                        this.isPaused = true;
+                        isPaused = true;
+                        isPlaying = false;
+                        return pausedAt;
+                    }
+                    
+                    // Web Audio API pause logic (existing code)
+                    if (this.currentSource && !this.isPaused) {
+                        // Calculate current position
+                        pausedAt = this.getCurrentTime();
+                        console.log(`Pausing at ${pausedAt.toFixed(2)}s`);
+                        
+                        // Stop the current source
+                        this.stopCurrentSource();
+                        this.isPaused = true;
+                        isPaused = true;
+                        isPlaying = false;
+                        
+                        return pausedAt;
+                    }
+                    return 0;
+                },
+                
+                resume() {
+                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
+                        // Resume HTML audio
+                        this.htmlAudio.currentTime = pausedAt;
+                        this.htmlAudio.play();
+                        this.isPaused = false;
+                        isPaused = false;
+                        isPlaying = true;
+                        return true;
+                    }
+                    
+                    // Web Audio API resume logic (existing code)
+                    if (this.isPaused && this.currentBuffer) {
+                        console.log(`Resuming from ${pausedAt.toFixed(2)}s`);
+                        
+                        // Create new source starting from paused position
+                        this.currentSource = this.audioContext.createBufferSource();
+                        this.currentSource.buffer = this.currentBuffer;
+                        this.currentSource.playbackRate.value = currentPlaybackRate;
+                        this.currentSource.connect(this.audioContext.destination);
+                        
+                        // Handle when chunk finishes
+                        this.currentSource.onended = () => {
+                            if (!this.isPaused && !this.isDestroyed && isPlaying) {
+                                console.log(`Chunk ${currentChunkIndex} finished playing after resume`);
+                                playNextChunk(currentChunkIndex);
+                            }
+                        };
+                        
+                        // Start from paused position
+                        this.startTime = this.audioContext.currentTime - pausedAt;
+                        this.currentSource.start(0, pausedAt);
+                        
+                        this.isPaused = false;
+                        isPaused = false;
+                        isPlaying = true;
+                        
+                        // Restart time tracking
+                        this.startTimeTracking();
+                        
+                        return true;
+                    }
+                    return false;
+                },
+                
+                setPlaybackRate(rate) {
+                    const previousRate = currentPlaybackRate;
+                    currentPlaybackRate = rate;
+                    
+                    // If we're currently playing and the rate type changes (1.0 vs non-1.0), restart playback
+                    const wasUsingHtmlAudio = previousRate !== 1.0;
+                    const shouldUseHtmlAudio = rate !== 1.0;
+                    
+                    if ((isPlaying || isPaused) && wasUsingHtmlAudio !== shouldUseHtmlAudio) {
+                        console.log(`Speed changed from ${previousRate}x to ${rate}x - switching audio method`);
+                        
+                        // Save current position
+                        const currentTime = this.getCurrentTime();
+                        const wasPlaying = isPlaying && !isPaused;
+                        
+                        // Stop current playback
+                        this.stopCurrentSource();
+                        
+                        // Get current chunk info
+                        if (currentChunkIndex >= 0) {
+                            const chunkStartWord = currentChunkIndex * 100;
+                            const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
+                            const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
+                            
+                            // Restart with new method
+                            loadChunk(currentChunkIndex, chunkText).then(audioUrl => {
+                                this.play(audioUrl, currentChunkIndex, currentTime).then(() => {
+                                    if (!wasPlaying) {
+                                        // If it was paused, pause it again
+                                        setTimeout(() => this.pause(), 50);
+                                    }
+                                });
+                            }).catch(error => {
+                                console.error('Error restarting playback with new speed:', error);
+                            });
+                        }
+                        return;
+                    }
+                    
+                    // If not switching methods, just update the rate
+                    if (this.htmlAudio && shouldUseHtmlAudio) {
+                        this.htmlAudio.playbackRate = rate;
+                        
+                        // Ensure pitch preservation is enabled (try all variants)
+                        if ('preservesPitch' in this.htmlAudio) {
+                            this.htmlAudio.preservesPitch = true;
+                        }
+                        if ('mozPreservesPitch' in this.htmlAudio) {
+                            this.htmlAudio.mozPreservesPitch = true;
+                        }
+                        if ('webkitPreservesPitch' in this.htmlAudio) {
+                            this.htmlAudio.webkitPreservesPitch = true;
+                        }
+                        
+                        console.log('Updated playback rate to', rate, 'with pitch preservation');
+                    }
+                    
+                    if (this.currentSource && this.currentSource.playbackRate && !shouldUseHtmlAudio) {
+                        this.currentSource.playbackRate.value = rate;
+                    }
+                },
+                
+                seekTo(offsetSeconds) {
+                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
+                        // HTML audio seeking
+                        const newTime = Math.max(0, Math.min(this.htmlAudio.currentTime + offsetSeconds, this.htmlAudio.duration));
+                        this.htmlAudio.currentTime = newTime;
+                        return;
+                    }
+                    
+                    // Web Audio API seeking (existing code)
+                    if (!this.currentBuffer || (!isPlaying && !isPaused)) return;
+                    
+                    console.log(`Seeking by ${offsetSeconds} seconds`);
+                    
+                    // Calculate new position
+                    const currentTime = isPaused ? pausedAt : this.getCurrentTime();
+                    const newTime = Math.max(0, Math.min(currentTime + offsetSeconds, audioDuration));
+                    
+                    console.log(`Current: ${currentTime.toFixed(2)}s, New: ${newTime.toFixed(2)}s`);
+                    
+                    // Stop current source to prevent multiple streams
+                    this.stopCurrentSource();
+                    
+                    if (isPaused) {
+                        // If paused, just update the paused position
+                        pausedAt = newTime;
+                        this.updateProgressBar();
+                        console.log(`Updated pause position to ${newTime.toFixed(2)}s`);
+                    } else {
+                        // If playing, restart from new position
+                        this.currentSource = this.audioContext.createBufferSource();
+                        this.currentSource.buffer = this.currentBuffer;
+                        this.currentSource.playbackRate.value = currentPlaybackRate;
+                        this.currentSource.connect(this.audioContext.destination);
+                        
+                        // Handle when chunk finishes
+                        this.currentSource.onended = () => {
+                            if (!this.isPaused && !this.isDestroyed && isPlaying) {
+                                console.log(`Chunk ${currentChunkIndex} finished playing after seek`);
+                                playNextChunk(currentChunkIndex);
+                            }
+                        };
+                        
+                        // Start from new position
+                        this.startTime = this.audioContext.currentTime - (newTime / currentPlaybackRate);
+                        this.currentSource.start(0, newTime);
+                        
+                        console.log(`Resumed playback from ${newTime.toFixed(2)}s`);
+                    }
+                },
+                
+                getCurrentTime() {
+                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
+                        return this.htmlAudio.currentTime || 0;
+                    }
+                    
+                    if (!this.startTime || this.isDestroyed) return 0;
+                    if (this.isPaused) return pausedAt;
+                    return Math.max(0, (this.audioContext.currentTime - this.startTime) * currentPlaybackRate);
+                },
+                
+                startTimeTracking() {
+                    const updateTime = () => {
+                        if ((isPlaying || isPaused) && !this.isDestroyed) {
+                            currentAudioTime = this.getCurrentTime();
+                            this.updateProgressBar();
+                            if (!isPaused) {
+                                requestAnimationFrame(updateTime);
+                            }
+                        }
+                    };
+                    updateTime();
+                },
+                
+                updateProgressBar() {
+                    if (audioDuration > 0) {
+                        const time = isPaused ? pausedAt : currentAudioTime;
+                        const progress = (time / audioDuration) * 100;
+                        progressBar.style.width = `${progress}%`;
+                        progressHandle.style.left = `${progress}%`;
+                        currentTimeSpan.textContent = this.formatTime(time);
+                    }
+                },
+                
+                formatTime(seconds) {
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${mins}:${secs.toString().padStart(2, '0')}`;
+                },
+                
+                stop() {
+                    console.log('Stopping audio player');
+                    this.isDestroyed = true;
+                    this.isPaused = false;
+                    this.stopCurrentSource();
+                    this.startTime = 0;
+                    this.currentBuffer = null;
+                    currentAudioTime = 0;
+                    pausedAt = 0;
+                    
+                    // Reset progress bar
+                    progressBar.style.width = '0%';
+                    progressHandle.style.left = '0%';
+                    currentTimeSpan.textContent = '0:00';
+                    totalTimeSpan.textContent = '0:00';
+                }
+            };
+        }
+
+        // Play a specific chunk
+        async function playChunk(audioUrl, chunkIndex) {
+            isPlaying = true;
+            isPaused = false;
+            
+            // Update chunk highlighting based on current playback position
+            updateChunkHighlighting();
+            
+            // Update status
+            statusText.textContent = `Playing chunk ${chunkIndex + 1}`;
+            
+            // Play audio
+            await gaplessPlayer.play(audioUrl, chunkIndex);
+        }
+
+        // Debug function to check audio settings
+        function debugAudioSettings() {
+            if (gaplessPlayer && gaplessPlayer.htmlAudio) {
+                console.log('=== HTML Audio Debug Info ===');
+                console.log('Current playback rate:', currentPlaybackRate);
+                console.log('HTML Audio playbackRate:', gaplessPlayer.htmlAudio.playbackRate);
+                console.log('preservesPitch:', gaplessPlayer.htmlAudio.preservesPitch);
+                console.log('mozPreservesPitch:', gaplessPlayer.htmlAudio.mozPreservesPitch);
+                console.log('webkitPreservesPitch:', gaplessPlayer.htmlAudio.webkitPreservesPitch);
+                console.log('Audio source:', gaplessPlayer.htmlAudio.src ? 'Set' : 'Not set');
+                console.log('Audio readyState:', gaplessPlayer.htmlAudio.readyState);
+                console.log('Audio paused:', gaplessPlayer.htmlAudio.paused);
+                console.log('=============================');
+            } else {
+                console.log('HTML Audio not available or not initialized');
+            }
+        }
+
+        // Update chunk highlighting based on current playback position
+        function updateChunkHighlighting() {
+            // Clear all highlighting
+            textContent.querySelectorAll('.word').forEach(wordSpan => {
+                wordSpan.classList.remove('word-current', 'word-next', 'word-playing-chunk', 'word-next-chunk');
+            });
+            
+            if (!isPlaying || currentChunkIndex === -1) return;
+            
+            // Highlight current chunk (100 words)
+            const currentChunkStart = currentChunkIndex * 100;
+            const currentChunkEnd = Math.min(currentChunkStart + 100, words.length);
+            
+            // Highlight next chunk (100 words)
+            const nextChunkStart = (currentChunkIndex + 1) * 100;
+            const nextChunkEnd = Math.min(nextChunkStart + 100, words.length);
+            
+            textContent.querySelectorAll('.word').forEach(wordSpan => {
+                const wordIndex = parseInt(wordSpan.dataset.wordIndex);
+                
+                if (wordIndex >= currentChunkStart && wordIndex < currentChunkEnd) {
+                    wordSpan.classList.add('word-playing-chunk');
+                } else if (wordIndex >= nextChunkStart && wordIndex < nextChunkEnd) {
+                    wordSpan.classList.add('word-next-chunk');
+                }
+            });
+        }
+
+        // Play next chunk automatically
+        async function playNextChunk(finishedChunkIndex) {
+            const nextChunkIndex = finishedChunkIndex + 1;
+            const maxChunks = Math.ceil(words.length / 100);
+            
+            if (nextChunkIndex >= maxChunks) {
+                // End of document
+                console.log('Reached end of document');
+                stopPlayback();
+                statusText.textContent = 'Playback completed';
+                return;
+            }
+            
+            try {
+                // Update current positions
+                currentChunkIndex = nextChunkIndex;
+                currentWordIndex = nextChunkIndex * 100;
+                
+                // Get next chunk text
+                const chunkStartWord = nextChunkIndex * 100;
+                const chunkEndWord = Math.min(chunkStartWord + 100, words.length);
+                const chunkText = words.slice(chunkStartWord, chunkEndWord).join(' ');
+                
+                // Load next chunk (should be cached)
+                const audioUrl = await loadChunk(nextChunkIndex, chunkText);
+                
+                // Navigate to page containing this chunk if needed
+                navigateToWordIfNeeded(currentWordIndex);
+                
+                // Play next chunk
+                await playChunk(audioUrl, nextChunkIndex);
+                
+                // Preload the chunk after next
+                if (nextChunkIndex + 1 < maxChunks) {
+                    preloadNextChunk(nextChunkIndex + 1);
+                }
+                
+            } catch (error) {
+                console.error('Error playing next chunk:', error);
+                showError('Failed to continue playback: ' + error.message);
+                stopPlayback();
+            }
+        }
+
+        // Navigate to page containing a specific word
+        function navigateToWordIfNeeded(wordIndex) {
+            if (wordsPerPage === 'all') return;
+            
+            const wordsPerPageNum = parseInt(wordsPerPage);
+            const targetPage = Math.ceil((wordIndex + 1) / wordsPerPageNum);
+            
+            if (targetPage !== currentPage) {
+                currentPage = targetPage;
+                updatePaginationButtons();
+                pageSelect.value = currentPage;
+                displayCurrentPage();
+            }
+        }
+
+        // Stop playback
+        function stopPlayback() {
+            console.log('Stopping playback...');
+            
+            isPlaying = false;
+            isPaused = false;
+            currentChunkIndex = -1;
+            currentWordIndex = -1;
+            
+            // Reset audio state
+            currentAudioTime = 0;
+            audioDuration = 0;
+            pausedAt = 0;
+            
+            // Stop audio player
+            if (gaplessPlayer) {
+                gaplessPlayer.stop();
+            }
+            
+            // Clear highlighting
+            textContent.querySelectorAll('.word').forEach(wordSpan => {
+                wordSpan.classList.remove('word-current', 'word-speaking', 'word-next', 'word-playing-chunk', 'word-next-chunk');
+            });
+            
+            // Hide audio controls
+            audioControls.classList.add('hidden');
+            audioControls.classList.remove('audio-controls-sticky');
+            document.body.classList.remove('sticky-player-active');
+            
+            // Reset speed control
+            speedSelect.value = '1.0';
+            currentPlaybackRate = 1.0;
+            
+            // Reset play/pause button to show play icon
+            if (playPauseBtn) {
+                const playIcon = playPauseBtn.querySelector('i');
+                if (playIcon) {
+                    playIcon.setAttribute('data-lucide', 'play');
+                    lucide.createIcons();
+                } else {
+                    console.warn('Play icon element not found in stopPlayback');
+                }
+            } else {
+                console.warn('Play/pause button not found in stopPlayback');
+            }
+            
+            console.log('Playback stopped successfully');
+        }
+
+        // Modern player event handlers
+        
+        // Play/Pause button toggle
+        if (playPauseBtn) {
+            playPauseBtn.addEventListener('click', () => {
+                if (isPlaying) {
+                    // Pause playback
+                    if (gaplessPlayer) {
+                        gaplessPlayer.pause();
+                        
+                        // Update button to show play icon
+                        const playIcon = playPauseBtn.querySelector('i');
+                        if (playIcon) {
+                            playIcon.setAttribute('data-lucide', 'play');
+                            lucide.createIcons();
+                        }
+                        
+                        statusText.textContent = `Paused at chunk ${currentChunkIndex + 1}`;
+                        console.log('Playback paused');
+                    }
+                } else if (isPaused) {
+                    // Resume playback
+                    if (gaplessPlayer && gaplessPlayer.resume()) {
+                        // Update button to show pause icon
+                        const playIcon = playPauseBtn.querySelector('i');
+                        if (playIcon) {
+                            playIcon.setAttribute('data-lucide', 'pause');
+                            lucide.createIcons();
+                        }
+                        
+                        statusText.textContent = `Playing chunk ${currentChunkIndex + 1}`;
+                        console.log('Playback resumed');
+                    }
+                } else {
+                    // Start new playback if we have a current word position
+                    if (currentWordIndex >= 0) {
+                        playFromWord(currentWordIndex);
+                    }
+                }
+            });
+        }
+
+        // Progress bar seeking
+        if (progressContainer) {
+            progressContainer.addEventListener('click', (e) => {
+                if (!isPlaying || audioDuration === 0) return;
+                
+                const rect = progressContainer.getBoundingClientRect();
+                const clickPercent = (e.clientX - rect.left) / rect.width;
+                const seekTime = clickPercent * audioDuration;
+                const seekOffset = seekTime - currentAudioTime;
+                
+                if (gaplessPlayer) {
+                    gaplessPlayer.seekTo(seekOffset);
+                }
+            });
+        }
+
+        // Stop button event
+        if (stopBtn) {
+            stopBtn.addEventListener('click', stopPlayback);
+        }
+
+        // Voice model change
+        document.addEventListener('change', (e) => {
+            if (e.target.name === 'model') {
+                selectedModel = e.target.value;
+                // Clear cache when voice changes
+                audioCache.forEach(url => URL.revokeObjectURL(url));
+                audioCache.clear();
+                console.log('Voice changed, cleared audio cache');
+            }
+        });
+
+        // Audio control event listeners
+        if (speedSelect) {
+            speedSelect.addEventListener('change', (e) => {
+                const newRate = parseFloat(e.target.value);
+                console.log(`Changing playback rate to ${newRate}x`);
+                
+                if (gaplessPlayer) {
+                    gaplessPlayer.setPlaybackRate(newRate);
+                }
+                
+                // Debug audio settings after rate change
+                setTimeout(() => {
+                    debugAudioSettings();
+                }, 100);
+                
+                // Update status text
+                if (isPlaying && statusText) {
+                    const pitchInfo = newRate !== 1.0 ? ' • Pitch preserved' : '';
+                    statusText.textContent = `Playing chunk ${currentChunkIndex + 1} • ${newRate}x speed${pitchInfo}`;
+                }
+            });
+        }
+
+        if (skipBack15) {
+            skipBack15.addEventListener('click', () => {
+                if (gaplessPlayer && (isPlaying || isPaused)) {
+                    gaplessPlayer.seekTo(-15);
+                    console.log('Skipped back 15 seconds');
+                }
+            });
+        }
+
+        if (skipBack10) {
+            skipBack10.addEventListener('click', () => {
+                if (gaplessPlayer && (isPlaying || isPaused)) {
+                    gaplessPlayer.seekTo(-10);
+                    console.log('Skipped back 10 seconds');
+                }
+            });
+        }
+
+        if (skipForward10) {
+            skipForward10.addEventListener('click', () => {
+                if (gaplessPlayer && (isPlaying || isPaused)) {
+                    gaplessPlayer.seekTo(10);
+                    console.log('Skipped forward 10 seconds');
+                }
+            });
+        }
+
+        if (skipForward15) {
+            skipForward15.addEventListener('click', () => {
+                if (gaplessPlayer && (isPlaying || isPaused)) {
+                    gaplessPlayer.seekTo(15);
+                    console.log('Skipped forward 15 seconds');
+                }
+            });
+        }
+
+        // Fixed keyboard shortcuts for audio controls
+        document.addEventListener('keydown', (e) => {
+            // Only handle shortcuts when playing and not typing in input fields
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+            
+            switch (e.key) {
+                case ' ': // Spacebar - Pause/Resume/Stop toggle
+                    e.preventDefault();
+                    if (isPlaying) {
+                        // Pause playback
+                        if (gaplessPlayer) {
+                            gaplessPlayer.pause();
+                            
+                            // Update button to show play icon
+                            const playIcon = playPauseBtn?.querySelector('i');
+                            if (playIcon) {
+                                playIcon.setAttribute('data-lucide', 'play');
+                                lucide.createIcons();
+                            }
+                            
+                            statusText.textContent = `Paused at chunk ${currentChunkIndex + 1}`;
+                        }
+                    } else if (isPaused) {
+                        // Resume playback
+                        if (gaplessPlayer && gaplessPlayer.resume()) {
+                            // Update button to show pause icon
+                            const playIcon = playPauseBtn?.querySelector('i');
+                            if (playIcon) {
+                                playIcon.setAttribute('data-lucide', 'pause');
+                                lucide.createIcons();
+                            }
+                            
+                            statusText.textContent = `Playing chunk ${currentChunkIndex + 1}`;
+                        }
+                    } else if (currentWordIndex >= 0) {
+                        // Start new playback
+                        playFromWord(currentWordIndex);
+                    }
+                    break;
+                case 'ArrowLeft': // Left arrow - Skip back 10s
+                    e.preventDefault();
+                    if (gaplessPlayer && (isPlaying || isPaused)) {
+                        gaplessPlayer.seekTo(-10);
+                    }
+                    break;
+                case 'ArrowRight': // Right arrow - Skip forward 10s
+                    e.preventDefault();
+                    if (gaplessPlayer && (isPlaying || isPaused)) {
+                        gaplessPlayer.seekTo(10);
+                    }
+                    break;
+                case 'j': // J - Skip back 15s
+                case 'J':
+                    e.preventDefault();
+                    if (gaplessPlayer && (isPlaying || isPaused)) {
+                        gaplessPlayer.seekTo(-15);
+                    }
+                    break;
+                case 'l': // L - Skip forward 15s
+                case 'L':
+                    e.preventDefault();
+                    if (gaplessPlayer && (isPlaying || isPaused)) {
+                        gaplessPlayer.seekTo(15);
+                    }
+                    break;
+                case '-': // Minus - Decrease speed
+                case '_':
+                    e.preventDefault();
+                    const currentSpeed = parseFloat(speedSelect.value);
+                    const newSpeed = Math.max(0.5, currentSpeed - 0.25);
+                    speedSelect.value = newSpeed.toString();
+                    speedSelect.dispatchEvent(new Event('change'));
+                    break;
+                case '=': // Plus/Equal - Increase speed
+                case '+':
+                    e.preventDefault();
+                    const currentSpeedUp = parseFloat(speedSelect.value);
+                    const newSpeedUp = Math.min(2.0, currentSpeedUp + 0.25);
+                    speedSelect.value = newSpeedUp.toString();
+                    speedSelect.dispatchEvent(new Event('change'));
+                    break;
+            }
+        });
+
+        // Utility functions
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
+
+        function showLoading(text) {
+            if (loadingText) {
+                loadingText.textContent = text;
+            }
+            if (loadingIndicator) {
+                loadingIndicator.classList.remove('hidden');
+            }
+        }
+
+        function hideLoading() {
+            if (loadingIndicator) {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        function showError(message) {
+            if (errorMessage) {
+                errorMessage.textContent = message;
+            }
+            if (errorSection) {
+                errorSection.classList.remove('hidden');
+                errorSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        function hideError() {
+            if (errorSection) {
+                errorSection.classList.add('hidden');
+            }
+        }
+
+        if (retryBtn) {
+            retryBtn.addEventListener('click', hideError);
+        }
+    </script>
+</body>
+</html> 

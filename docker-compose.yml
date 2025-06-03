@@ -1,9 +1,37 @@
 version: '3.8'
 
 services:
-  tts-app:
+  # Development service - builds locally
+  ebook-reader-dev:
     build: .
-    container_name: pdf-tts-app
+    container_name: ebook-reader-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Production service - uses published Docker Hub image
+  ebook-reader:
+    image: thakkaraakash/ebook-reader:latest
+    container_name: ebook-reader-prod
     ports:
       - "8000:8000"
     environment:

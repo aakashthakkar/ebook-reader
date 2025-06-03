@@ -1,11 +1,21 @@
-# Use Python 3.11 slim image - auto-detects host architecture (x86/ARM)
+# Multi-platform Dockerfile supporting both x86_64 and ARM64
+# Build with: docker buildx build --platform linux/amd64,linux/arm64 -t ebook-reader .
+
+# Use multi-platform Python base image
 FROM python:3.11-slim
+
+# Set build arguments for platform detection
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+# Display build information
+RUN echo "Building for $TARGETPLATFORM on $BUILDPLATFORM"
 
 # Set working directory
 WORKDIR /app
 
 # Install system dependencies including git for cloning
-# Architecture-specific packages will be automatically selected
+# Dependencies are automatically selected for the target architecture
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -26,6 +36,7 @@ RUN git clone https://github.com/aakashthakkar/ebook-reader.git . && \
     rm -rf .git
 
 # Install Python dependencies
+# Some packages like numpy have optimized builds for different architectures
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 

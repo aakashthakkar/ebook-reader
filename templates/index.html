@@ -3,30 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF to Audio - Click to Play (v6.0)</title>
+    <title>PDF to Audio - Modern Reader (v7.0)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <style>
+        /* Modern File Upload Styles */
         .upload-area {
-            transition: all 0.3s ease;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            backdrop-filter: blur(20px);
+            border: 2px dashed rgba(147, 197, 253, 0.3);
         }
+        
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
+        }
+        
         .upload-area.dragover {
             border-color: #3b82f6;
-            background-color: #dbeafe;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
+            transform: scale(1.02);
+            box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.25);
         }
+        
+        /* Modern animations */
+        @keyframes uploadPulse {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .upload-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .upload-area.dragover .upload-icon {
+            animation: uploadPulse 1s ease-in-out infinite;
+        }
+        
         .fade-in {
-            animation: fadeIn 0.5s ease-in;
+            animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
         .spinner {
             animation: spin 1s linear infinite;
         }
+        
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        /* Modern Progress Bar */
+        .progress-bar {
+            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 50%, #3b82f6 100%);
+            background-size: 200% 100%;
+            animation: progressShimmer 2s ease-in-out infinite;
+        }
+        
+        @keyframes progressShimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
         }
         
         /* Word highlighting for audio segments */
@@ -78,31 +128,55 @@
             50% { opacity: 1; }
         }
         
-        /* Remove debug helper */
-        .audio-controls-sticky::before {
-            display: none;
-        }
-        
-        /* Simple sticky positioning */
+        /* Modern Audio Player Styles */
         #sticky-audio-player {
             position: fixed !important;
             top: 20px !important;
             right: 20px !important;
-            width: 320px !important;
+            width: 360px !important;
             max-width: calc(100vw - 40px) !important;
             z-index: 999999 !important;
             background: rgba(15, 23, 42, 0.95) !important;
-            backdrop-filter: blur(15px) !important;
+            backdrop-filter: blur(20px) !important;
             border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            border-radius: 12px !important;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-            padding: 16px !important;
-            transition: all 0.3s ease !important;
+            border-radius: 16px !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+            padding: 20px !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
             display: none !important;
         }
         
         #sticky-audio-player.active {
             display: block !important;
+            animation: slideInFromRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        @keyframes slideInFromRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Modern button styles */
+        .modern-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .modern-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+        }
+        
+        .modern-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
         }
         
         /* Responsive design */
@@ -116,38 +190,49 @@
             }
         }
         
-        /* Debug mode styles (can be toggled via JavaScript) */
-        #sticky-audio-player.debug {
-            background: rgba(255, 0, 0, 0.9) !important;
-            border: 3px solid yellow !important;
+        /* Glass morphism effect */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
         
-        #sticky-audio-player.debug::before {
-            content: "DEBUG: Should be FIXED position" !important;
-            position: absolute !important;
-            top: -30px !important;
-            left: 0 !important;
-            background: yellow !important;
-            color: black !important;
-            padding: 4px 8px !important;
-            font-size: 12px !important;
-            font-weight: bold !important;
-            z-index: 1 !important;
+        /* Success animation */
+        @keyframes checkmark {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .success-checkmark {
+            animation: checkmark 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
-    <!-- Header -->
-    <nav class="bg-black/20 backdrop-blur-sm border-b border-white/10">
+    <!-- Modern Header -->
+    <nav class="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <div class="flex items-center">
-                    <i data-lucide="headphones" class="h-8 w-8 text-purple-400 mr-3"></i>
-                    <h1 class="text-xl font-bold text-white">PDF to Audio - Click to Play</h1>
-                    <span class="ml-3 px-2 py-1 bg-blue-500 text-blue-900 text-xs rounded-full font-bold">v6.0 CLICK-TO-PLAY</span>
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
+                            <i data-lucide="headphones" class="h-6 w-6 text-white"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl font-bold text-white">PDF Audio Reader</h1>
+                            <span class="text-xs text-purple-300">Modern Experience v7.0</span>
+                        </div>
+                    </div>
+                    <span class="ml-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full font-bold animate-pulse">CLICK-TO-PLAY</span>
                 </div>
-                <div class="text-sm text-gray-300">
-                    Click any word to start playing from that position
+                <div class="text-sm text-gray-300 hidden md:block">
+                    <span class="flex items-center">
+                        <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2"></i>
+                        Click any word to start playing from that position
+                    </span>
                 </div>
             </div>
         </div>
@@ -157,71 +242,201 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Hero Section -->
         <div class="text-center mb-12">
-            <h2 class="text-4xl font-bold text-white mb-4">Interactive Reading & Listening</h2>
-            <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-                Upload your PDF and click any word to start listening from that position. Choose your voice from the audio player controls.
+            <h2 class="text-5xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Interactive Reading & Listening
+            </h2>
+            <p class="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+                Upload your PDF and click any word to start listening from that position. Experience seamless audio generation with beautiful visual feedback.
             </p>
         </div>
 
-        <!-- Upload Section -->
-        <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
+        <!-- Modern Upload Section -->
+        <div class="glass-card p-8 mb-8 fade-in">
             <h3 class="text-2xl font-semibold text-white mb-6 flex items-center">
-                <i data-lucide="upload" class="mr-3"></i>
-                Step 1: Upload PDF
+                <div class="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg mr-3">
+                    <i data-lucide="upload" class="h-5 w-5 text-white"></i>
+                </div>
+                Step 1: Upload Your PDF
             </h3>
             
-            <div id="upload-area" class="upload-area border-2 border-dashed border-gray-400 rounded-xl p-8 text-center cursor-pointer hover:border-purple-400 transition-all">
-                <i data-lucide="file-text" class="h-16 w-16 text-gray-400 mx-auto mb-4"></i>
-                <p class="text-lg text-gray-300 mb-2">Drop your PDF here or click to browse</p>
-                <p class="text-sm text-gray-500">Maximum file size: 100MB</p>
+            <div id="upload-area" class="upload-area rounded-2xl p-12 text-center cursor-pointer group">
+                <div class="flex flex-col items-center space-y-6">
+                    <!-- Upload Icon with Animation -->
+                    <div class="upload-icon relative">
+                        <div class="absolute inset-0 bg-blue-500/20 rounded-full blur-xl scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div class="relative p-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-2xl">
+                            <i data-lucide="cloud-upload" class="h-12 w-12 text-white"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Text -->
+                    <div class="space-y-2">
+                        <h4 class="text-2xl font-semibold text-white">Drop your PDF here</h4>
+                        <p class="text-lg text-gray-300">or <span class="text-blue-400 font-medium">click to browse</span></p>
+                        <p class="text-sm text-gray-400">Supports PDF files up to 100MB</p>
+                    </div>
+                    
+                    <!-- Features List -->
+                    <div class="flex flex-wrap justify-center gap-4 mt-6">
+                        <div class="flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2">
+                            <i data-lucide="zap" class="h-4 w-4 text-yellow-400"></i>
+                            <span class="text-sm text-gray-300">Instant Processing</span>
+                        </div>
+                        <div class="flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2">
+                            <i data-lucide="shield-check" class="h-4 w-4 text-green-400"></i>
+                            <span class="text-sm text-gray-300">Secure Upload</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <input type="file" id="pdf-input" accept=".pdf" class="hidden">
                 
-                <!-- Upload Loading Indicator -->
-                <div id="upload-loading" class="hidden mt-4">
-                    <div class="flex items-center justify-center text-blue-300">
-                        <div class="spinner h-6 w-6 border-2 border-blue-300 border-t-transparent rounded-full mr-3"></div>
-                        <span id="upload-loading-text">Processing PDF...</span>
-                    </div>
-                    <div class="mt-2 text-sm text-gray-400">
-                        This may take a few moments for large files
+                <!-- Modern Loading Indicator -->
+                <div id="upload-loading" class="hidden mt-8">
+                    <div class="relative">
+                        <!-- Animated Progress Circle -->
+                        <div class="w-16 h-16 mx-auto mb-4 relative">
+                            <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="40" stroke="rgba(59, 130, 246, 0.3)" stroke-width="8" fill="none"/>
+                                <circle cx="50" cy="50" r="40" stroke="#3b82f6" stroke-width="8" fill="none" 
+                                        stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="125.5"
+                                        class="progress-circle transition-all duration-500 ease-out"/>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <i data-lucide="file-text" class="h-6 w-6 text-blue-400 animate-pulse"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <h4 class="text-lg font-medium text-blue-300 mb-2" id="upload-loading-text">Processing PDF...</h4>
+                            <p class="text-sm text-gray-400">Extracting text and preparing for audio generation</p>
+                            
+                            <!-- Progress Steps -->
+                            <div class="mt-4 space-y-2">
+                                <div class="flex items-center justify-center space-x-2 text-sm">
+                                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                    <span class="text-gray-300">Reading PDF structure...</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="file-info" class="hidden mt-4 p-4 bg-green-500/20 rounded-lg border border-green-500/30">
-                <div class="flex items-center text-green-300">
-                    <i data-lucide="check-circle" class="mr-2"></i>
-                    <span id="file-name"></span>
-                </div>
-                <div class="text-sm text-green-200 mt-1">
-                    <span id="text-length"></span> characters • <span id="word-count"></span> words
+            <!-- Success State -->
+            <div id="file-info" class="hidden mt-6 p-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl border border-green-500/30 backdrop-blur-sm">
+                <div class="flex items-start space-x-4">
+                    <div class="success-checkmark p-2 bg-green-500 rounded-full">
+                        <i data-lucide="check" class="h-5 w-5 text-white"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center text-green-300 mb-2">
+                            <i data-lucide="file-check" class="h-5 w-5 mr-2"></i>
+                            <span class="font-semibold" id="file-name"></span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="flex items-center text-green-200">
+                                <i data-lucide="type" class="h-4 w-4 mr-2"></i>
+                                <span><span id="text-length"></span> characters</span>
+                            </div>
+                            <div class="flex items-center text-green-200">
+                                <i data-lucide="hash" class="h-4 w-4 mr-2"></i>
+                                <span><span id="word-count"></span> words</span>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center space-x-3">
+                            <div class="text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full">Ready for audio</div>
+                            <div class="text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full">Click any word to play</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Voice Selection -->
-        <div id="voice-selection" class="hidden bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
+        <!-- Modern Voice Selection -->
+        <div id="voice-selection" class="hidden glass-card p-8 mb-8 fade-in">
             <h3 class="text-2xl font-semibold text-white mb-6 flex items-center">
-                <i data-lucide="settings" class="mr-3"></i>
-                Step 2: Choose Voice
+                <div class="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg mr-3">
+                    <i data-lucide="mic" class="h-5 w-5 text-white"></i>
+                </div>
+                Step 2: Choose Your Voice
             </h3>
             
-            <div class="grid gap-4">
+            <div class="grid gap-6">
                 {% for key, model in models.items() %}
-                <label class="flex items-start p-4 {% if key == 'edge-tts-andrew' %}bg-gradient-to-br from-green-800/60 to-green-700/60 border-green-500/50{% else %}bg-white/5 border-white/10{% endif %} rounded-lg border cursor-pointer hover:{% if key == 'edge-tts-andrew' %}from-green-700/70 to-green-600/70{% else %}bg-white/10{% endif %} transition-all">
-                    <input type="radio" name="model" value="{{ key }}" class="mt-1 mr-4" {% if key == 'edge-tts-andrew' %}checked{% endif %}>
-                    <div class="flex-1">
-                        <div class="flex items-center">
-                            <h4 class="text-lg font-medium text-white">{{ model.name }}</h4>
+                <label class="group relative cursor-pointer">
+                    <input type="radio" name="model" value="{{ key }}" class="sr-only peer" {% if key == 'edge-tts-andrew' %}checked{% endif %}>
+                    
+                    <!-- Card Design -->
+                    <div class="relative p-6 rounded-2xl border transition-all duration-300 
+                        {% if key == 'edge-tts-andrew' %}
+                            bg-gradient-to-br from-emerald-500/20 to-green-500/20 border-emerald-500/50 shadow-lg shadow-emerald-500/20
+                            peer-checked:from-emerald-500/30 peer-checked:to-green-500/30 peer-checked:border-emerald-400 peer-checked:shadow-xl peer-checked:shadow-emerald-500/30
+                        {% else %}
+                            bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20
+                            peer-checked:bg-blue-500/20 peer-checked:border-blue-400/50 peer-checked:shadow-lg peer-checked:shadow-blue-500/20
+                        {% endif %}
+                        group-hover:transform group-hover:scale-[1.02] group-hover:shadow-2xl">
+                        
+                        <!-- Selection Indicator -->
+                        <div class="absolute top-4 right-4 w-6 h-6 rounded-full border-2 transition-all duration-300
                             {% if key == 'edge-tts-andrew' %}
-                            <span class="ml-2 px-2 py-1 bg-green-500 text-green-900 text-xs rounded-full font-bold">RECOMMENDED</span>
-                            {% endif %}
+                                border-emerald-400 bg-emerald-500 peer-checked:border-emerald-300
+                            {% else %}
+                                border-gray-400 peer-checked:border-blue-400 peer-checked:bg-blue-500
+                            {% endif %}">
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity duration-300">
+                                <i data-lucide="check" class="h-3 w-3 text-white"></i>
+                            </div>
                         </div>
-                        <p class="{% if key == 'edge-tts-andrew' %}text-green-100{% else %}text-gray-300{% endif %} text-sm mt-1">{{ model.description }}</p>
-                        <div class="flex items-center mt-2 text-xs">
-                            <i data-lucide="zap" class="h-3 w-3 mr-1 text-green-400"></i>
-                            <span class="text-green-400">{{ model.speed }}</span>
+                        
+                        <!-- Voice Info -->
+                        <div class="pr-10">
+                            <div class="flex items-center mb-3">
+                                <div class="p-2 rounded-lg mr-3 
+                                    {% if key == 'edge-tts-andrew' %}bg-emerald-500/30{% else %}bg-blue-500/30{% endif %}">
+                                    <i data-lucide="user" class="h-5 w-5 
+                                        {% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %}"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-white">{{ model.name }}</h4>
+                                    {% if key == 'edge-tts-andrew' %}
+                                    <div class="flex items-center mt-1">
+                                        <span class="px-2 py-1 bg-emerald-500 text-emerald-900 text-xs rounded-full font-bold mr-2">RECOMMENDED</span>
+                                        <span class="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">BEST QUALITY</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <p class="{% if key == 'edge-tts-andrew' %}text-emerald-100{% else %}text-gray-300{% endif %} text-sm mb-4 leading-relaxed">
+                                {{ model.description }}
+                            </p>
+                            
+                            <!-- Features -->
+                            <div class="flex items-center space-x-4">
+                                <div class="flex items-center text-xs">
+                                    <i data-lucide="zap" class="h-4 w-4 mr-1 {% if key == 'edge-tts-andrew' %}text-emerald-400{% else %}text-blue-400{% endif %}"></i>
+                                    <span class="{% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %} font-medium">{{ model.speed }}</span>
+                                </div>
+                                <div class="flex items-center text-xs">
+                                    <i data-lucide="volume-2" class="h-4 w-4 mr-1 {% if key == 'edge-tts-andrew' %}text-emerald-400{% else %}text-blue-400{% endif %}"></i>
+                                    <span class="{% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %} font-medium">High Quality</span>
+                                </div>
+                                <div class="flex items-center text-xs">
+                                    <i data-lucide="globe" class="h-4 w-4 mr-1 {% if key == 'edge-tts-andrew' %}text-emerald-400{% else %}text-blue-400{% endif %}"></i>
+                                    <span class="{% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %} font-medium">English</span>
+                                </div>
+                            </div>
                         </div>
+                        
+                        <!-- Hover Effect -->
+                        <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none
+                            {% if key == 'edge-tts-andrew' %}
+                                bg-gradient-to-br from-emerald-500/10 to-green-500/10
+                            {% else %}
+                                bg-gradient-to-br from-blue-500/10 to-purple-500/10
+                            {% endif %}"></div>
                     </div>
                 </label>
                 {% endfor %}
@@ -380,71 +595,190 @@
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-black/20 backdrop-blur-sm border-t border-white/10 mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div class="text-center text-gray-400">
-                <p class="mb-2">Click-to-Play PDF Reader - Powered by Edge TTS</p>
-                <div class="flex justify-center items-center space-x-4 text-sm">
-                    <span class="flex items-center">
-                        <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-1"></i>
-                        Click to Start
-                    </span>
-                    <span class="flex items-center">
-                        <i data-lucide="zap" class="h-4 w-4 mr-1"></i>
-                        On-Demand Generation
-                    </span>
-                    <span class="flex items-center">
-                        <i data-lucide="volume-2" class="h-4 w-4 mr-1"></i>
-                        Seamless Playback
-                    </span>
+    <!-- Modern Footer -->
+    <footer class="bg-black/30 backdrop-blur-xl border-t border-white/10 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <!-- Main Footer Content -->
+            <div class="grid md:grid-cols-3 gap-8 mb-8">
+                <!-- Brand Section -->
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
+                            <i data-lucide="headphones" class="h-6 w-6 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-white">PDF Audio Reader</h3>
+                            <span class="text-sm text-purple-300">Modern Experience v7.0</span>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Transform any PDF into an interactive audio experience. Click any word to start listening from that position with AI-powered voice synthesis.
+                    </p>
+                </div>
+                
+                <!-- Features Section -->
+                <div class="space-y-4">
+                    <h4 class="text-lg font-semibold text-white flex items-center">
+                        <i data-lucide="sparkles" class="h-5 w-5 mr-2 text-purple-400"></i>
+                        Key Features
+                    </h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2 text-blue-400"></i>
+                            Click-to-Play from any word
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="zap" class="h-4 w-4 mr-2 text-yellow-400"></i>
+                            Real-time audio generation
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="volume-2" class="h-4 w-4 mr-2 text-green-400"></i>
+                            High-quality voice synthesis
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="settings" class="h-4 w-4 mr-2 text-purple-400"></i>
+                            Customizable speed & voice
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tech Stack Section -->
+                <div class="space-y-4">
+                    <h4 class="text-lg font-semibold text-white flex items-center">
+                        <i data-lucide="cpu" class="h-5 w-5 mr-2 text-blue-400"></i>
+                        Powered By
+                    </h4>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="brain" class="h-4 w-4 mr-2 text-emerald-400"></i>
+                            Microsoft Edge TTS
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="file-text" class="h-4 w-4 mr-2 text-orange-400"></i>
+                            Advanced PDF Processing
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="shield-check" class="h-4 w-4 mr-2 text-green-400"></i>
+                            Secure & Private
+                        </div>
+                        <div class="flex items-center text-gray-300">
+                            <i data-lucide="smartphone" class="h-4 w-4 mr-2 text-pink-400"></i>
+                            Mobile Responsive
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Bar -->
+            <div class="border-t border-white/10 pt-6">
+                <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+                    <div class="text-center md:text-left">
+                        <p class="text-gray-400 text-sm">© 2024 PDF Audio Reader. Enhanced with 21st.dev components.</p>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-3 text-sm">
+                            <div class="flex items-center space-x-1 px-3 py-1 bg-white/5 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
+                                <i data-lucide="keyboard" class="h-3 w-3 text-blue-400"></i>
+                                <span class="text-gray-300">Shortcuts</span>
+                            </div>
+                            <div class="flex items-center space-x-1 px-3 py-1 bg-white/5 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
+                                <i data-lucide="help-circle" class="h-3 w-3 text-purple-400"></i>
+                                <span class="text-gray-300">Help</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </footer>
 
-    <!-- Independent Sticky Audio Player (outside all containers) -->
+    <!-- Modern Sticky Audio Player -->
     <div id="sticky-audio-player">
-        <!-- Compact Controls Only -->
-        <div class="flex flex-col space-y-3">
-            <!-- Top row: Play/Pause and Stop -->
+        <div class="flex flex-col space-y-4">
+            <!-- Header with Close Button -->
             <div class="flex items-center justify-between">
-                <!-- Play/Pause Button -->
-                <button id="sticky-play-pause-btn" class="p-3 rounded-full bg-blue-600 hover:bg-blue-700 transition-all duration-200 shadow-lg">
-                    <i data-lucide="pause" class="h-6 w-6 text-white"></i>
-                </button>
-                
-                <!-- Stop Button -->
-                <button id="sticky-stop-btn" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-all duration-200 flex items-center space-x-1">
-                    <i data-lucide="square" class="h-3 w-3"></i>
-                    <span>Stop</span>
+                <div class="flex items-center space-x-2">
+                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span class="text-xs text-gray-300 font-medium">Now Playing</span>
+                </div>
+                <button id="sticky-close-btn" class="p-1 hover:bg-white/10 rounded transition-colors">
+                    <i data-lucide="x" class="h-4 w-4 text-gray-400 hover:text-white"></i>
                 </button>
             </div>
             
-            <!-- Bottom row: Voice and Speed controls -->
-            <div class="flex items-center justify-between space-x-2">
-                <!-- Voice Selection -->
-                <div class="flex items-center space-x-2 flex-1">
-                    <i data-lucide="mic" class="h-4 w-4 text-gray-400"></i>
-                    <select id="sticky-voice-select" class="bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-blue-500 outline-none flex-1">
-                        {% for key, model in models.items() %}
-                        <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <!-- Main Controls Row -->
+            <div class="flex items-center space-x-4">
+                <!-- Play/Pause Button -->
+                <button id="sticky-play-pause-btn" class="relative group">
+                    <div class="absolute inset-0 bg-blue-500/30 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300"></div>
+                    <div class="relative p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg shadow-blue-500/30 
+                        hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105 active:scale-95">
+                        <i data-lucide="pause" class="h-5 w-5 text-white"></i>
+                    </div>
+                </button>
                 
-                <!-- Speed Control -->
-                <div class="flex items-center space-x-2">
-                    <i data-lucide="gauge" class="h-4 w-4 text-gray-400"></i>
-                    <select id="sticky-speed-select" class="bg-gray-700 text-white text-xs rounded px-2 py-1 border border-gray-600 focus:border-blue-500 outline-none">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1.0" selected>1.0x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="2.0">2.0x</option>
-                    </select>
+                <!-- Controls Column -->
+                <div class="flex-1 space-y-3">
+                    <!-- Voice & Speed Controls -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- Voice Selection - wider column -->
+                        <div class="col-span-2 space-y-1">
+                            <label class="text-xs text-gray-400 font-medium flex items-center">
+                                <i data-lucide="mic" class="h-3 w-3 mr-1"></i>
+                                Voice
+                            </label>
+                            <select id="sticky-voice-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 
+                                border border-gray-600/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none
+                                transition-all duration-200 hover:bg-gray-800">
+                                {% for key, model in models.items() %}
+                                <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Speed Control - smaller column -->
+                        <div class="space-y-1">
+                            <label class="text-xs text-gray-400 font-medium flex items-center">
+                                <i data-lucide="gauge" class="h-3 w-3 mr-1"></i>
+                                Speed
+                            </label>
+                            <select id="sticky-speed-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 
+                                border border-gray-600/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none
+                                transition-all duration-200 hover:bg-gray-800">
+                                <option value="0.5">0.5x</option>
+                                <option value="0.75">0.75x</option>
+                                <option value="1.0" selected>1.0x</option>
+                                <option value="1.25">1.25x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2.0">2.0x</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex items-center space-x-2">
+                        <button id="sticky-stop-btn" class="flex-1 px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 
+                            text-xs rounded-lg transition-all duration-200 flex items-center justify-center space-x-1 
+                            border border-red-500/30 hover:border-red-500/50">
+                            <i data-lucide="square" class="h-3 w-3"></i>
+                            <span>Stop</span>
+                        </button>
+                        
+                        <button id="sticky-minimize-btn" class="px-3 py-2 bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 hover:text-gray-200 
+                            text-xs rounded-lg transition-all duration-200 flex items-center justify-center space-x-1 
+                            border border-gray-500/30 hover:border-gray-500/50">
+                            <i data-lucide="minimize-2" class="h-3 w-3"></i>
+                        </button>
+                    </div>
                 </div>
+            </div>
+            
+            <!-- Progress Indicator (Optional) -->
+            <div class="flex items-center space-x-2 text-xs text-gray-400">
+                <i data-lucide="volume-2" class="h-3 w-3"></i>
+                <span>Click any word in the text to jump to that position</span>
             </div>
         </div>
     </div>
@@ -600,6 +934,7 @@
         const stickySpeedSelect = document.getElementById('sticky-speed-select');
         const stickyVoiceSelect = document.getElementById('sticky-voice-select');
         const stickyStopBtn = document.getElementById('sticky-stop-btn');
+        const stickyMinimizeBtn = document.getElementById('sticky-minimize-btn');
         const uploadLoading = document.getElementById('upload-loading');
         const uploadLoadingText = document.getElementById('upload-loading-text');
         const readAnotherPdfBtn = document.getElementById('read-another-pdf-btn');
@@ -3005,6 +3340,18 @@
                 });
                 console.log('🛑 Cleared all chunk highlighting');
             }
+        }
+
+        // Sticky close button
+        const stickyCloseBtn = document.getElementById('sticky-close-btn');
+        if (stickyCloseBtn) {
+            stickyCloseBtn.addEventListener('click', () => {
+                console.log('🛑 Sticky close button clicked');
+                stopPlayback();
+            });
+            console.log('✅ Sticky close button event listener attached');
+        } else {
+            console.warn('⚠️ Sticky close button not found during initialization');
         }
     </script>
 </body>

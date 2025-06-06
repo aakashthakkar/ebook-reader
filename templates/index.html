@@ -76,19 +76,30 @@
             background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
         }
+        
+        @keyframes pulse {
+            0%, 100% { 
+                background-color: rgba(34, 197, 94, 0.2); 
+                transform: scale(1);
+            }
+            50% { 
+                background-color: rgba(34, 197, 94, 0.4); 
+                transform: scale(1.05);
+            }
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-gray-200">
     <nav class="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-3">
                     <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg"><i data-lucide="headphones" class="h-6 w-6 text-white"></i></div>
-                    <h1 class="text-xl font-bold text-white">PDF Audio Reader</h1>
-                </div>
+                            <h1 class="text-xl font-bold text-white">PDF Audio Reader</h1>
+                        </div>
                 <div class="text-sm text-gray-300 hidden md:block flex items-center">
                     <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2"></i> Click any word to start playing
-                </div>
+                    </div>
             </div>
         </div>
     </nav>
@@ -98,75 +109,74 @@
             <div class="text-center mb-8">
                 <h2 class="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Interactive PDF Listening</h2>
                 <p class="text-lg text-gray-300 max-w-3xl mx-auto">Upload your PDF and click any word to start listening with synchronized text highlighting.</p>
-            </div>
-            <div class="glass-card p-8 mb-8 fade-in">
-                <div id="upload-area" class="upload-area rounded-2xl p-12 text-center cursor-pointer group">
+        </div>
+        <div class="glass-card p-8 mb-8 fade-in">
+            <div id="upload-area" class="upload-area rounded-2xl p-12 text-center cursor-pointer group">
                     <div class="flex flex-col items-center space-y-4">
                         <i data-lucide="cloud-upload" class="h-12 w-12 text-blue-400"></i>
                         <h4 class="text-2xl font-semibold text-white">Drop your PDF here</h4>
                         <p class="text-lg text-gray-300">or <span class="text-blue-400 font-medium">click to browse</span></p>
                     </div>
-                    <input type="file" id="pdf-input" accept=".pdf" class="hidden">
-                    <div id="upload-loading" class="hidden mt-8">
+                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                <div id="upload-loading" class="hidden mt-8">
                         <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
                         <p class="text-lg font-medium text-blue-300 mt-4" id="upload-loading-text">Processing PDF...</p>
-                    </div>
-                </div>
+                            </div>
+                        </div>
                 <div id="file-info" class="hidden mt-6 p-4 bg-green-500/10 rounded-xl border border-green-500/30">
                     <div class="font-semibold text-green-300" id="file-name"></div>
                     <div class="text-sm text-green-200"><span id="word-count"></span> words • <span id="chunk-count"></span> audio segments</div>
+                    </div>
                 </div>
             </div>
-        </div>
 
         <div id="pdf-display" class="hidden fade-in">
             <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
                 <h3 class="text-xl font-semibold text-white">Interactive PDF Viewer</h3>
                 <button id="read-another-pdf-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all">Read Another PDF</button>
-            </div>
+                    </div>
             <div class="bg-black/20 backdrop-blur-sm rounded-xl p-3 mb-4 border border-white/10">
                 <div class="flex items-center justify-between flex-wrap gap-3">
-                    <div class="flex items-center space-x-2">
-                        <button id="pdf-prev-page" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md disabled:opacity-50"><i data-lucide="chevron-left" class="h-5 w-5"></i></button>
-                        <span class="text-sm">Page <input type="number" id="pdf-page-input" min="1" value="1" class="bg-gray-800 w-16 text-center rounded-md"> of <span id="pdf-total-pages">1</span></span>
-                        <button id="pdf-next-page" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md disabled:opacity-50"><i data-lucide="chevron-right" class="h-5 w-5"></i></button>
-                    </div>
-                    <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-2">
+                        <button id="pdf-start-reading" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium"><i data-lucide="play" class="h-4 w-4 mr-1"></i>Start Reading</button>
+                        <button id="go-to-current" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-md text-sm font-medium hidden"><i data-lucide="target" class="h-4 w-4 mr-1"></i>Go to Current</button>
+                </div>
+                <div class="flex items-center space-x-2">
                         <button id="pdf-zoom-out" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="zoom-out" class="h-5 w-5"></i></button>
                         <span id="pdf-zoom-level" class="text-sm font-medium w-16 text-center">100%</span>
                         <button id="pdf-zoom-in" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="zoom-in" class="h-5 w-5"></i></button>
                         <button id="pdf-fit-width" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="move-horizontal" class="h-5 w-5"></i></button>
-                    </div>
                 </div>
+            </div>
             </div>
             <div id="loading-indicator" class="hidden mb-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30 flex items-center text-blue-300">
                 <div class="spinner h-4 w-4 border-2 border-blue-300 border-t-transparent rounded-full mr-2"></div>
                 <span id="loading-text"></span>
-            </div>
+                            </div>
             <div id="pdf-container" class="glass-card rounded-xl overflow-hidden"><div id="pdf-viewer"></div></div>
-        </div>
+                            </div>
         <div id="error-section" class="hidden mt-4 bg-red-500/20 p-4 rounded-xl border border-red-500/30"><p id="error-message" class="text-red-200"></p></div>
-    </div>
+        </div>
 
     <div id="sticky-audio-player">
         <div class="flex items-center justify-between mb-4">
             <span class="text-xs text-gray-300 font-medium flex items-center"><div class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>Now Playing</span>
             <button id="sticky-close-btn" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="h-4 w-4 text-gray-400"></i></button>
-        </div>
-        <div class="flex items-center space-x-4">
+                </div>
+            <div class="flex items-center space-x-4">
             <button id="sticky-play-pause-btn" class="p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"><i data-lucide="pause" class="h-5 w-5 text-white"></i></button>
             <div class="flex-1 space-y-2">
                 <select id="sticky-voice-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 border border-gray-600/50 focus:border-blue-400 outline-none">
                     {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
-                </select>
+                            </select>
                 <select id="sticky-speed-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 border border-gray-600/50 focus:border-blue-400 outline-none">
                     <option value="0.75">0.75x</option><option value="1.0">1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
-                </select>
-            </div>
+                            </select>
+                        </div>
             <button id="sticky-stop-btn" class="p-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300"><i data-lucide="square" class="h-5 w-5"></i></button>
-        </div>
-    </div>
-
+                </div>
+            </div>
+            
     <audio id="audio-player-element" style="display:none;"></audio>
 
     <script>
@@ -177,6 +187,8 @@
         let pdfDoc = null, pdfTotalPages = 0, pdfCurrentPageNum = 1, pdfScale = 1.5, pdfRenderingInProgress = false;
         let audioCache = new Map(), gaplessPlayer = null, isPlaying = false, isPaused = false, currentChunk = null;
         let currentPlaybackRate = "1.0", selectedModel = 'edge-tts-andrew';
+        let currentPageRange = { start: 1, end: 5 }; // Track which pages are currently rendered
+        let currentViewingPage = 1; // Track which page user is currently viewing
 
         const $ = (id) => document.getElementById(id);
         
@@ -205,7 +217,7 @@
             
             document.addEventListener('keydown', (e) => { 
                 if (document.activeElement.tagName !== 'INPUT' && e.key === ' ') { 
-                    e.preventDefault(); 
+            e.preventDefault();
                     togglePlayPause(); 
                 } 
             });
@@ -248,7 +260,7 @@
                 $('pdf-display').classList.remove('hidden');
                 
                 setupPdfControls();
-                await renderPage(1);
+                await renderContinuousView();
 
             } catch (error) {
                 showError('Failed to process PDF: ' + error.message);
@@ -322,37 +334,277 @@
         }
 
         function setupPdfControls() {
-            $('pdf-prev-page').addEventListener('click', () => { if (pdfCurrentPageNum > 1) renderPage(pdfCurrentPageNum - 1); });
-            $('pdf-next-page').addEventListener('click', () => { if (pdfCurrentPageNum < pdfTotalPages) renderPage(pdfCurrentPageNum + 1); });
-            $('pdf-page-input').addEventListener('change', (e) => { const page = parseInt(e.target.value); if (page >= 1 && page <= pdfTotalPages) renderPage(page); });
-            $('pdf-zoom-in').addEventListener('click', () => { pdfScale += 0.25; renderPage(pdfCurrentPageNum); });
-            $('pdf-zoom-out').addEventListener('click', () => { if (pdfScale > 0.5) { pdfScale -= 0.25; renderPage(pdfCurrentPageNum); }});
+            $('pdf-start-reading').addEventListener('click', startReading);
+            $('go-to-current').addEventListener('click', goToCurrentHighlight);
+            $('pdf-zoom-in').addEventListener('click', () => { pdfScale += 0.25; updateZoomLevel(); renderContinuousView(); });
+            $('pdf-zoom-out').addEventListener('click', () => { if (pdfScale > 0.5) { pdfScale -= 0.25; updateZoomLevel(); renderContinuousView(); }});
             $('pdf-fit-width').addEventListener('click', async () => {
-                const page = await pdfDoc.getPage(pdfCurrentPageNum);
+                const page = await pdfDoc.getPage(1);
                 pdfScale = $('pdf-viewer').clientWidth / page.getViewport({ scale: 1 }).width;
-                renderPage(pdfCurrentPageNum);
+                updateZoomLevel();
+                renderContinuousView();
             });
-            $('pdf-total-pages').textContent = pdfTotalPages;
-            updatePdfNavButtons();
+            updateZoomLevel(); // Initialize zoom level display
         }
 
-        function updatePdfNavButtons() {
-            $('pdf-prev-page').disabled = (pdfCurrentPageNum <= 1);
-            $('pdf-next-page').disabled = (pdfCurrentPageNum >= pdfTotalPages);
+        function updateZoomLevel() {
             $('pdf-zoom-level').textContent = `${Math.round(pdfScale * 100)}%`;
         }
         
         async function navigateToWordIfNeeded(wordIndex) {
-            const word = wordMap.find(w => w.index === wordIndex);
-            if (word && word.page !== pdfCurrentPageNum) {
-                await renderPage(word.page);
-            }
+            // In continuous view, no need to navigate to specific pages
+            // All pages are already rendered in the current view
         }
 
         function scrollToWord(wordIndex) {
             const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
             if (wordSpan) {
                 wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // --- NEW FEATURES --- //
+        async function startReading() {
+            if (wordMap.length === 0) return showError('No PDF loaded');
+            
+            // Find the first word (word with index 0)
+            const firstWord = wordMap.find(w => w.index === 0);
+            if (!firstWord) return showError('Could not find first word in PDF');
+            
+            await playFromWord(0);
+        }
+
+        function goToCurrentHighlight() {
+            if (!currentChunk || (!isPlaying && !isPaused)) {
+                showError('No audio is currently playing');
+                return;
+            }
+            
+            // Find the first highlighted word span
+            const highlightedSpan = document.querySelector('.text-span.word-playing-chunk');
+            if (highlightedSpan) {
+                highlightedSpan.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center',
+                    inline: 'center'
+                });
+                
+                // Add a temporary highlight effect
+                highlightedSpan.style.animation = 'pulse 2s ease-in-out';
+                    setTimeout(() => {
+                    highlightedSpan.style.animation = '';
+                }, 2000);
+            } else {
+                showError('Current highlight not found in view');
+            }
+        }
+
+        async function renderContinuousView(startPage = 1) {
+            if (pdfRenderingInProgress) return;
+            pdfRenderingInProgress = true;
+            
+            const endPage = Math.min(startPage + 4, pdfTotalPages); // Render 5 pages max
+            currentPageRange = { start: startPage, end: endPage };
+            
+            showLoading(`Rendering pages ${startPage}-${endPage}...`);
+
+            const viewer = $('pdf-viewer');
+            
+            // Only clear if this is the initial render
+            if (startPage === 1) {
+                viewer.innerHTML = '';
+                setupScrollListener();
+            }
+
+            try {
+                for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                    // Check if page already exists (to avoid duplicates)
+                    if (document.querySelector(`[data-page-num="${pageNum}"]`)) continue;
+
+                    const page = await pdfDoc.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: pdfScale });
+
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'pdf-page';
+                    pageDiv.dataset.pageNum = pageNum;
+                    pageDiv.style.width = `${viewport.width}px`;
+                    pageDiv.style.height = `${viewport.height}px`;
+                    pageDiv.style.marginBottom = '20px';
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    pageDiv.appendChild(canvas);
+
+                    const textLayer = document.createElement('div');
+                    textLayer.className = 'text-layer';
+                    pageDiv.appendChild(textLayer);
+                    
+                    viewer.appendChild(pageDiv);
+
+                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+                    // Add word spans for this page
+                    const wordsOnPage = wordMap.filter(w => w.page === pageNum);
+                    if (wordsOnPage.length > 0) {
+                        const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
+                        const scaleX = viewport.width / originalPage.width;
+                        const scaleY = viewport.height / originalPage.height;
+
+                        for (const word of wordsOnPage) {
+                            const span = document.createElement('span');
+                            span.className = 'text-span';
+                            span.dataset.wordIndex = word.index;
+                            
+                            const style = span.style;
+                            style.left = `${word.x * scaleX}px`;
+                            style.top = `${word.y * scaleY}px`;
+                            style.width = `${word.width * scaleX}px`;
+                            style.height = `${word.height * scaleY}px`;
+
+                            span.addEventListener('click', () => playFromWord(word.index));
+                            textLayer.appendChild(span);
+                        }
+                    }
+                }
+            } catch (error) {
+                showError('Failed to render continuous view: ' + error.message);
+            } finally {
+                pdfRenderingInProgress = false;
+                hideLoading();
+                if (isPlaying || isPaused) updateHighlighting();
+            }
+        }
+
+        function setupScrollListener() {
+            const viewer = $('pdf-viewer');
+            let scrollTimeout;
+
+            viewer.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    updateCurrentViewingPage();
+                    maintainSlidingWindow();
+                }, 100); // Debounce scroll events
+            });
+        }
+
+        function updateCurrentViewingPage() {
+            const viewer = $('pdf-viewer');
+            const viewerRect = viewer.getBoundingClientRect();
+            const viewerTop = viewerRect.top;
+            const viewerMiddle = viewerTop + (viewerRect.height / 2);
+
+            // Find which page is currently in the middle of the viewport
+            const pageElements = document.querySelectorAll('[data-page-num]');
+            for (const pageEl of pageElements) {
+                const pageRect = pageEl.getBoundingClientRect();
+                if (pageRect.top <= viewerMiddle && pageRect.bottom >= viewerMiddle) {
+                    const pageNum = parseInt(pageEl.dataset.pageNum);
+                    if (pageNum !== currentViewingPage) {
+                        currentViewingPage = pageNum;
+                        console.log(`Now viewing page ${currentViewingPage}`);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function maintainSlidingWindow() {
+            const targetEnd = Math.min(currentViewingPage + 4, pdfTotalPages); // Always keep 5 pages ahead
+
+            // Check if we need to load new pages
+            if (targetEnd > currentPageRange.end) {
+                loadSlidingPages(currentPageRange.end + 1, targetEnd);
+            }
+
+            // Update our tracking (only extend the range, never shrink it)
+            currentPageRange.end = Math.max(currentPageRange.end, targetEnd);
+        }
+
+
+
+        async function loadSlidingPages(startPage, endPage) {
+            if (startPage > endPage || startPage > pdfTotalPages) return;
+            
+            console.log(`Loading sliding window: pages ${startPage}-${endPage}`);
+            showLoading(`Loading page ${startPage}${endPage > startPage ? `-${endPage}` : ''}...`);
+
+            try {
+                for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
+                    if (pageNum <= pdfTotalPages) {
+                        await renderSinglePage(pageNum);
+                    }
+                }
+                    } catch (error) {
+                showError('Failed to load pages: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function renderSinglePage(pageNum) {
+            if (document.querySelector(`[data-page-num="${pageNum}"]`)) return; // Already exists
+
+            const viewer = $('pdf-viewer');
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: pdfScale });
+
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'pdf-page';
+            pageDiv.dataset.pageNum = pageNum;
+            pageDiv.style.width = `${viewport.width}px`;
+            pageDiv.style.height = `${viewport.height}px`;
+            pageDiv.style.marginBottom = '20px';
+
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            pageDiv.appendChild(canvas);
+
+            const textLayer = document.createElement('div');
+            textLayer.className = 'text-layer';
+            pageDiv.appendChild(textLayer);
+            
+            viewer.appendChild(pageDiv);
+
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+            // Add word spans for this page
+            const wordsOnPage = wordMap.filter(w => w.page === pageNum);
+            if (wordsOnPage.length > 0) {
+                const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
+                const scaleX = viewport.width / originalPage.width;
+                const scaleY = viewport.height / originalPage.height;
+
+                for (const word of wordsOnPage) {
+                    const span = document.createElement('span');
+                    span.className = 'text-span';
+                    span.dataset.wordIndex = word.index;
+                    
+                    const style = span.style;
+                    style.left = `${word.x * scaleX}px`;
+                    style.top = `${word.y * scaleY}px`;
+                    style.width = `${word.width * scaleX}px`;
+                    style.height = `${word.height * scaleY}px`;
+
+                    span.addEventListener('click', () => playFromWord(word.index));
+                    textLayer.appendChild(span);
+                }
+            }
+        }
+
+        function showGoToCurrentButton() {
+            const goToBtn = $('go-to-current');
+            if (goToBtn) {
+                goToBtn.classList.remove('hidden');
+            }
+        }
+        
+        function hideGoToCurrentButton() {
+            const goToBtn = $('go-to-current');
+            if (goToBtn) {
+                goToBtn.classList.add('hidden');
             }
         }
 
@@ -399,6 +651,7 @@
             isPaused = false;
             
             $('sticky-audio-player').classList.add('active');
+            showGoToCurrentButton(); // Show the go to current button when audio starts
             setTimeout(() => {
                 applyPreferencesToUI();
             }, 100);
@@ -428,9 +681,9 @@
                 stopPlayback();
                 return;
             }
-
+            
             const nextChunk = getChunkStartingAt(nextChunkStartIndex);
-            if (!nextChunk) {
+                if (!nextChunk) {
                 stopPlayback();
                 return;
             }
@@ -456,9 +709,9 @@
 
         function togglePlayPause() {
             if (!currentChunk) return;
-            if (isPlaying && !isPaused) { 
+                if (isPlaying && !isPaused) {
                 if (gaplessPlayer) { isPaused = true; isPlaying = false; gaplessPlayer.pause(); updatePlayPauseButtons('play'); }
-            } else if (isPaused) { 
+                } else if (isPaused) {
                 if (gaplessPlayer) { isPaused = false; isPlaying = true; gaplessPlayer.resume(); updatePlayPauseButtons('pause'); }
             }
         }
@@ -467,7 +720,8 @@
             isPlaying = false; isPaused = false; currentChunk = null;
             if (gaplessPlayer) gaplessPlayer.stop();
             $('sticky-audio-player').classList.remove('active');
-            updatePlayPauseButtons('play');
+            hideGoToCurrentButton(); // Hide the go to current button when audio stops
+                    updatePlayPauseButtons('play');
             updateHighlighting();
         }
 
@@ -510,20 +764,34 @@
         async function handleVoiceChange(newVoice) {
             selectedModel = newVoice;
             saveUserPreferences();
+            
+            // Apply preferences immediately
             applyPreferencesToUI();
+            
+            // Apply preferences again after a short delay to handle any UI re-rendering
+            setTimeout(() => {
+                applyPreferencesToUI();
+            }, 50);
+            
             audioCache.clear();
             if (isPlaying || isPaused) {
                 const savedIndex = currentChunk.startIndex;
                 const wasPlaying = isPlaying;
                 await stopPlayback();
-                if(wasPlaying) await playFromWord(savedIndex);
+                if(wasPlaying) {
+                    await playFromWord(savedIndex);
+                    // Apply preferences one more time after playback starts
+                    setTimeout(() => {
+                        applyPreferencesToUI();
+                    }, 100);
+                }
             }
         }
 
         function changePlaybackRate(newRate) {
             currentPlaybackRate = String(newRate);
             saveUserPreferences();
-            if (gaplessPlayer) {
+                    if (gaplessPlayer) {
                 gaplessPlayer.changeSpeed(parseFloat(currentPlaybackRate));
             }
         }
@@ -556,8 +824,23 @@
         }
 
         function applyPreferencesToUI() {
-            $('sticky-voice-select').value = selectedModel;
-            $('sticky-speed-select').value = currentPlaybackRate;
+            const voiceSelect = $('sticky-voice-select');
+            const speedSelect = $('sticky-speed-select');
+            
+            if (voiceSelect) {
+                voiceSelect.value = selectedModel;
+            }
+            
+            if (speedSelect) {
+                speedSelect.value = currentPlaybackRate;
+                // Force the change if the value didn't take
+                if (speedSelect.value !== currentPlaybackRate) {
+                    // Try setting each option manually
+                    Array.from(speedSelect.options).forEach(option => {
+                        option.selected = (option.value === currentPlaybackRate);
+                    });
+                }
+            }
         }
 
         function updateFileInfo(name, wordCount) {

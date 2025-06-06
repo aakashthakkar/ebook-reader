@@ -643,31 +643,34 @@
             $('top-go-to-current').classList.remove('flex');
         }
 
-        async function loadChunk(chunk) {
+        async function loadChunk(chunk, showIndicator = true) {
             const cacheKey = `${chunk.id}-${selectedModel}`;
             if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
-            showLoading('Generating audio...');
+            if (showIndicator) showLoading('Generating audio...');
             
-            const response = await fetch('/api/generate-audio', {
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: chunk.text, model: selectedModel })
-            });
+            try {
+                const response = await fetch('/api/generate-audio', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: chunk.text, model: selectedModel })
+                });
 
-            hideLoading();
-            if (!response.ok) throw new Error((await response.json()).error || 'API Error');
-            
-            const data = await response.json();
-            const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
-            const url = URL.createObjectURL(blob);
-            audioCache.set(cacheKey, url);
-            return url;
+                if (!response.ok) throw new Error((await response.json()).error || 'API Error');
+                
+                const data = await response.json();
+                const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                audioCache.set(cacheKey, url);
+                return url;
+            } finally {
+                if (showIndicator) hideLoading();
+            }
         }
 
         async function preloadNextChunk(wordIndex) {
             const chunk = getChunkForWord(wordIndex);
             if (chunk && !audioCache.has(`${chunk.id}-${selectedModel}`)) {
-                await loadChunk(chunk);
+                await loadChunk(chunk, false);
             }
         }
         

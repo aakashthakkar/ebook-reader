@@ -1,40 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF to Audio - Modern Reader (v8.0 PDF)</title>
+    <title>SonicRead - Listen to your PDFs</title>
+    <link rel="icon" href="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 75 33.51'%3e%3cg data-name='Layer 2'%3e%3cpath fill='%236D28D9' d='M75 23.6a10.5 10.5 0 0 1-10.63 9.91H38.82a2.14 2.14 0 0 1-2.12-2.13V3.87a2.34 2.34 0 0 1 1.41-2.24S40.46 0 45.41 0A16.74 16.74 0 0 1 54 2.36a17 17 0 0 1 8 11.08 9.8 9.8 0 0 1 2.71-.37A10.23 10.23 0 0 1 75 23.6ZM33.51 5.61a.83.83 0 1 0-1.65 0c-.7 9.25-1.24 17.92 0 27.14a.83.83 0 0 0 1.65 0c1.33-9.3.77-17.81 0-27.14ZM28.35 8.81a.87.87 0 0 0-1.73 0 103.7 103.7 0 0 0 0 23.95.87.87 0 0 0 1.72 0 93.2 93.2 0 0 0 .01-23.95ZM23.16 8a.84.84 0 0 0-1.67 0c-.79 8.44-1.19 16.32 0 24.74a.83.83 0 0 0 1.66 0c1.23-8.53.85-16.19.01-24.74ZM18 10.41a.86.86 0 0 0-1.72 0 87.61 87.61 0 0 0 0 22.36.85.85 0 0 0 1.69 0A81.68 81.68 0 0 0 18 10.41ZM12.79 16a.85.85 0 0 0-1.7 0c-1.23 5.76-.65 11 .05 16.83a.81.81 0 0 0 1.6 0c.77-5.91 1.36-11.03.05-16.83ZM7.62 15.12a.88.88 0 0 0-1.75 0C4.78 21 5.14 26.18 5.9 32.05c.08.89 1.59.88 1.69 0 .84-5.96 1.23-10.99.03-16.93ZM2.4 18a.88.88 0 0 0-1.75 0c-1 3.95-.69 7.22.07 11.18a.82.82 0 0 0 1.63 0c.88-4.04 1.31-7.24.05-11.18Z'/%3e%3c/g%3e%3c/svg%3e">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     
-    <!-- PDF.js Library for PDF rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        .upload-area {
-            position: relative;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-            backdrop-filter: blur(20px);
-            border: 2px dashed rgba(147, 197, 253, 0.3);
+        :root {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 224.3 76.3% 48%;
         }
-        .upload-area:hover {
-            border-color: #3b82f6;
-            transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
         }
-        .upload-area.dragover {
-            border-color: #3b82f6;
-            transform: scale(1.02);
-        }
-        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        /* PDF Viewer Styles */
-        #pdf-viewer { position: relative; overflow: auto; height: 80vh; background: #52525b; padding: 20px 0; }
+        #pdf-viewer { position: relative; overflow-y: auto; overflow-x: hidden; height: calc(100vh - 80px); /* Full height minus player */ }
         .pdf-page { position: relative; margin: 20px auto; background: white; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
         .pdf-page canvas { display: block; width: 100%; height: auto; }
         .text-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; }
@@ -45,138 +58,166 @@
             transition: all 0.2s ease-in-out;
             background-color: transparent;
         }
-        .text-span:hover { background-color: rgba(59, 130, 246, 0.3) !important; }
-        .text-span.word-playing-chunk { background-color: rgba(34, 197, 94, 0.2) !important; }
-        .text-span.word-next-chunk { background-color: rgba(59, 130, 246, 0.15) !important; }
+        .text-span:hover { background-color: hsla(var(--primary), 0.3) !important; }
+        .text-span.word-playing-chunk { background-color: hsla(142, 71%, 41%, 0.2) !important; }
+        .text-span.word-next-chunk { background-color: hsla(var(--primary), 0.15) !important; }
         .text-span.word-current {
-            background-color: rgba(34, 197, 94, 0.6) !important;
-            animation: pulse 1.5s infinite;
+            background-color: hsla(142, 71%, 41%, 0.6) !important;
+            animation: pulse-word 1.5s infinite;
             z-index: 10 !important;
         }
-        @keyframes pulse { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.05); } }
-        
-        #sticky-audio-player {
-            position: fixed !important; top: 20px !important; right: 20px !important; width: 360px !important;
-            max-width: calc(100vw - 40px) !important; z-index: 9999 !important;
-            background: rgba(15, 23, 42, 0.9) !important; backdrop-filter: blur(20px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important; border-radius: 16px !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important; padding: 20px !important;
-            
-            opacity: 0;
-            visibility: hidden;
-            transform: translateX(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
-        }
-        #sticky-audio-player.active {
-            opacity: 1;
-            visibility: visible;
-            transform: translateX(0);
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { 
-                background-color: rgba(34, 197, 94, 0.2); 
-                transform: scale(1);
-            }
-            50% { 
-                background-color: rgba(34, 197, 94, 0.4); 
-                transform: scale(1.05);
-            }
+        @keyframes pulse-word { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.05); } }
+
+        .upload-area.dragover {
+            border-color: hsl(var(--primary));
+            transform: scale(1.02);
+            background-color: hsl(var(--secondary));
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-gray-200">
-    <nav class="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                    <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg"><i data-lucide="headphones" class="h-6 w-6 text-white"></i></div>
-                            <h1 class="text-xl font-bold text-white">PDF Audio Reader</h1>
-                        </div>
-                <div class="text-sm text-gray-300 hidden md:block flex items-center">
-                    <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2"></i> Click any word to start playing
-                    </div>
-            </div>
-        </div>
-    </nav>
-
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<body class="overscroll-none">
+    <main id="app-container" class="transition-all duration-300">
         <div id="upload-container">
-            <div class="text-center mb-8">
-                <h2 class="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Interactive PDF Listening</h2>
-                <p class="text-lg text-gray-300 max-w-3xl mx-auto">Upload your PDF and click any word to start listening with synchronized text highlighting.</p>
-        </div>
-        <div class="glass-card p-8 mb-8 fade-in">
-            <div id="upload-area" class="upload-area rounded-2xl p-12 text-center cursor-pointer group">
-                    <div class="flex flex-col items-center space-y-4">
-                        <i data-lucide="cloud-upload" class="h-12 w-12 text-blue-400"></i>
-                        <h4 class="text-2xl font-semibold text-white">Drop your PDF here</h4>
-                        <p class="text-lg text-gray-300">or <span class="text-blue-400 font-medium">click to browse</span></p>
+            <header class="absolute top-0 left-0 right-0 p-4">
+                <div class="flex items-center justify-center max-w-5xl mx-auto">
+                     <div class="flex items-center space-x-3">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-500">
+                            <path d="M2.75 12C2.75 11.5858 3.08579 11.25 3.5 11.25H4.25C4.66421 11.25 5 11.5858 5 12V16C5 16.4142 4.66421 16.75 4.25 16.75H3.5C3.08579 16.75 2.75 16.4142 2.75 16V12Z" fill="currentColor" />
+                            <path d="M6.75 8C6.75 7.58579 7.08579 7.25 7.5 7.25H8.25C8.66421 7.25 9 7.58579 9 8V16C9 16.4142 8.66421 16.75 8.25 16.75H7.5C7.08579 16.75 6.75 16.4142 6.75 16V8Z" fill="currentColor" />
+                            <path d="M10.75 10C10.75 9.58579 11.0858 9.25 11.5 9.25H12.25C12.6642 9.25 13 9.58579 13 10V16C13 16.4142 12.6642 16.75 12.25 16.75H11.5C11.0858 16.75 10.75 16.4142 10.75 16V10Z" fill="currentColor" />
+                            <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
+                            <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
+                        </svg>
+                        <h1 class="text-xl font-bold">SonicRead</h1>
                     </div>
-                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
-                <div id="upload-loading" class="hidden mt-8">
+                </div>
+            </header>
+            <div class="min-h-screen flex items-center justify-center p-4">
+                <div class="text-center w-full max-w-2xl">
+                    <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">Listen to your PDFs, hands-free.</h2>
+                    <p class="text-lg md:text-xl text-slate-400 mb-8 max-w-xl mx-auto">Upload any PDF and have it read out to you with perfectly synced text highlighting.</p>
+
+                    <div id="upload-area" class="upload-area bg-slate-900/50 border-2 border-dashed border-slate-700 rounded-2xl p-8 md:p-12 text-center cursor-pointer group transition-all duration-300 hover:border-blue-500 hover:bg-slate-800/60">
+                        <div class="flex flex-col items-center space-y-4">
+                            <i data-lucide="upload-cloud" class="h-16 w-16 text-slate-500 group-hover:text-blue-500 transition-colors"></i>
+                            <h4 class="text-2xl font-semibold text-slate-200">Drop your PDF here</h4>
+                            <p class="text-lg text-slate-400">or <span class="text-blue-400 font-medium">click to browse</span></p>
+                        </div>
+                        <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                    </div>
+                    
+                    <div id="upload-loading" class="hidden mt-8">
                         <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
                         <p class="text-lg font-medium text-blue-300 mt-4" id="upload-loading-text">Processing PDF...</p>
-                            </div>
-                        </div>
-                <div id="file-info" class="hidden mt-6 p-4 bg-green-500/10 rounded-xl border border-green-500/30">
-                    <div class="font-semibold text-green-300" id="file-name"></div>
-                    <div class="text-sm text-green-200"><span id="word-count"></span> words • <span id="chunk-count"></span> audio segments</div>
                     </div>
-                </div>
-            </div>
 
-        <div id="pdf-display" class="hidden fade-in">
-            <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
-                <h3 class="text-xl font-semibold text-white">Interactive PDF Viewer</h3>
-                <button id="read-another-pdf-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all">Read Another PDF</button>
+                    <div id="file-info" class="hidden mt-6 p-4 bg-green-500/10 rounded-xl border border-green-500/30 text-left w-full max-w-md mx-auto">
+                        <div class="font-semibold text-green-300" id="file-name"></div>
+                        <div class="text-sm text-green-200"><span id="word-count"></span> words • <span id="chunk-count"></span> audio segments</div>
                     </div>
-            <div class="bg-black/20 backdrop-blur-sm rounded-xl p-3 mb-4 border border-white/10">
-                <div class="flex items-center justify-between flex-wrap gap-3">
-                <div class="flex items-center space-x-2">
-                        <button id="pdf-start-reading" class="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-md text-sm font-medium"><i data-lucide="play" class="h-4 w-4 mr-1"></i>Start Reading</button>
-                        <button id="go-to-current" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-md text-sm font-medium hidden"><i data-lucide="target" class="h-4 w-4 mr-1"></i>Go to Current</button>
-                </div>
-                <div class="flex items-center space-x-2">
-                        <button id="pdf-zoom-out" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="zoom-out" class="h-5 w-5"></i></button>
-                        <span id="pdf-zoom-level" class="text-sm font-medium w-16 text-center">100%</span>
-                        <button id="pdf-zoom-in" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="zoom-in" class="h-5 w-5"></i></button>
-                        <button id="pdf-fit-width" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="move-horizontal" class="h-5 w-5"></i></button>
                 </div>
             </div>
-            </div>
-            <div id="loading-indicator" class="hidden mb-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30 flex items-center text-blue-300">
-                <div class="spinner h-4 w-4 border-2 border-blue-300 border-t-transparent rounded-full mr-2"></div>
-                <span id="loading-text"></span>
-                            </div>
-            <div id="pdf-container" class="glass-card rounded-xl overflow-hidden"><div id="pdf-viewer"></div></div>
-                            </div>
-        <div id="error-section" class="hidden mt-4 bg-red-500/20 p-4 rounded-xl border border-red-500/30"><p id="error-message" class="text-red-200"></p></div>
         </div>
 
-    <div id="sticky-audio-player">
-        <div class="flex items-center justify-between mb-4">
-            <span class="text-xs text-gray-300 font-medium flex items-center"><div class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>Now Playing</span>
-            <button id="sticky-close-btn" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="h-4 w-4 text-gray-400"></i></button>
-                </div>
-            <div class="flex items-center space-x-4">
-            <button id="sticky-play-pause-btn" class="p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"><i data-lucide="pause" class="h-5 w-5 text-white"></i></button>
-            <div class="flex-1 space-y-2">
-                <select id="sticky-voice-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 border border-gray-600/50 focus:border-blue-400 outline-none">
-                    {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
-                            </select>
-                <select id="sticky-speed-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 border border-gray-600/50 focus:border-blue-400 outline-none">
-                    <option value="0.75">0.75x</option><option value="1.0">1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
-                            </select>
+        <div id="pdf-display" class="hidden">
+            <div id="pdf-top-bar" class="fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700 shadow-md">
+                <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+                    <div class="flex items-center justify-between h-16">
+                        <div class="flex items-center space-x-1 sm:space-x-2">
+                             <button id="pdf-start-reading" class="flex items-center gap-2 px-2 md:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all"><i data-lucide="play-circle" class="h-5 w-5"></i><span class="hidden md:inline">Start Reading</span></button>
+                             <button id="top-go-to-current" class="hidden items-center gap-2 px-2 md:px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-all"><i data-lucide="crosshair" class="h-5 w-5"></i><span class="hidden md:inline">Go to Current</span></button>
                         </div>
-            <button id="sticky-stop-btn" class="p-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300"><i data-lucide="square" class="h-5 w-5"></i></button>
+                        <div class="flex items-center space-x-1 text-slate-300">
+                             <button id="pdf-zoom-out" class="p-2 rounded-md hover:bg-slate-700 transition-colors"><i data-lucide="zoom-out" class="h-5 w-5"></i></button>
+                             <span id="pdf-zoom-level" class="text-sm font-medium w-14 sm:w-16 text-center">100%</span>
+                             <button id="pdf-zoom-in" class="p-2 rounded-md hover:bg-slate-700 transition-colors"><i data-lucide="zoom-in" class="h-5 w-5"></i></button>
+                        </div>
+                        <div class="flex items-center space-x-1 sm:space-x-2">
+                             <span id="pdf-page-indicator" class="text-sm font-medium text-slate-400 w-20 sm:w-24 text-center">Page 1 / 1</span>
+                             <button id="pdf-fit-width" class="p-2 rounded-md hover:bg-slate-700 transition-colors hidden sm:block"><i data-lucide="move-horizontal" class="h-5 w-5"></i></button>
+                             <button id="top-read-another-pdf-btn" class="flex items-center gap-2 px-2 md:px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all"><i data-lucide="file-plus-2" class="h-5 w-5"></i><span class="hidden md:inline">New PDF</span></button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
+
+            <div id="pdf-container" class="bg-slate-800 pt-16">
+                <div id="pdf-viewer"></div>
+            </div>
+            <div id="loading-indicator" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-4 bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-700 shadow-lg z-50">
+                <div class="flex items-center text-slate-300">
+                    <div class="spinner h-5 w-5 border-2 border-slate-300 border-t-transparent rounded-full mr-3"></div>
+                    <span id="loading-text"></span>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-section" class="hidden fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-red-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]">
+            <p id="error-message"></p>
+        </div>
+    </main>
+
+    <div id="sticky-audio-player" class="fixed bottom-0 left-0 right-0 z-[9999] bg-slate-900/80 backdrop-blur-xl border-t border-slate-700 transform translate-y-full transition-transform duration-300 ease-in-out">
+        <!-- This is the player for larger screens -->
+        <div class="hidden sm:flex items-center justify-between p-4 max-w-5xl mx-auto">
+             <div class="flex items-center gap-4">
+                <button id="sticky-play-pause-btn" class="p-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all"><i data-lucide="pause" class="h-6 w-6"></i></button>
+                <div class="flex items-center gap-3">
+                    <div class="text-sm text-slate-400">Voice:</div>
+                    <select id="sticky-voice-select" class="bg-slate-800 text-white text-sm rounded-md px-3 py-1.5 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                        {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-center gap-3">
+                     <div class="text-sm text-slate-400">Speed:</div>
+                     <select id="sticky-speed-select" class="bg-slate-800 text-white text-sm rounded-md px-3 py-1.5 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                        <option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
+                     </select>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="sticky-stop-btn" class="p-2.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all"><i data-lucide="x" class="h-6 w-6"></i></button>
+            </div>
+        </div>
+
+        <!-- This is the player for mobile screens -->
+        <div class="sm:hidden flex flex-col p-4 gap-4">
+            <div class="flex items-center justify-between">
+                 <div class="flex items-center gap-3">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-500">
+                        <path d="M2.75 12C2.75 11.5858 3.08579 11.25 3.5 11.25H4.25C4.66421 11.25 5 11.5858 5 12V16C5 16.4142 4.66421 16.75 4.25 16.75H3.5C3.08579 16.75 2.75 16.4142 2.75 16V12Z" fill="currentColor" />
+                        <path d="M6.75 8C6.75 7.58579 7.08579 7.25 7.5 7.25H8.25C8.66421 7.25 9 7.58579 9 8V16C9 16.4142 8.66421 16.75 8.25 16.75H7.5C7.08579 16.75 6.75 16.4142 6.75 16V8Z" fill="currentColor" />
+                        <path d="M10.75 10C10.75 9.58579 11.0858 9.25 11.5 9.25H12.25C12.6642 9.25 13 9.58579 13 10V16C13 16.4142 12.6642 16.75 12.25 16.75H11.5C11.0858 16.75 10.75 16.4142 10.75 16V10Z" fill="currentColor" />
+                        <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
+                        <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
+                    </svg>
+                    <div class="text-sm font-medium">Now Playing</div>
+                </div>
+                 <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
+            </div>
+            <div class="flex items-center justify-between">
+                <button id="mobile-speed-btn" class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 text-sm font-bold">1.0x</button>
+                <div class="flex items-center gap-4">
+                     <button id="mobile-rewind-btn" class="p-3 text-slate-300"><i data-lucide="rewind" class="h-6 w-6"></i></button>
+                     <button id="mobile-play-pause-btn" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-500/30"><i data-lucide="pause" class="h-8 w-8"></i></button>
+                     <button id="mobile-forward-btn" class="p-3 text-slate-300"><i data-lucide="fast-forward" class="h-6 w-6"></i></button>
+                </div>
+                <button id="mobile-options-btn" class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800"><i data-lucide="more-horizontal" class="h-6 w-6"></i></button>
+            </div>
+             <!-- Mobile options panel -->
+            <div id="mobile-options-panel" class="hidden bg-slate-800 rounded-lg p-4">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label for="mobile-voice-select" class="text-sm text-slate-400">Voice</label>
+                        <select id="mobile-voice-select" class="bg-slate-700 text-white text-sm rounded-md px-3 py-1.5 border border-slate-600 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                             {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <audio id="audio-player-element" style="display:none;"></audio>
 
     <script>
@@ -184,11 +225,11 @@
         
         // --- GLOBAL STATE --- //
         let wordMap = [];
-        let pdfDoc = null, pdfTotalPages = 0, pdfCurrentPageNum = 1, pdfScale = 1.5, pdfRenderingInProgress = false;
+        let pdfDoc = null, pdfTotalPages = 0, pdfScale = 1.0;
         let audioCache = new Map(), gaplessPlayer = null, isPlaying = false, isPaused = false, currentChunk = null;
-        let currentPlaybackRate = "1.0", selectedModel = 'edge-tts-andrew';
-        let currentPageRange = { start: 1, end: 5 }; // Track which pages are currently rendered
-        let currentViewingPage = 1; // Track which page user is currently viewing
+        let currentPlaybackRate = 1.0, selectedModel = 'edge-tts-andrew';
+        let currentViewingPage = 1;
+        let isViewChanging = false;
 
         const $ = (id) => document.getElementById(id);
         
@@ -207,19 +248,35 @@
             uploadArea.addEventListener('click', () => $('pdf-input').click());
             $('pdf-input').addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
             
+            // Desktop player controls
             $('sticky-play-pause-btn').addEventListener('click', togglePlayPause);
-            $('sticky-stop-btn').addEventListener('click', stopPlayback);
-            $('sticky-close-btn').addEventListener('click', stopPlayback);
-            $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(parseFloat(e.target.value)));
+            $('sticky-stop-btn').addEventListener('click', closePlayer);
+            $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
-            
-            $('read-another-pdf-btn').addEventListener('click', resetToUpload);
-            
+
+            // Top bar controls
+            $('pdf-start-reading').addEventListener('click', () => playFromWord(0));
+            $('top-go-to-current').addEventListener('click', goToCurrentHighlight);
+            $('pdf-zoom-in').addEventListener('click', () => { changeZoom(0.25); });
+            $('pdf-zoom-out').addEventListener('click', () => { changeZoom(-0.25); });
+            $('pdf-fit-width').addEventListener('click', async () => { await fitToWidth(); await rerenderVisiblePages(); });
+            $('top-read-another-pdf-btn').addEventListener('click', resetToUpload);
+
+            // Mobile player controls
+            $('mobile-play-pause-btn').addEventListener('click', togglePlayPause);
+            $('mobile-sticky-stop-btn').addEventListener('click', closePlayer);
+            $('mobile-speed-btn').addEventListener('click', cyclePlaybackSpeed);
+            $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
+            $('mobile-options-btn').addEventListener('click', () => $('mobile-options-panel').classList.toggle('hidden'));
+            $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
+            $('mobile-forward-btn').addEventListener('click', () => seek(10));
+
             document.addEventListener('keydown', (e) => { 
-                if (document.activeElement.tagName !== 'INPUT' && e.key === ' ') { 
-            e.preventDefault();
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+                if (e.key === ' ') { 
+                    e.preventDefault();
                     togglePlayPause(); 
-                } 
+                }
             });
         }
 
@@ -234,12 +291,7 @@
             formData.append('file', file);
 
             try {
-                // 1. Upload and get word data from server
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
+                const response = await fetch('/api/upload', { method: 'POST', body: formData });
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || 'Server error during PDF processing');
@@ -248,19 +300,20 @@
                 const data = await response.json();
                 wordMap = data.words;
 
-                // 2. Concurrently, load PDF for rendering on client
                 const arrayBuffer = await file.arrayBuffer();
                 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                pdfDoc = await loadingTask.promise;
                 pdfTotalPages = pdfDoc.numPages;
 
-                // 3. Update UI and render
                 updateFileInfo(data.filename, data.word_count);
                 $('upload-container').classList.add('hidden');
                 $('pdf-display').classList.remove('hidden');
                 
-                setupPdfControls();
-                await renderContinuousView();
+                await fitToWidth();
+                await renderInitialView();
+                setupScrollListener();
+                updatePageIndicator();
 
             } catch (error) {
                 showError('Failed to process PDF: ' + error.message);
@@ -271,365 +324,233 @@
             }
         }
         
-        async function renderPage(pageNum) {
-            if (pdfRenderingInProgress) return;
-            pdfRenderingInProgress = true;
-            pdfCurrentPageNum = pageNum;
-            $('pdf-page-input').value = pageNum;
-            showLoading('Rendering page...');
-
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: pdfScale });
-
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'pdf-page';
-            pageDiv.style.width = `${viewport.width}px`;
-            pageDiv.style.height = `${viewport.height}px`;
-
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            pageDiv.appendChild(canvas);
-
-            const textLayer = document.createElement('div');
-            textLayer.className = 'text-layer';
-            pageDiv.appendChild(textLayer);
+        async function renderInitialView() {
+            showLoading(`Rendering initial pages...`);
+            const viewer = $('pdf-viewer');
+            viewer.innerHTML = '';
             
-            $('pdf-viewer').innerHTML = '';
-            $('pdf-viewer').appendChild(pageDiv);
+            const numPagesToRender = Math.min(5, pdfTotalPages);
 
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-            const wordsOnPage = wordMap.filter(w => w.page === pageNum);
-            if (wordsOnPage.length === 0) {
-                pdfRenderingInProgress = false;
-                hideLoading();
-                updatePdfNavButtons();
-                return;
+            for (let pageNum = 1; pageNum <= numPagesToRender; pageNum++) {
+                await renderSinglePage(pageNum, viewer);
             }
 
-            const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
-            const scaleX = viewport.width / originalPage.width;
-            const scaleY = viewport.height / originalPage.height;
-
-            for (const word of wordsOnPage) {
-                const span = document.createElement('span');
-                span.className = 'text-span';
-                span.dataset.wordIndex = word.index;
-                
-                const style = span.style;
-                style.left = `${word.x * scaleX}px`;
-                style.top = `${word.y * scaleY}px`;
-                style.width = `${word.width * scaleX}px`;
-                style.height = `${word.height * scaleY}px`;
-
-                span.addEventListener('click', () => playFromWord(word.index));
-                textLayer.appendChild(span);
-            }
-
-            pdfRenderingInProgress = false;
             hideLoading();
-            updatePdfNavButtons();
             if (isPlaying || isPaused) updateHighlighting();
         }
 
-        function setupPdfControls() {
-            $('pdf-start-reading').addEventListener('click', startReading);
-            $('go-to-current').addEventListener('click', goToCurrentHighlight);
-            $('pdf-zoom-in').addEventListener('click', () => { pdfScale += 0.25; updateZoomLevel(); renderContinuousView(); });
-            $('pdf-zoom-out').addEventListener('click', () => { if (pdfScale > 0.5) { pdfScale -= 0.25; updateZoomLevel(); renderContinuousView(); }});
-            $('pdf-fit-width').addEventListener('click', async () => {
-                const page = await pdfDoc.getPage(1);
-                pdfScale = $('pdf-viewer').clientWidth / page.getViewport({ scale: 1 }).width;
-                updateZoomLevel();
-                renderContinuousView();
-            });
-            updateZoomLevel(); // Initialize zoom level display
-        }
-
-        function updateZoomLevel() {
-            $('pdf-zoom-level').textContent = `${Math.round(pdfScale * 100)}%`;
-        }
-        
-        async function navigateToWordIfNeeded(wordIndex) {
-            // In continuous view, no need to navigate to specific pages
-            // All pages are already rendered in the current view
-        }
-
-        function scrollToWord(wordIndex) {
-            const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
-            if (wordSpan) {
-                wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }
-
-        // --- NEW FEATURES --- //
-        async function startReading() {
-            if (wordMap.length === 0) return showError('No PDF loaded');
-            
-            // Find the first word (word with index 0)
-            const firstWord = wordMap.find(w => w.index === 0);
-            if (!firstWord) return showError('Could not find first word in PDF');
-            
-            await playFromWord(0);
-        }
-
-        function goToCurrentHighlight() {
-            if (!currentChunk || (!isPlaying && !isPaused)) {
-                showError('No audio is currently playing');
-                return;
-            }
-            
-            // Find the first highlighted word span
-            const highlightedSpan = document.querySelector('.text-span.word-playing-chunk');
-            if (highlightedSpan) {
-                highlightedSpan.scrollIntoView({ 
-                    behavior: 'smooth', 
-                    block: 'center',
-                    inline: 'center'
-                });
-                
-                // Add a temporary highlight effect
-                highlightedSpan.style.animation = 'pulse 2s ease-in-out';
-                    setTimeout(() => {
-                    highlightedSpan.style.animation = '';
-                }, 2000);
-            } else {
-                showError('Current highlight not found in view');
-            }
-        }
-
-        async function renderContinuousView(startPage = 1) {
-            if (pdfRenderingInProgress) return;
-            pdfRenderingInProgress = true;
-            
-            const endPage = Math.min(startPage + 4, pdfTotalPages); // Render 5 pages max
-            currentPageRange = { start: startPage, end: endPage };
-            
-            showLoading(`Rendering pages ${startPage}-${endPage}...`);
-
+        async function renderAllPages() {
+            showLoading(`Rendering ${pdfTotalPages} pages...`);
             const viewer = $('pdf-viewer');
-            
-            // Only clear if this is the initial render
-            if (startPage === 1) {
-                viewer.innerHTML = '';
-                setupScrollListener();
+            viewer.innerHTML = '';
+
+            for (let pageNum = 1; pageNum <= pdfTotalPages; pageNum++) {
+                await renderSinglePage(pageNum, viewer);
             }
 
-            try {
-                for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
-                    // Check if page already exists (to avoid duplicates)
-                    if (document.querySelector(`[data-page-num="${pageNum}"]`)) continue;
+            hideLoading();
+            if (isPlaying || isPaused) updateHighlighting();
+        }
 
-                    const page = await pdfDoc.getPage(pageNum);
-                    const viewport = page.getViewport({ scale: pdfScale });
+        async function renderSinglePage(pageNum, viewer) {
+             try {
+                const page = await pdfDoc.getPage(pageNum);
+                const viewport = page.getViewport({ scale: pdfScale });
 
-                    const pageDiv = document.createElement('div');
-                    pageDiv.className = 'pdf-page';
-                    pageDiv.dataset.pageNum = pageNum;
-                    pageDiv.style.width = `${viewport.width}px`;
-                    pageDiv.style.height = `${viewport.height}px`;
-                    pageDiv.style.marginBottom = '20px';
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'pdf-page';
+                pageDiv.dataset.pageNum = pageNum;
+                pageDiv.style.width = `${viewport.width}px`;
+                pageDiv.style.height = `${viewport.height}px`;
 
-                    const canvas = document.createElement('canvas');
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    pageDiv.appendChild(canvas);
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                pageDiv.appendChild(canvas);
 
-                    const textLayer = document.createElement('div');
-                    textLayer.className = 'text-layer';
-                    pageDiv.appendChild(textLayer);
-                    
-                    viewer.appendChild(pageDiv);
+                const textLayer = document.createElement('div');
+                textLayer.className = 'text-layer';
+                pageDiv.appendChild(textLayer);
+                
+                viewer.appendChild(pageDiv);
 
-                    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 
-                    // Add word spans for this page
-                    const wordsOnPage = wordMap.filter(w => w.page === pageNum);
-                    if (wordsOnPage.length > 0) {
-                        const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
-                        const scaleX = viewport.width / originalPage.width;
-                        const scaleY = viewport.height / originalPage.height;
+                const wordsOnPage = wordMap.filter(w => w.page === pageNum);
+                if (wordsOnPage.length > 0) {
+                    const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
+                    const scaleX = viewport.width / originalPage.width;
+                    const scaleY = viewport.height / originalPage.height;
 
-                        for (const word of wordsOnPage) {
-                            const span = document.createElement('span');
-                            span.className = 'text-span';
-                            span.dataset.wordIndex = word.index;
-                            
-                            const style = span.style;
-                            style.left = `${word.x * scaleX}px`;
-                            style.top = `${word.y * scaleY}px`;
-                            style.width = `${word.width * scaleX}px`;
-                            style.height = `${word.height * scaleY}px`;
+                    for (const word of wordsOnPage) {
+                        const span = document.createElement('span');
+                        span.className = 'text-span';
+                        span.dataset.wordIndex = word.index;
+                        
+                        const style = span.style;
+                        style.left = `${word.x * scaleX}px`;
+                        style.top = `${word.y * scaleY}px`;
+                        style.width = `${word.width * scaleX}px`;
+                        style.height = `${word.height * scaleY}px`;
 
-                            span.addEventListener('click', () => playFromWord(word.index));
-                            textLayer.appendChild(span);
-                        }
+                        span.addEventListener('click', () => playFromWord(word.index));
+                        textLayer.appendChild(span);
                     }
                 }
-            } catch (error) {
-                showError('Failed to render continuous view: ' + error.message);
-            } finally {
-                pdfRenderingInProgress = false;
-                hideLoading();
-                if (isPlaying || isPaused) updateHighlighting();
+            } catch(e) {
+                console.error(`Failed to render page ${pageNum}`, e);
+                showError(`Error rendering page ${pageNum}.`);
             }
+        }
+
+        async function fitToWidth() {
+            if (!pdfDoc) return;
+            const page = await pdfDoc.getPage(1);
+            const containerWidth = $('pdf-container').clientWidth;
+            pdfScale = containerWidth / page.getViewport({ scale: 1 }).width;
+            updateZoomLevel();
         }
 
         function setupScrollListener() {
             const viewer = $('pdf-viewer');
             let scrollTimeout;
+            
+            viewer.addEventListener('scroll', async () => {
+                if (isViewChanging) return;
 
-            viewer.addEventListener('scroll', () => {
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    updateCurrentViewingPage();
-                    maintainSlidingWindow();
-                }, 100); // Debounce scroll events
-            });
+                const { scrollTop, scrollHeight, clientHeight } = viewer;
+                if (scrollHeight - scrollTop - clientHeight < clientHeight * 1.5) { // Load when 1.5 screens away from bottom
+                    isViewChanging = true;
+                    await maintainSlidingWindow();
+                    isViewChanging = false;
+                }
+                 updateCurrentViewingPage();
+            }, { passive: true });
         }
 
         function updateCurrentViewingPage() {
             const viewer = $('pdf-viewer');
             const viewerRect = viewer.getBoundingClientRect();
-            const viewerTop = viewerRect.top;
-            const viewerMiddle = viewerTop + (viewerRect.height / 2);
+            const viewerMiddle = viewerRect.top + (viewerRect.height / 3);
 
-            // Find which page is currently in the middle of the viewport
             const pageElements = document.querySelectorAll('[data-page-num]');
             for (const pageEl of pageElements) {
                 const pageRect = pageEl.getBoundingClientRect();
                 if (pageRect.top <= viewerMiddle && pageRect.bottom >= viewerMiddle) {
-                    const pageNum = parseInt(pageEl.dataset.pageNum);
-                    if (pageNum !== currentViewingPage) {
-                        currentViewingPage = pageNum;
-                        console.log(`Now viewing page ${currentViewingPage}`);
-                    }
+                    currentViewingPage = parseInt(pageEl.dataset.pageNum);
+                    updatePageIndicator();
                     break;
                 }
             }
         }
 
-        function maintainSlidingWindow() {
-            const targetEnd = Math.min(currentViewingPage + 4, pdfTotalPages); // Always keep 5 pages ahead
-
-            // Check if we need to load new pages
-            if (targetEnd > currentPageRange.end) {
-                loadSlidingPages(currentPageRange.end + 1, targetEnd);
+        function updatePageIndicator() {
+            if (pdfDoc) {
+                $('pdf-page-indicator').textContent = `Page ${currentViewingPage} / ${pdfTotalPages}`;
             }
-
-            // Update our tracking (only extend the range, never shrink it)
-            currentPageRange.end = Math.max(currentPageRange.end, targetEnd);
         }
 
-
-
-        async function loadSlidingPages(startPage, endPage) {
-            if (startPage > endPage || startPage > pdfTotalPages) return;
-            
-            console.log(`Loading sliding window: pages ${startPage}-${endPage}`);
-            showLoading(`Loading page ${startPage}${endPage > startPage ? `-${endPage}` : ''}...`);
-
+        async function maintainSlidingWindow() {
             try {
-                for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
-                    if (pageNum <= pdfTotalPages) {
-                        await renderSinglePage(pageNum);
+                const pageElements = document.querySelectorAll('.pdf-page');
+                const lastRenderedPage = pageElements.length > 0
+                    ? Array.from(pageElements).reduce((max, p) => Math.max(max, parseInt(p.dataset.pageNum)), 0)
+                    : 0;
+
+                if (lastRenderedPage >= pdfTotalPages) return;
+
+                const nextPatoLoad = lastRenderedPage + 1;
+                const endPageToLoad = Math.min(lastRenderedPage + 3, pdfTotalPages); // Load 3 more pages
+
+                if (nextPatoLoad > endPageToLoad) return;
+
+                showLoading(`Loading pages ${nextPatoLoad}-${endPageToLoad}...`);
+                const viewer = $('pdf-viewer');
+                for (let pageNum = nextPatoLoad; pageNum <= endPageToLoad; pageNum++) {
+                    if (!document.querySelector(`[data-page-num="${pageNum}"]`)) {
+                        await renderSinglePage(pageNum, viewer);
                     }
                 }
-                    } catch (error) {
-                showError('Failed to load pages: ' + error.message);
-            } finally {
                 hideLoading();
+            } catch(e) {
+                console.error("Error in maintainSlidingWindow: ", e);
             }
         }
 
-        async function renderSinglePage(pageNum) {
-            if (document.querySelector(`[data-page-num="${pageNum}"]`)) return; // Already exists
+        async function scrollToWord(wordIndex) {
+            if (isViewChanging) return;
 
+            const wordInfo = wordMap[wordIndex];
+            if (!wordInfo) return;
+
+            const targetPageNum = wordInfo.page;
             const viewer = $('pdf-viewer');
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: pdfScale });
+            let pageElement = viewer.querySelector(`[data-page-num="${targetPageNum}"]`);
 
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'pdf-page';
-            pageDiv.dataset.pageNum = pageNum;
-            pageDiv.style.width = `${viewport.width}px`;
-            pageDiv.style.height = `${viewport.height}px`;
-            pageDiv.style.marginBottom = '20px';
-
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            pageDiv.appendChild(canvas);
-
-            const textLayer = document.createElement('div');
-            textLayer.className = 'text-layer';
-            pageDiv.appendChild(textLayer);
-            
-            viewer.appendChild(pageDiv);
-
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-            // Add word spans for this page
-            const wordsOnPage = wordMap.filter(w => w.page === pageNum);
-            if (wordsOnPage.length > 0) {
-                const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
-                const scaleX = viewport.width / originalPage.width;
-                const scaleY = viewport.height / originalPage.height;
-
-                for (const word of wordsOnPage) {
-                    const span = document.createElement('span');
-                    span.className = 'text-span';
-                    span.dataset.wordIndex = word.index;
+            if (!pageElement) {
+                isViewChanging = true;
+                try {
+                    showLoading(`Jumping to page ${targetPageNum}...`);
                     
-                    const style = span.style;
-                    style.left = `${word.x * scaleX}px`;
-                    style.top = `${word.y * scaleY}px`;
-                    style.width = `${word.width * scaleX}px`;
-                    style.height = `${word.height * scaleY}px`;
+                    viewer.innerHTML = '';
+                    
+                    const startPage = Math.max(1, targetPageNum - 2);
+                    const endPage = Math.min(pdfTotalPages, targetPageNum + 2);
 
-                    span.addEventListener('click', () => playFromWord(word.index));
-                    textLayer.appendChild(span);
+                    const fragment = document.createDocumentFragment();
+                    for (let i = startPage; i <= endPage; i++) {
+                        await renderSinglePage(i, fragment);
+                    }
+                    viewer.appendChild(fragment);
+
+                    if (isPlaying || isPaused) updateHighlighting();
+                    
+                    hideLoading();
+                } finally {
+                    isViewChanging = false;
                 }
             }
+            
+            const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+            if (wordSpan) {
+                wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                currentViewingPage = targetPageNum;
+                updatePageIndicator();
+            }
         }
 
-        function showGoToCurrentButton() {
-            const goToBtn = $('go-to-current');
-            if (goToBtn) {
-                goToBtn.classList.remove('hidden');
-            }
-        }
-        
-        function hideGoToCurrentButton() {
-            const goToBtn = $('go-to-current');
-            if (goToBtn) {
-                goToBtn.classList.add('hidden');
-            }
+        async function goToCurrentHighlight() {
+            if (!currentChunk) return showError('Nothing is playing.');
+            const firstWordIndex = currentChunk.startIndex;
+            await scrollToWord(firstWordIndex);
         }
 
         // --- AUDIO PLAYBACK & CHUNKING --- //
-        function getChunkStartingAt(startIndex) {
-            const chunkSize = 100;
-            if (startIndex >= wordMap.length) return null;
+        function getChunkForWord(wordIndex) {
+            if (wordIndex >= wordMap.length) return null;
 
-            let endWordIndex = Math.min(startIndex + chunkSize - 1, wordMap.length - 1);
+            let startIndex = wordIndex;
+            let endIndex = startIndex;
+            let sentenceCount = 0;
+            const targetSentenceCount = 3;
 
-            // Try to end chunk at a sentence break for more natural pauses
-            const lastThirdStartIndex = Math.floor(startIndex + (endWordIndex - startIndex) * 0.6);
-            for (let i = endWordIndex; i > lastThirdStartIndex; i--) {
-                if (wordMap[i].text.endsWith('.')) {
-                    endWordIndex = i;
-                    break;
+            for (let i = startIndex; i < wordMap.length; i++) {
+                endIndex = i;
+                const wordText = wordMap[i].text;
+                if (wordText.match(/[.?!]\s*$/)) {
+                    sentenceCount++;
+                    if (sentenceCount >= targetSentenceCount) {
+                        break;
+                    }
                 }
             }
-
-            const wordsInChunk = wordMap.slice(startIndex, endWordIndex + 1);
+            
+            const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
             const text = wordsInChunk.map(w => w.text).join(' ');
             
             return {
                 startIndex: startIndex,
-                endIndex: endWordIndex,
+                endIndex: endIndex,
                 text: text,
                 id: `chunk-${startIndex}`
             };
@@ -638,26 +559,20 @@
         async function playFromWord(wordIndex) {
             if (isPlaying) await stopPlayback();
             
-            const chunk = getChunkStartingAt(wordIndex);
+            const chunk = getChunkForWord(wordIndex);
             if (!chunk) return showError('Audio chunk not found for this word.');
             
             currentChunk = chunk;
-            updateHighlighting();
             
-            await navigateToWordIfNeeded(wordIndex);
-            scrollToWord(wordIndex);
+            showPlayer();
+            await scrollToWord(wordIndex);
             
             isPlaying = true;
             isPaused = false;
             
-            $('sticky-audio-player').classList.add('active');
-            showGoToCurrentButton(); // Show the go to current button when audio starts
-            setTimeout(() => {
-                applyPreferencesToUI();
-            }, 100);
             updatePlayPauseButtons('pause');
-            showLoading(`Generating audio...`);
-
+            updateHighlighting();
+            
             try {
                 const audioUrl = await loadChunk(chunk);
                 if (!gaplessPlayer) initializeWebAudioPlayer();
@@ -670,28 +585,26 @@
             } catch (error) { 
                 showError('Playback failed: ' + error.message); 
                 stopPlayback(); 
-            } finally { 
-                hideLoading(); 
             }
         }
 
         async function playNextChunk() {
+            if (!currentChunk) { stopPlayback(); return; }
             const nextChunkStartIndex = currentChunk.endIndex + 1;
             if (nextChunkStartIndex >= wordMap.length) {
                 stopPlayback();
                 return;
             }
             
-            const nextChunk = getChunkStartingAt(nextChunkStartIndex);
-                if (!nextChunk) {
+            const nextChunk = getChunkForWord(nextChunkStartIndex);
+            if (!nextChunk) {
                 stopPlayback();
                 return;
             }
             
             currentChunk = nextChunk;
             updateHighlighting();
-            await navigateToWordIfNeeded(currentChunk.startIndex);
-            scrollToWord(currentChunk.startIndex);
+            await scrollToWord(currentChunk.startIndex);
 
             try {
                 const audioUrl = await loadChunk(nextChunk);
@@ -709,49 +622,74 @@
 
         function togglePlayPause() {
             if (!currentChunk) return;
-                if (isPlaying && !isPaused) {
+            if (isPlaying && !isPaused) {
                 if (gaplessPlayer) { isPaused = true; isPlaying = false; gaplessPlayer.pause(); updatePlayPauseButtons('play'); }
-                } else if (isPaused) {
+            } else if (isPaused) {
                 if (gaplessPlayer) { isPaused = false; isPlaying = true; gaplessPlayer.resume(); updatePlayPauseButtons('pause'); }
             }
+        }
+        
+        function closePlayer() {
+            hidePlayer();
+            stopPlayback();
         }
 
         async function stopPlayback() {
             isPlaying = false; isPaused = false; currentChunk = null;
             if (gaplessPlayer) gaplessPlayer.stop();
-            $('sticky-audio-player').classList.remove('active');
-            hideGoToCurrentButton(); // Hide the go to current button when audio stops
-                    updatePlayPauseButtons('play');
+            updatePlayPauseButtons('play');
             updateHighlighting();
+            $('top-go-to-current').classList.add('hidden');
+            $('top-go-to-current').classList.remove('flex');
         }
 
         async function loadChunk(chunk) {
-            if (audioCache.has(chunk.id)) return audioCache.get(chunk.id);
+            const cacheKey = `${chunk.id}-${selectedModel}`;
+            if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
+            showLoading('Generating audio...');
             
             const response = await fetch('/api/generate-audio', {
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: chunk.text, model: selectedModel })
             });
+
+            hideLoading();
             if (!response.ok) throw new Error((await response.json()).error || 'API Error');
             
             const data = await response.json();
             const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
             const url = URL.createObjectURL(blob);
-            audioCache.set(chunk.id, url);
+            audioCache.set(cacheKey, url);
             return url;
         }
 
         async function preloadNextChunk(wordIndex) {
-            const chunk = getChunkStartingAt(wordIndex);
-            if (chunk && !audioCache.has(chunk.id)) {
+            const chunk = getChunkForWord(wordIndex);
+            if (chunk && !audioCache.has(`${chunk.id}-${selectedModel}`)) {
                 await loadChunk(chunk);
+            }
+        }
+        
+        function seek(seconds) {
+            if (!gaplessPlayer) return;
+            const audioEl = $('audio-player-element');
+            const newTime = audioEl.currentTime + seconds;
+            
+            if (newTime < 0) {
+                 // rewind to previous chunk
+                 const prevChunkIndex = currentChunk.startIndex - 1;
+                 if (prevChunkIndex >= 0) playFromWord(prevChunkIndex);
+            } else if (newTime >= audioEl.duration) {
+                playNextChunk();
+            } else {
+                audioEl.currentTime = newTime;
             }
         }
 
         // --- UI & STATE MANAGEMENT --- //
         function updateHighlighting() {
-            document.querySelectorAll('.text-span').forEach(s => s.classList.remove('word-playing-chunk'));
+            document.querySelectorAll('.text-span.word-playing-chunk').forEach(s => s.classList.remove('word-playing-chunk'));
             
             if (!currentChunk || (!isPlaying && !isPaused)) return;
 
@@ -759,47 +697,47 @@
                 const span = document.querySelector(`.text-span[data-word-index="${i}"]`);
                 if (span) span.classList.add('word-playing-chunk');
             }
+            $('top-go-to-current').classList.remove('hidden');
+            $('top-go-to-current').classList.add('flex');
         }
 
         async function handleVoiceChange(newVoice) {
             selectedModel = newVoice;
             saveUserPreferences();
-            
-            // Apply preferences immediately
             applyPreferencesToUI();
             
-            // Apply preferences again after a short delay to handle any UI re-rendering
-            setTimeout(() => {
-                applyPreferencesToUI();
-            }, 50);
-            
-            audioCache.clear();
             if (isPlaying || isPaused) {
                 const savedIndex = currentChunk.startIndex;
                 const wasPlaying = isPlaying;
                 await stopPlayback();
                 if(wasPlaying) {
                     await playFromWord(savedIndex);
-                    // Apply preferences one more time after playback starts
-                    setTimeout(() => {
-                        applyPreferencesToUI();
-                    }, 100);
                 }
             }
         }
 
         function changePlaybackRate(newRate) {
-            currentPlaybackRate = String(newRate);
+            currentPlaybackRate = parseFloat(newRate);
             saveUserPreferences();
-                    if (gaplessPlayer) {
-                gaplessPlayer.changeSpeed(parseFloat(currentPlaybackRate));
+            applyPreferencesToUI();
+            if (gaplessPlayer) {
+                gaplessPlayer.changeSpeed(currentPlaybackRate);
             }
+        }
+
+        function cyclePlaybackSpeed() {
+            const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
+            const currentIndex = speeds.indexOf(currentPlaybackRate);
+            const nextIndex = (currentIndex + 1) % speeds.length;
+            changePlaybackRate(speeds[nextIndex]);
         }
         
         function resetToUpload() {
-            stopPlayback();
+            closePlayer();
             $('pdf-display').classList.add('hidden');
             $('upload-container').classList.remove('hidden');
+            document.body.classList.remove('reading');
+            $('app-container').style.paddingBottom = '0px';
             resetPdfState();
             $('pdf-input').value = '';
         }
@@ -811,36 +749,34 @@
 
         function loadUserPreferences() {
             try {
-                const prefs = JSON.parse(localStorage.getItem('pdf-reader-prefs'));
+                const prefs = JSON.parse(localStorage.getItem('sonic-reader-prefs'));
                 if (prefs) { 
                     selectedModel = prefs.voice || 'edge-tts-andrew'; 
-                    currentPlaybackRate = prefs.speed || "1.0"; 
+                    currentPlaybackRate = parseFloat(prefs.speed || 1.0); 
+                } else {
+                    currentPlaybackRate = 1.0;
                 }
-            } catch (e) { console.error("Could not load user preferences", e); }
+            } catch (e) { 
+                console.error("Could not load user preferences", e); 
+                currentPlaybackRate = 1.0;
+            }
         }
 
         function saveUserPreferences() { 
-            localStorage.setItem('pdf-reader-prefs', JSON.stringify({ voice: selectedModel, speed: currentPlaybackRate })); 
+            localStorage.setItem('sonic-reader-prefs', JSON.stringify({ voice: selectedModel, speed: currentPlaybackRate })); 
         }
 
         function applyPreferencesToUI() {
-            const voiceSelect = $('sticky-voice-select');
-            const speedSelect = $('sticky-speed-select');
+            $('sticky-voice-select').value = selectedModel;
+            $('mobile-voice-select').value = selectedModel;
             
-            if (voiceSelect) {
-                voiceSelect.value = selectedModel;
+            let speedValue = String(currentPlaybackRate);
+            // If the number is an integer (e.g., 1, 2), format it with one decimal place.
+            if (currentPlaybackRate % 1 === 0) {
+                speedValue = currentPlaybackRate.toFixed(1);
             }
-            
-            if (speedSelect) {
-                speedSelect.value = currentPlaybackRate;
-                // Force the change if the value didn't take
-                if (speedSelect.value !== currentPlaybackRate) {
-                    // Try setting each option manually
-                    Array.from(speedSelect.options).forEach(option => {
-                        option.selected = (option.value === currentPlaybackRate);
-                    });
-                }
-            }
+            $('sticky-speed-select').value = speedValue;
+            $('mobile-speed-btn').textContent = `${speedValue}x`;
         }
 
         function updateFileInfo(name, wordCount) {
@@ -872,12 +808,26 @@
             }, 5000);
         }
         
-        function updatePlayPauseButtons(state) {
-            const icon = $('sticky-play-pause-btn').querySelector('i');
-            if (icon) { 
-                icon.setAttribute('data-lucide', state); 
-                lucide.createIcons(); 
-            }
+        function updatePlayPauseButtons(state) { // state is 'play' or 'pause'
+            const iconClass = state === 'pause' ? 'pause' : 'play';
+            $('sticky-play-pause-btn').innerHTML = `<i data-lucide="${iconClass}" class="h-6 w-6"></i>`;
+            $('mobile-play-pause-btn').innerHTML = `<i data-lucide="${iconClass}" class="h-8 w-8"></i>`;
+            lucide.createIcons();
+        }
+        
+        function showPlayer() {
+            const player = $('sticky-audio-player');
+            player.classList.remove('translate-y-full');
+            document.body.classList.add('reading');
+            const playerHeight = player.offsetHeight;
+            $('app-container').style.paddingBottom = `${playerHeight}px`;
+        }
+
+        function hidePlayer() {
+            const player = $('sticky-audio-player');
+            player.classList.add('translate-y-full');
+            document.body.classList.remove('reading');
+            $('app-container').style.paddingBottom = '0px';
         }
 
         // --- WEB AUDIO PLAYER (HTML5 Audio Element based) --- //
@@ -886,13 +836,18 @@
             
             gaplessPlayer = {
                 play: (url, chunkId) => {
-                    audioEl.src = url;
-                    audioEl.playbackRate = parseFloat(currentPlaybackRate);
-                    audioEl.play();
-                    
-                    audioEl.onplaying = () => {
-                        updateHighlighting();
-                    };
+                    return new Promise((resolve, reject) => {
+                        audioEl.src = url;
+                        audioEl.playbackRate = currentPlaybackRate;
+                        audioEl.play().catch(e => {
+                            showError("Playback was interrupted.");
+                            reject(e);
+                        });
+                        
+                        audioEl.onplaying = () => {
+                            resolve();
+                        };
+                    });
                 },
                 pause: () => { 
                     audioEl.pause();
@@ -908,11 +863,10 @@
                     audioEl.load();
                 },
                 changeSpeed: (newRate) => {
-                    currentPlaybackRate = String(newRate);
+                    currentPlaybackRate = newRate;
                     audioEl.playbackRate = newRate;
                     saveUserPreferences();
-                },
-                getSource: () => null // Not applicable for HTML5 audio
+                }
             };
 
             audioEl.onended = () => {
@@ -920,6 +874,44 @@
                     playNextChunk();
                 }
             };
+        }
+
+        async function changeZoom(amount) {
+            if (!pdfDoc) return;
+            pdfScale += amount;
+            pdfScale = Math.max(0.5, Math.min(3, pdfScale)); // Clamp scale
+            updateZoomLevel();
+            await rerenderVisiblePages();
+        }
+
+        function updateZoomLevel() {
+            $('pdf-zoom-level').textContent = `${Math.round(pdfScale * 100)}%`;
+        }
+
+        async function rerenderVisiblePages() {
+            if (!pdfDoc || isViewChanging) return;
+            isViewChanging = true;
+            try {
+                const viewer = $('pdf-viewer');
+                const pageElements = Array.from(viewer.querySelectorAll('[data-page-num]'));
+                const pagesToRender = pageElements.map(el => parseInt(el.dataset.pageNum));
+                
+                showLoading(`Applying zoom...`);
+                
+                viewer.innerHTML = '';
+                
+                const fragment = document.createDocumentFragment();
+                for (const pageNum of pagesToRender) {
+                    await renderSinglePage(pageNum, fragment);
+                }
+                
+                viewer.appendChild(fragment);
+
+                hideLoading();
+                if (isPlaying || isPaused) updateHighlighting();
+            } finally {
+                isViewChanging = false;
+            }
         }
     </script>
 </body>

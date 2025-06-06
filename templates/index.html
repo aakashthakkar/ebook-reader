@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF to Audio - Modern Reader (v7.0)</title>
+    <title>PDF to Audio - Modern Reader (v8.0 PDF)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- PDF.js Library for PDF rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+    
     <style>
-        /* Modern File Upload Styles */
         .upload-area {
             position: relative;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -15,3343 +19,624 @@
             backdrop-filter: blur(20px);
             border: 2px dashed rgba(147, 197, 253, 0.3);
         }
-        
         .upload-area:hover {
             border-color: #3b82f6;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
             transform: translateY(-2px);
             box-shadow: 0 20px 25px -5px rgba(59, 130, 246, 0.1), 0 10px 10px -5px rgba(59, 130, 246, 0.04);
         }
-        
         .upload-area.dragover {
             border-color: #3b82f6;
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%);
             transform: scale(1.02);
-            box-shadow: 0 25px 50px -12px rgba(59, 130, 246, 0.25);
         }
+        .fade-in { animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         
-        /* Modern animations */
-        @keyframes uploadPulse {
-            0%, 100% { transform: scale(1); opacity: 0.6; }
-            50% { transform: scale(1.05); opacity: 1; }
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .upload-icon {
-            animation: float 3s ease-in-out infinite;
-        }
-        
-        .upload-area.dragover .upload-icon {
-            animation: uploadPulse 1s ease-in-out infinite;
-        }
-        
-        .fade-in {
-            animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .spinner {
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        /* Modern Progress Bar */
-        .progress-bar {
-            background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 50%, #3b82f6 100%);
-            background-size: 200% 100%;
-            animation: progressShimmer 2s ease-in-out infinite;
-        }
-        
-        @keyframes progressShimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-        
-        /* Word highlighting for audio segments */
-        .word {
-            display: inline;
+        /* PDF Viewer Styles */
+        #pdf-viewer { position: relative; overflow: auto; height: 80vh; background: #52525b; padding: 20px 0; }
+        .pdf-page { position: relative; margin: 20px auto; background: white; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); }
+        .pdf-page canvas { display: block; width: 100%; height: auto; }
+        .text-layer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2; }
+        .text-span {
+            position: absolute;
+            pointer-events: auto;
             cursor: pointer;
-            padding: 1px 2px;
-            border-radius: 2px;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease-in-out;
+            background-color: transparent;
         }
-        
-        .word:hover {
-            background-color: rgba(59, 130, 246, 0.3);
-            transform: scale(1.02);
-        }
-        
-        .word-current {
+        .text-span:hover { background-color: rgba(59, 130, 246, 0.3) !important; }
+        .text-span.word-playing-chunk { background-color: rgba(34, 197, 94, 0.2) !important; }
+        .text-span.word-next-chunk { background-color: rgba(59, 130, 246, 0.15) !important; }
+        .text-span.word-current {
             background-color: rgba(34, 197, 94, 0.6) !important;
-            color: white;
-            font-weight: bold;
-            animation: pulse 2s infinite;
+            animation: pulse 1.5s infinite;
+            z-index: 10 !important;
         }
+        @keyframes pulse { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.05); } }
         
-        .word-next {
-            background-color: rgba(59, 130, 246, 0.4) !important;
-            border: 1px solid #3b82f6;
-        }
-        
-        .word-playing-chunk {
-            background-color: rgba(34, 197, 94, 0.3) !important;
-        }
-        
-        .word-next-chunk {
-            background-color: rgba(59, 130, 246, 0.2) !important;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.8; }
-        }
-        
-        .loading-text {
-            opacity: 0.6;
-            animation: fadeInOut 1.5s infinite;
-        }
-        
-        @keyframes fadeInOut {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
-        }
-        
-        /* Modern Audio Player Styles */
         #sticky-audio-player {
-            position: fixed !important;
-            top: 20px !important;
-            right: 20px !important;
-            width: 360px !important;
-            max-width: calc(100vw - 40px) !important;
-            z-index: 999999 !important;
-            background: rgba(15, 23, 42, 0.95) !important;
-            backdrop-filter: blur(20px) !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            border-radius: 16px !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-            padding: 20px !important;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            display: none !important;
+            position: fixed !important; top: 20px !important; right: 20px !important; width: 360px !important;
+            max-width: calc(100vw - 40px) !important; z-index: 9999 !important;
+            background: rgba(15, 23, 42, 0.9) !important; backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important; border-radius: 16px !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important; padding: 20px !important;
+            
+            opacity: 0;
+            visibility: hidden;
+            transform: translateX(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
         }
-        
         #sticky-audio-player.active {
-            display: block !important;
-            animation: slideInFromRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0);
         }
-        
-        @keyframes slideInFromRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        /* Modern button styles */
-        .modern-btn {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            color: white;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        }
-        
-        .modern-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
-            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
-        }
-        
-        .modern-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
-        }
-        
-        /* Responsive design */
-        @media (max-width: 640px) {
-            #sticky-audio-player {
-                top: 10px !important;
-                right: 10px !important;
-                left: 10px !important;
-                width: auto !important;
-                max-width: none !important;
-            }
-        }
-        
-        /* Glass morphism effect */
         .glass-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Success animation */
-        @keyframes checkmark {
-            0% { transform: scale(0); opacity: 0; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        
-        .success-checkmark {
-            animation: checkmark 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px;
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
-    <!-- Modern Header -->
+<body class="bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen text-gray-200">
     <nav class="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center">
-                    <div class="flex items-center space-x-3">
-                        <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
-                            <i data-lucide="headphones" class="h-6 w-6 text-white"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-xl font-bold text-white">PDF Audio Reader</h1>
-                            <span class="text-xs text-purple-300">Modern Experience v7.0</span>
-                        </div>
-                    </div>
-                    <span class="ml-4 px-3 py-1 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs rounded-full font-bold animate-pulse">CLICK-TO-PLAY</span>
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg"><i data-lucide="headphones" class="h-6 w-6 text-white"></i></div>
+                    <h1 class="text-xl font-bold text-white">PDF Audio Reader</h1>
                 </div>
-                <div class="text-sm text-gray-300 hidden md:block">
-                    <span class="flex items-center">
-                        <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2"></i>
-                        Click any word to start playing from that position
-                    </span>
+                <div class="text-sm text-gray-300 hidden md:block flex items-center">
+                    <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2"></i> Click any word to start playing
                 </div>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Hero Section -->
-        <div class="text-center mb-12">
-            <h2 class="text-5xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Interactive Reading & Listening
-            </h2>
-            <p class="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                Upload your PDF and click any word to start listening from that position. Experience seamless audio generation with beautiful visual feedback.
-            </p>
-        </div>
-
-        <!-- Modern Upload Section -->
-        <div class="glass-card p-8 mb-8 fade-in">
-            <h3 class="text-2xl font-semibold text-white mb-6 flex items-center">
-                <div class="p-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg mr-3">
-                    <i data-lucide="upload" class="h-5 w-5 text-white"></i>
-                </div>
-                Step 1: Upload Your PDF
-            </h3>
-            
-            <div id="upload-area" class="upload-area rounded-2xl p-12 text-center cursor-pointer group">
-                <div class="flex flex-col items-center space-y-6">
-                    <!-- Upload Icon with Animation -->
-                    <div class="upload-icon relative">
-                        <div class="absolute inset-0 bg-blue-500/20 rounded-full blur-xl scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        <div class="relative p-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full shadow-2xl">
-                            <i data-lucide="cloud-upload" class="h-12 w-12 text-white"></i>
-                        </div>
-                    </div>
-                    
-                    <!-- Upload Text -->
-                    <div class="space-y-2">
+        <div id="upload-container">
+            <div class="text-center mb-8">
+                <h2 class="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">Interactive PDF Listening</h2>
+                <p class="text-lg text-gray-300 max-w-3xl mx-auto">Upload your PDF and click any word to start listening with synchronized text highlighting.</p>
+            </div>
+            <div class="glass-card p-8 mb-8 fade-in">
+                <div id="upload-area" class="upload-area rounded-2xl p-12 text-center cursor-pointer group">
+                    <div class="flex flex-col items-center space-y-4">
+                        <i data-lucide="cloud-upload" class="h-12 w-12 text-blue-400"></i>
                         <h4 class="text-2xl font-semibold text-white">Drop your PDF here</h4>
                         <p class="text-lg text-gray-300">or <span class="text-blue-400 font-medium">click to browse</span></p>
-                        <p class="text-sm text-gray-400">Supports PDF files up to 100MB</p>
                     </div>
-                    
-                    <!-- Features List -->
-                    <div class="flex flex-wrap justify-center gap-4 mt-6">
-                        <div class="flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2">
-                            <i data-lucide="zap" class="h-4 w-4 text-yellow-400"></i>
-                            <span class="text-sm text-gray-300">Instant Processing</span>
-                        </div>
-                        <div class="flex items-center space-x-2 bg-white/10 rounded-full px-4 py-2">
-                            <i data-lucide="shield-check" class="h-4 w-4 text-green-400"></i>
-                            <span class="text-sm text-gray-300">Secure Upload</span>
-                        </div>
+                    <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                    <div id="upload-loading" class="hidden mt-8">
+                        <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
+                        <p class="text-lg font-medium text-blue-300 mt-4" id="upload-loading-text">Processing PDF...</p>
                     </div>
                 </div>
-                
-                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
-                
-                <!-- Modern Loading Indicator -->
-                <div id="upload-loading" class="hidden mt-8">
-                    <div class="relative">
-                        <!-- Animated Progress Circle -->
-                        <div class="w-16 h-16 mx-auto mb-4 relative">
-                            <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r="40" stroke="rgba(59, 130, 246, 0.3)" stroke-width="8" fill="none"/>
-                                <circle cx="50" cy="50" r="40" stroke="#3b82f6" stroke-width="8" fill="none" 
-                                        stroke-linecap="round" stroke-dasharray="251" stroke-dashoffset="125.5"
-                                        class="progress-circle transition-all duration-500 ease-out"/>
-                            </svg>
-                            <div class="absolute inset-0 flex items-center justify-center">
-                                <i data-lucide="file-text" class="h-6 w-6 text-blue-400 animate-pulse"></i>
-                            </div>
-                        </div>
-                        
-                        <div class="text-center">
-                            <h4 class="text-lg font-medium text-blue-300 mb-2" id="upload-loading-text">Processing PDF...</h4>
-                            <p class="text-sm text-gray-400">Extracting text and preparing for audio generation</p>
-                            
-                            <!-- Progress Steps -->
-                            <div class="mt-4 space-y-2">
-                                <div class="flex items-center justify-center space-x-2 text-sm">
-                                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                    <span class="text-gray-300">Reading PDF structure...</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Success State -->
-            <div id="file-info" class="hidden mt-6 p-6 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl border border-green-500/30 backdrop-blur-sm">
-                <div class="flex items-start space-x-4">
-                    <div class="success-checkmark p-2 bg-green-500 rounded-full">
-                        <i data-lucide="check" class="h-5 w-5 text-white"></i>
-                    </div>
-                    <div class="flex-1">
-                        <div class="flex items-center text-green-300 mb-2">
-                            <i data-lucide="file-check" class="h-5 w-5 mr-2"></i>
-                            <span class="font-semibold" id="file-name"></span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 text-sm">
-                            <div class="flex items-center text-green-200">
-                                <i data-lucide="type" class="h-4 w-4 mr-2"></i>
-                                <span><span id="text-length"></span> characters</span>
-                            </div>
-                            <div class="flex items-center text-green-200">
-                                <i data-lucide="hash" class="h-4 w-4 mr-2"></i>
-                                <span><span id="word-count"></span> words</span>
-                            </div>
-                        </div>
-                        <div class="mt-3 flex items-center space-x-3">
-                            <div class="text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full">Ready for audio</div>
-                            <div class="text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full">Click any word to play</div>
-                        </div>
-                    </div>
+                <div id="file-info" class="hidden mt-6 p-4 bg-green-500/10 rounded-xl border border-green-500/30">
+                    <div class="font-semibold text-green-300" id="file-name"></div>
+                    <div class="text-sm text-green-200"><span id="word-count"></span> words • <span id="chunk-count"></span> audio segments</div>
                 </div>
             </div>
         </div>
 
-        <!-- Modern Voice Selection -->
-        <div id="voice-selection" class="hidden glass-card p-8 mb-8 fade-in">
-            <h3 class="text-2xl font-semibold text-white mb-6 flex items-center">
-                <div class="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg mr-3">
-                    <i data-lucide="mic" class="h-5 w-5 text-white"></i>
-                </div>
-                Step 2: Choose Your Voice
-            </h3>
-            
-            <div class="grid gap-6">
-                {% for key, model in models.items() %}
-                <label class="group relative cursor-pointer">
-                    <input type="radio" name="model" value="{{ key }}" class="sr-only peer" {% if key == 'edge-tts-andrew' %}checked{% endif %}>
-                    
-                    <!-- Card Design -->
-                    <div class="relative p-6 rounded-2xl border transition-all duration-300 
-                        {% if key == 'edge-tts-andrew' %}
-                            bg-gradient-to-br from-emerald-500/20 to-green-500/20 border-emerald-500/50 shadow-lg shadow-emerald-500/20
-                            peer-checked:from-emerald-500/30 peer-checked:to-green-500/30 peer-checked:border-emerald-400 peer-checked:shadow-xl peer-checked:shadow-emerald-500/30
-                        {% else %}
-                            bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20
-                            peer-checked:bg-blue-500/20 peer-checked:border-blue-400/50 peer-checked:shadow-lg peer-checked:shadow-blue-500/20
-                        {% endif %}
-                        group-hover:transform group-hover:scale-[1.02] group-hover:shadow-2xl">
-                        
-                        <!-- Selection Indicator -->
-                        <div class="absolute top-4 right-4 w-6 h-6 rounded-full border-2 transition-all duration-300
-                            {% if key == 'edge-tts-andrew' %}
-                                border-emerald-400 bg-emerald-500 peer-checked:border-emerald-300
-                            {% else %}
-                                border-gray-400 peer-checked:border-blue-400 peer-checked:bg-blue-500
-                            {% endif %}">
-                            <div class="absolute inset-0 flex items-center justify-center opacity-0 peer-checked:opacity-100 transition-opacity duration-300">
-                                <i data-lucide="check" class="h-3 w-3 text-white"></i>
-                            </div>
-                        </div>
-                        
-                        <!-- Voice Info -->
-                        <div class="pr-10">
-                            <div class="flex items-center mb-3">
-                                <div class="p-2 rounded-lg mr-3 
-                                    {% if key == 'edge-tts-andrew' %}bg-emerald-500/30{% else %}bg-blue-500/30{% endif %}">
-                                    <i data-lucide="user" class="h-5 w-5 
-                                        {% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %}"></i>
-                                </div>
-                                <div>
-                                    <h4 class="text-lg font-semibold text-white">{{ model.name }}</h4>
-                                    {% if key == 'edge-tts-andrew' %}
-                                    <div class="flex items-center mt-1">
-                                        <span class="px-2 py-1 bg-emerald-500 text-emerald-900 text-xs rounded-full font-bold mr-2">RECOMMENDED</span>
-                                        <span class="px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded-full">BEST QUALITY</span>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <p class="{% if key == 'edge-tts-andrew' %}text-emerald-100{% else %}text-gray-300{% endif %} text-sm mb-4 leading-relaxed">
-                                {{ model.description }}
-                            </p>
-                            
-                            <!-- Features -->
-                            <div class="flex items-center space-x-4">
-                                <div class="flex items-center text-xs">
-                                    <i data-lucide="zap" class="h-4 w-4 mr-1 {% if key == 'edge-tts-andrew' %}text-emerald-400{% else %}text-blue-400{% endif %}"></i>
-                                    <span class="{% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %} font-medium">{{ model.speed }}</span>
-                                </div>
-                                <div class="flex items-center text-xs">
-                                    <i data-lucide="volume-2" class="h-4 w-4 mr-1 {% if key == 'edge-tts-andrew' %}text-emerald-400{% else %}text-blue-400{% endif %}"></i>
-                                    <span class="{% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %} font-medium">High Quality</span>
-                                </div>
-                                <div class="flex items-center text-xs">
-                                    <i data-lucide="globe" class="h-4 w-4 mr-1 {% if key == 'edge-tts-andrew' %}text-emerald-400{% else %}text-blue-400{% endif %}"></i>
-                                    <span class="{% if key == 'edge-tts-andrew' %}text-emerald-300{% else %}text-blue-300{% endif %} font-medium">English</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Hover Effect -->
-                        <div class="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none
-                            {% if key == 'edge-tts-andrew' %}
-                                bg-gradient-to-br from-emerald-500/10 to-green-500/10
-                            {% else %}
-                                bg-gradient-to-br from-blue-500/10 to-purple-500/10
-                            {% endif %}"></div>
-                    </div>
-                </label>
-                {% endfor %}
+        <div id="pdf-display" class="hidden fade-in">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <h3 class="text-xl font-semibold text-white">Interactive PDF Viewer</h3>
+                <button id="read-another-pdf-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all">Read Another PDF</button>
             </div>
-        </div>
-
-        <!-- Text Display with Click-to-Play -->
-        <div id="text-display" class="hidden bg-white/10 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/20">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-2xl font-semibold text-white flex items-center">
-                    <i data-lucide="mouse-pointer-click" class="mr-3"></i>
-                    Click Any Word to Start Playing
-                </h3>
-                <button id="read-another-pdf-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all duration-200 flex items-center space-x-2">
-                    <i data-lucide="upload" class="h-4 w-4"></i>
-                    <span>Read Another PDF</span>
-                </button>
-            </div>
-            
-            <!-- Modern Audio Player - Prominent Position -->
-            <!-- HIDDEN: Using only sticky player now -->
-            <div id="audio-controls" class="hidden mb-8" style="display: none !important;">
-                <div class="max-w-2xl mx-auto">
-                    <div class="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 border border-gray-600 shadow-2xl">
-                        <!-- Progress Bar -->
-                        <div class="mb-6">
-                            <div class="flex items-center justify-between text-sm text-gray-400 mb-3">
-                                <span id="current-time">0:00</span>
-                                <span id="total-time">0:00</span>
-                            </div>
-                            <div class="relative w-full h-3 bg-gray-600 rounded-full cursor-pointer" id="progress-container">
-                                <div id="progress-bar" class="absolute left-0 top-0 h-full bg-blue-500 rounded-full transition-all duration-150"></div>
-                                <div id="progress-handle" class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 w-5 h-5 bg-white rounded-full shadow-lg cursor-pointer transition-all duration-150 border-2 border-blue-500" style="left: 0%"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Main Controls -->
-                        <div class="flex items-center justify-center space-x-8 mb-6">
-                            <!-- Play/Pause Button -->
-                            <button id="play-pause-btn" class="p-5 rounded-full bg-blue-600 hover:bg-blue-700 transition-all duration-200 shadow-lg hover:scale-105">
-                                <i data-lucide="pause" class="h-10 w-10 text-white"></i>
-                            </button>
-                        </div>
-                        
-                        <!-- Secondary Controls -->
-                        <div class="flex items-center justify-between">
-                            <!-- Speed Control -->
-                            <div class="flex items-center space-x-3">
-                                <i data-lucide="gauge" class="h-5 w-5 text-gray-400"></i>
-                                <select id="speed-select" class="bg-gray-700 text-white text-sm rounded-lg px-3 py-2 border border-gray-600 focus:border-blue-500 outline-none">
-                                    <option value="0.5">0.5x</option>
-                                    <option value="0.75">0.75x</option>
-                                    <option value="1.0" selected>1.0x</option>
-                                    <option value="1.25">1.25x</option>
-                                    <option value="1.5">1.5x</option>
-                                    <option value="2.0">2.0x</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Status and Stop -->
-                            <div class="flex items-center space-x-4">
-                                <div id="audio-status" class="text-sm text-gray-400">
-                                    <span id="status-text">Playing...</span>
-                                </div>
-                                <button id="stop-btn" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-all duration-200 flex items-center space-x-2">
-                                    <i data-lucide="square" class="h-4 w-4"></i>
-                                    <span>Stop</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Progress indicator -->
-            <div id="loading-indicator" class="hidden mb-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
-                <div class="flex items-center text-blue-300">
-                    <div class="spinner h-4 w-4 border-2 border-blue-300 border-t-transparent rounded-full mr-2"></div>
-                    <span id="loading-text">Generating audio...</span>
-                </div>
-            </div>
-            
-            <!-- Pagination Controls -->
-            <div class="flex items-center justify-between mb-4 pb-4 border-b border-white/10">
-                <div class="flex items-center space-x-2">
-                    <button id="prev-page" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        <i data-lucide="chevron-left" class="h-4 w-4"></i>
-                    </button>
-                    <span class="text-gray-300 text-sm">Page</span>
-                    <select id="page-select" class="bg-gray-700 text-white px-2 py-1 rounded text-sm border border-gray-600">
-                        <option value="1">1</option>
-                    </select>
-                    <span class="text-gray-300 text-sm">of <span id="total-pages">1</span></span>
-                    <button id="next-page" class="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        <i data-lucide="chevron-right" class="h-4 w-4"></i>
-                    </button>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="text-gray-400 text-sm">Words per page:</span>
-                    <select id="words-per-page" class="bg-gray-700 text-white px-2 py-1 rounded text-sm border border-gray-600">
-                        <option value="500">500</option>
-                        <option value="1000" selected>1000</option>
-                        <option value="2000">2000</option>
-                        <option value="all">All</option>
-                    </select>
-                </div>
-            </div>
-            
-            <!-- Text Content -->
-            <div class="bg-black/30 rounded-lg p-6">
-                <div id="text-content" class="text-gray-300 text-base leading-relaxed min-h-96"></div>
-            </div>
-            
-            <!-- Legend -->
-            <div class="mt-4 p-4 bg-gray-800/50 rounded-lg">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h4 class="text-white text-sm font-semibold mb-2">Color Legend:</h4>
-                        <div class="flex flex-wrap gap-4 text-xs">
-                            <div class="flex items-center">
-                                <div class="w-4 h-4 rounded word-current mr-2"></div>
-                                <span class="text-gray-300">Currently Playing (natural segment)</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-4 h-4 rounded word-next mr-2"></div>
-                                <span class="text-gray-300">Next Segment (ready)</span>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="w-4 h-4 rounded bg-blue-600/30 border border-blue-600 mr-2"></div>
-                                <span class="text-gray-300">Clickable word (hover)</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 class="text-white text-sm font-semibold mb-2">Keyboard Shortcuts:</h4>
-                        <div class="text-xs text-gray-300 space-y-1">
-                            <div><kbd class="bg-gray-700 px-1 rounded">Space</kbd> Play/Pause</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">+/-</kbd> Speed Control</div>
-                            <div><kbd class="bg-gray-700 px-1 rounded">Esc</kbd> Stop</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Error Section -->
-        <div id="error-section" class="hidden bg-red-500/20 backdrop-blur-sm rounded-2xl p-8 border border-red-500/30">
-            <h3 class="text-xl font-semibold text-red-300 mb-4 flex items-center">
-                <i data-lucide="alert-circle" class="mr-3"></i>
-                Error
-            </h3>
-            <p id="error-message" class="text-red-200"></p>
-            <button id="retry-btn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-all">
-                Try Again
-            </button>
-        </div>
-    </div>
-
-    <!-- Modern Footer -->
-    <footer class="bg-black/30 backdrop-blur-xl border-t border-white/10 mt-16">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <!-- Main Footer Content -->
-            <div class="grid md:grid-cols-3 gap-8 mb-8">
-                <!-- Brand Section -->
-                <div class="space-y-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="p-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg">
-                            <i data-lucide="headphones" class="h-6 w-6 text-white"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-bold text-white">PDF Audio Reader</h3>
-                            <span class="text-sm text-purple-300">Modern Experience v7.0</span>
-                        </div>
-                    </div>
-                    <p class="text-gray-400 text-sm leading-relaxed">
-                        Transform any PDF into an interactive audio experience. Click any word to start listening from that position with AI-powered voice synthesis.
-                    </p>
-                </div>
-                
-                <!-- Features Section -->
-                <div class="space-y-4">
-                    <h4 class="text-lg font-semibold text-white flex items-center">
-                        <i data-lucide="sparkles" class="h-5 w-5 mr-2 text-purple-400"></i>
-                        Key Features
-                    </h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="mouse-pointer-click" class="h-4 w-4 mr-2 text-blue-400"></i>
-                            Click-to-Play from any word
-                        </div>
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="zap" class="h-4 w-4 mr-2 text-yellow-400"></i>
-                            Real-time audio generation
-                        </div>
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="volume-2" class="h-4 w-4 mr-2 text-green-400"></i>
-                            High-quality voice synthesis
-                        </div>
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="settings" class="h-4 w-4 mr-2 text-purple-400"></i>
-                            Customizable speed & voice
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Tech Stack Section -->
-                <div class="space-y-4">
-                    <h4 class="text-lg font-semibold text-white flex items-center">
-                        <i data-lucide="cpu" class="h-5 w-5 mr-2 text-blue-400"></i>
-                        Powered By
-                    </h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="brain" class="h-4 w-4 mr-2 text-emerald-400"></i>
-                            Microsoft Edge TTS
-                        </div>
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="file-text" class="h-4 w-4 mr-2 text-orange-400"></i>
-                            Advanced PDF Processing
-                        </div>
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="shield-check" class="h-4 w-4 mr-2 text-green-400"></i>
-                            Secure & Private
-                        </div>
-                        <div class="flex items-center text-gray-300">
-                            <i data-lucide="smartphone" class="h-4 w-4 mr-2 text-pink-400"></i>
-                            Mobile Responsive
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Bottom Bar -->
-            <div class="border-t border-white/10 pt-6">
-                <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-                    <div class="text-center md:text-left">
-                        <p class="text-gray-400 text-sm">© 2024 PDF Audio Reader. Modern reading experience.</p>
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div class="flex items-center space-x-4">
-                        <div class="flex items-center space-x-3 text-sm">
-                            <div class="flex items-center space-x-1 px-3 py-1 bg-white/5 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
-                                <i data-lucide="keyboard" class="h-3 w-3 text-blue-400"></i>
-                                <span class="text-gray-300">Shortcuts</span>
-                            </div>
-                            <div class="flex items-center space-x-1 px-3 py-1 bg-white/5 rounded-full hover:bg-white/10 transition-colors cursor-pointer">
-                                <i data-lucide="help-circle" class="h-3 w-3 text-purple-400"></i>
-                                <span class="text-gray-300">Help</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Modern Sticky Audio Player -->
-    <div id="sticky-audio-player">
-        <div class="flex flex-col space-y-4">
-            <!-- Header with Close Button -->
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
-                    <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span class="text-xs text-gray-300 font-medium">Now Playing</span>
-                </div>
-                <button id="sticky-close-btn" class="p-1 hover:bg-white/10 rounded transition-colors">
-                    <i data-lucide="x" class="h-4 w-4 text-gray-400 hover:text-white"></i>
-                </button>
-            </div>
-            
-            <!-- Main Controls Row -->
-            <div class="flex items-center space-x-4">
-                <!-- Play/Pause Button -->
-                <button id="sticky-play-pause-btn" class="relative group">
-                    <div class="absolute inset-0 bg-blue-500/30 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300"></div>
-                    <div class="relative p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg shadow-blue-500/30 
-                        hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:scale-105 active:scale-95">
-                        <i data-lucide="pause" class="h-5 w-5 text-white"></i>
-                    </div>
-                </button>
-                
-                <!-- Controls Column -->
-                <div class="flex-1 space-y-3">
-                    <!-- Voice & Speed Controls -->
-                    <div class="grid grid-cols-3 gap-3">
-                        <!-- Voice Selection - wider column -->
-                        <div class="col-span-2 space-y-1">
-                            <label class="text-xs text-gray-400 font-medium flex items-center">
-                                <i data-lucide="mic" class="h-3 w-3 mr-1"></i>
-                                Voice
-                            </label>
-                            <select id="sticky-voice-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 
-                                border border-gray-600/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none
-                                transition-all duration-200 hover:bg-gray-800">
-                                {% for key, model in models.items() %}
-                                <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <!-- Speed Control - smaller column -->
-                        <div class="space-y-1">
-                            <label class="text-xs text-gray-400 font-medium flex items-center">
-                                <i data-lucide="gauge" class="h-3 w-3 mr-1"></i>
-                                Speed
-                            </label>
-                            <select id="sticky-speed-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 
-                                border border-gray-600/50 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 outline-none
-                                transition-all duration-200 hover:bg-gray-800">
-                                <option value="0.5">0.5x</option>
-                                <option value="0.75">0.75x</option>
-                                <option value="1.0" selected>1.0x</option>
-                                <option value="1.25">1.25x</option>
-                                <option value="1.5">1.5x</option>
-                                <option value="2.0">2.0x</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Action Buttons -->
+            <div class="bg-black/20 backdrop-blur-sm rounded-xl p-3 mb-4 border border-white/10">
+                <div class="flex items-center justify-between flex-wrap gap-3">
                     <div class="flex items-center space-x-2">
-                        <button id="sticky-stop-btn" class="flex-1 px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 
-                            text-xs rounded-lg transition-all duration-200 flex items-center justify-center space-x-1 
-                            border border-red-500/30 hover:border-red-500/50">
-                            <i data-lucide="square" class="h-3 w-3"></i>
-                            <span>Stop</span>
-                        </button>
-                        
-                        <button id="sticky-minimize-btn" class="px-3 py-2 bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 hover:text-gray-200 
-                            text-xs rounded-lg transition-all duration-200 flex items-center justify-center space-x-1 
-                            border border-gray-500/30 hover:border-gray-500/50">
-                            <i data-lucide="minimize-2" class="h-3 w-3"></i>
-                        </button>
+                        <button id="pdf-prev-page" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md disabled:opacity-50"><i data-lucide="chevron-left" class="h-5 w-5"></i></button>
+                        <span class="text-sm">Page <input type="number" id="pdf-page-input" min="1" value="1" class="bg-gray-800 w-16 text-center rounded-md"> of <span id="pdf-total-pages">1</span></span>
+                        <button id="pdf-next-page" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md disabled:opacity-50"><i data-lucide="chevron-right" class="h-5 w-5"></i></button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="pdf-zoom-out" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="zoom-out" class="h-5 w-5"></i></button>
+                        <span id="pdf-zoom-level" class="text-sm font-medium w-16 text-center">100%</span>
+                        <button id="pdf-zoom-in" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="zoom-in" class="h-5 w-5"></i></button>
+                        <button id="pdf-fit-width" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-md"><i data-lucide="move-horizontal" class="h-5 w-5"></i></button>
                     </div>
                 </div>
             </div>
-            
-            <!-- Progress Indicator (Optional) -->
-            <div class="flex items-center space-x-2 text-xs text-gray-400">
-                <i data-lucide="volume-2" class="h-3 w-3"></i>
-                <span>Click any word in the text to jump to that position</span>
+            <div id="loading-indicator" class="hidden mb-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30 flex items-center text-blue-300">
+                <div class="spinner h-4 w-4 border-2 border-blue-300 border-t-transparent rounded-full mr-2"></div>
+                <span id="loading-text"></span>
             </div>
+            <div id="pdf-container" class="glass-card rounded-xl overflow-hidden"><div id="pdf-viewer"></div></div>
+        </div>
+        <div id="error-section" class="hidden mt-4 bg-red-500/20 p-4 rounded-xl border border-red-500/30"><p id="error-message" class="text-red-200"></p></div>
+    </div>
+
+    <div id="sticky-audio-player">
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-xs text-gray-300 font-medium flex items-center"><div class="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>Now Playing</span>
+            <button id="sticky-close-btn" class="p-1 hover:bg-white/10 rounded-full"><i data-lucide="x" class="h-4 w-4 text-gray-400"></i></button>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button id="sticky-play-pause-btn" class="p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"><i data-lucide="pause" class="h-5 w-5 text-white"></i></button>
+            <div class="flex-1 space-y-2">
+                <select id="sticky-voice-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 border border-gray-600/50 focus:border-blue-400 outline-none">
+                    {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                </select>
+                <select id="sticky-speed-select" class="w-full bg-gray-800/80 text-white text-xs rounded-lg px-3 py-2 border border-gray-600/50 focus:border-blue-400 outline-none">
+                    <option value="0.75">0.75x</option><option value="1.0">1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
+                </select>
+            </div>
+            <button id="sticky-stop-btn" class="p-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300"><i data-lucide="square" class="h-5 w-5"></i></button>
         </div>
     </div>
+
+    <audio id="audio-player-element" style="display:none;"></audio>
 
     <script>
-        // Initialize Lucide icons
         lucide.createIcons();
         
-        // Global variables
-        let extractedText = '';
-        let words = [];
-        let chunks = []; // Array to store smart chunks with sentence boundaries
-        let currentPage = 1;
-        let wordsPerPage = 1000;
-        let totalPages = 1;
-        let audioCache = new Map(); // Browser-managed audio cache
-        let gaplessPlayer = null;
-        let isPlaying = false;
-        let isPaused = false;
-        let currentChunkIndex = -1;
-        let currentWordIndex = -1;
-        let selectedModel = 'edge-tts-andrew';
-        let isSpeedChanging = false; // Flag to prevent rapid speed changes
-        let speedChangeTimeout = null; // Debounce timeout for speed changes
-        
-        // Audio control variables
-        let currentPlaybackRate = 1.0;
-        let currentAudioTime = 0;
-        let audioDuration = 0;
-        let pausedAt = 0; // Track where we paused for resume
-        
-        // User preferences with localStorage persistence
-        const USER_PREFERENCES = {
-            voice: 'edge-tts-andrew',
-            speed: 1.0
-        };
-        
-        // Load user preferences from localStorage
-        function loadUserPreferences() {
-            try {
-                const savedPrefs = localStorage.getItem('ebook-reader-preferences');
-                if (savedPrefs) {
-                    const preferences = JSON.parse(savedPrefs);
-                    console.log('🎯 Loading saved preferences:', preferences);
-                    
-                    // Apply voice preference
-                    if (preferences.voice) {
-                        selectedModel = preferences.voice;
-                    }
-                    
-                    // Apply speed preference with validation
-                    if (preferences.speed) {
-                        const speedValue = parseFloat(preferences.speed);
-                        // Validate speed is a finite number and within reasonable range
-                        if (isFinite(speedValue) && speedValue > 0 && speedValue <= 3.0) {
-                            currentPlaybackRate = speedValue;
-                        } else {
-                            console.warn('🎯 Invalid speed preference, using default:', preferences.speed);
-                            currentPlaybackRate = 1.0;
-                        }
-                    }
-                    
-                    console.log('🎯 Loaded preferences:', {
-                        voice: selectedModel,
-                        speed: currentPlaybackRate
-                    });
-                } else {
-                    console.log('🎯 No saved preferences found, using defaults');
-                }
-            } catch (error) {
-                console.warn('🎯 Failed to load preferences:', error);
-                // Reset to defaults on error
-                currentPlaybackRate = 1.0;
-            }
-        }
-        
-        // Save user preferences to localStorage
-        function saveUserPreferences() {
-            try {
-                const preferences = {
-                    voice: selectedModel,
-                    speed: currentPlaybackRate
-                };
-                localStorage.setItem('ebook-reader-preferences', JSON.stringify(preferences));
-                console.log('🎯 Saved user preferences:', preferences);
-            } catch (error) {
-                console.warn('🎯 Error saving preferences:', error);
-            }
-        }
-        
-        // Apply preferences to UI elements
-        function applyPreferencesToUI() {
-            // Set voice selection
-            if (stickyVoiceSelect) {
-                stickyVoiceSelect.value = selectedModel;
-                console.log('🎯 Applied voice preference to UI:', selectedModel);
-            }
-            
-            // Set speed selection - ensure proper format for dropdown
-            if (stickySpeedSelect) {
-                // Convert to proper format for speed dropdown (ensure .0 suffix for whole numbers)
-                const speedValue = currentPlaybackRate === 1 ? "1.0" : 
-                                 currentPlaybackRate === 2 ? "2.0" : 
-                                 currentPlaybackRate.toString();
-                stickySpeedSelect.value = speedValue;
-                console.log('🎯 Applied speed preference to UI:', speedValue, '(from', currentPlaybackRate, ')');
-            }
-            
-            // Also sync main speed select if it exists
-            if (speedSelect) {
-                const speedValue = currentPlaybackRate === 1 ? "1.0" : 
-                                 currentPlaybackRate === 2 ? "2.0" : 
-                                 currentPlaybackRate.toString();
-                speedSelect.value = speedValue;
-            }
-        }
+        // --- GLOBAL STATE --- //
+        let wordMap = [];
+        let pdfDoc = null, pdfTotalPages = 0, pdfCurrentPageNum = 1, pdfScale = 1.5, pdfRenderingInProgress = false;
+        let audioCache = new Map(), gaplessPlayer = null, isPlaying = false, isPaused = false, currentChunk = null;
+        let currentPlaybackRate = "1.0", selectedModel = 'edge-tts-andrew';
 
-        // DOM elements
-        const uploadArea = document.getElementById('upload-area');
-        const pdfInput = document.getElementById('pdf-input');
-        const fileInfo = document.getElementById('file-info');
-        const fileName = document.getElementById('file-name');
-        const textLength = document.getElementById('text-length');
-        const wordCount = document.getElementById('word-count');
-        const voiceSelection = document.getElementById('voice-selection');
-        const textDisplay = document.getElementById('text-display');
-        const textContent = document.getElementById('text-content');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const loadingText = document.getElementById('loading-text');
-        const audioStatus = document.getElementById('audio-status');
-        const statusText = document.getElementById('status-text');
-        const stopBtn = document.getElementById('stop-btn');
-        const audioControls = document.getElementById('audio-controls');
-        const speedSelect = document.getElementById('speed-select');
-        const playPauseBtn = document.getElementById('play-pause-btn');
-        const progressContainer = document.getElementById('progress-container');
-        const progressBar = document.getElementById('progress-bar');
-        const progressHandle = document.getElementById('progress-handle');
-        const currentTimeSpan = document.getElementById('current-time');
-        const totalTimeSpan = document.getElementById('total-time');
-        const prevPageBtn = document.getElementById('prev-page');
-        const nextPageBtn = document.getElementById('next-page');
-        const pageSelect = document.getElementById('page-select');
-        const totalPagesSpan = document.getElementById('total-pages');
-        const wordsPerPageSelect = document.getElementById('words-per-page');
-        const errorSection = document.getElementById('error-section');
-        const errorMessage = document.getElementById('error-message');
-        const retryBtn = document.getElementById('retry-btn');
-
-        // Sticky Audio Player elements
-        const stickyAudioPlayer = document.getElementById('sticky-audio-player');
-        const stickyPlayPauseBtn = document.getElementById('sticky-play-pause-btn');
-        const stickySpeedSelect = document.getElementById('sticky-speed-select');
-        const stickyVoiceSelect = document.getElementById('sticky-voice-select');
-        const stickyStopBtn = document.getElementById('sticky-stop-btn');
-        const stickyMinimizeBtn = document.getElementById('sticky-minimize-btn');
-        const uploadLoading = document.getElementById('upload-loading');
-        const uploadLoadingText = document.getElementById('upload-loading-text');
-        const readAnotherPdfBtn = document.getElementById('read-another-pdf-btn');
-
-        // Debug: Log DOM elements to ensure they exist
-        console.log('DOM Elements Check:', {
-            playPauseBtn: !!playPauseBtn,
-            progressContainer: !!progressContainer,
-            progressBar: !!progressBar,
-            progressHandle: !!progressHandle,
-            currentTimeSpan: !!currentTimeSpan,
-            totalTimeSpan: !!totalTimeSpan,
-            audioControls: !!audioControls,
-            speedSelect: !!speedSelect,
-            stopBtn: !!stopBtn,
-            stickyAudioPlayer: !!stickyAudioPlayer,
-            stickyPlayPauseBtn: !!stickyPlayPauseBtn,
-            stickyVoiceSelect: !!stickyVoiceSelect,
-            readAnotherPdfBtn: !!readAnotherPdfBtn
-        });
-
-        // BULLETPROOF STICKY POSITIONING SYSTEM
-        let isManualPositioning = false;
-        let lastScrollY = 0;
-        let positionCheckInterval = null;
+        const $ = (id) => document.getElementById(id);
         
-        // Enhanced sticky positioning with JavaScript fallback
-        function initializeBulletproofSticky() {
-            if (!stickyAudioPlayer) {
-                console.warn('🔧 Sticky audio player element not found for positioning system');
-                return;
-            }
-            
-            console.log('🔧 Initializing bulletproof sticky positioning system...');
-            
-            // Test if CSS fixed positioning is working
-            testFixedPositioning();
-            
-            // Setup position monitoring and correction
-            setupPositionMonitoring();
-            
-            // Setup emergency JavaScript positioning fallback
-            setupJavaScriptPositioning();
-            
-            // Enable debug mode for initial testing
-            enableStickyDebugMode();
-            
-            console.log('🔧 Bulletproof sticky positioning system initialized');
-        }
-        
-        function testFixedPositioning() {
-            if (!stickyAudioPlayer) return;
-            
-            console.log('🔧 Testing CSS fixed positioning...');
-            
-            // Show the element temporarily for testing
-            const wasActive = stickyAudioPlayer.classList.contains('active');
-            stickyAudioPlayer.classList.add('active');
-            
-            // Force reflow
-            stickyAudioPlayer.offsetHeight;
-            
-            // Check computed styles
-            const computedStyle = window.getComputedStyle(stickyAudioPlayer);
-            const position = computedStyle.getPropertyValue('position');
-            const top = computedStyle.getPropertyValue('top');
-            const right = computedStyle.getPropertyValue('right');
-            
-            console.log('🔧 Computed styles:', {
-                position,
-                top,
-                right,
-                zIndex: computedStyle.getPropertyValue('z-index'),
-                transform: computedStyle.getPropertyValue('transform'),
-                willChange: computedStyle.getPropertyValue('will-change'),
-                contain: computedStyle.getPropertyValue('contain')
-            });
-            
-            // Check if element is actually fixed relative to viewport
-            const rect = stickyAudioPlayer.getBoundingClientRect();
-            console.log('🔧 Element rectangle:', {
-                top: rect.top,
-                right: window.innerWidth - rect.right,
-                left: rect.left,
-                width: rect.width,
-                height: rect.height
-            });
-            
-            // Restore original visibility state
-            if (!wasActive) {
-                stickyAudioPlayer.classList.remove('active');
-            }
-            
-            // Determine if CSS positioning is working correctly
-            const isFixedWorking = position === 'fixed' && Math.abs(rect.top - 20) < 5;
-            console.log('🔧 CSS fixed positioning working:', isFixedWorking);
-            
-            if (!isFixedWorking) {
-                console.warn('🔧 CSS fixed positioning not working correctly, enabling JavaScript fallback');
-                enableJavaScriptPositioning();
-            }
-        }
-        
-        function setupPositionMonitoring() {
-            // Monitor position every 100ms when visible
-            positionCheckInterval = setInterval(() => {
-                if (!stickyAudioPlayer || !stickyAudioPlayer.classList.contains('active')) return;
-                
-                const rect = stickyAudioPlayer.getBoundingClientRect();
-                const expectedTop = 20;
-                const expectedRight = 20;
-                const actualRight = window.innerWidth - rect.right;
-                
-                // Check if element has moved from expected position
-                if (Math.abs(rect.top - expectedTop) > 5 || Math.abs(actualRight - expectedRight) > 5) {
-                    console.warn('🔧 Sticky element position drift detected:', {
-                        expected: { top: expectedTop, right: expectedRight },
-                        actual: { top: rect.top, right: actualRight }
-                    });
-                    
-                    // Force correction
-                    correctStickyPosition();
-                }
-            }, 100);
-        }
-        
-        function correctStickyPosition() {
-            if (!stickyAudioPlayer) return;
-            
-            console.log('🔧 Correcting sticky position...');
-            
-            // Check if the element should be visible based on .active class
-            const shouldBeVisible = stickyAudioPlayer.classList.contains('active');
-            console.log('🔧 Element should be visible:', shouldBeVisible);
-            
-            if (!shouldBeVisible) {
-                // If not active, just ensure it's hidden and don't apply positioning
-                stickyAudioPlayer.style.cssText = `
-                    position: fixed !important;
-                    top: 20px !important;
-                    right: 20px !important;
-                    width: 320px !important;
-                    max-width: calc(100vw - 40px) !important;
-                    z-index: 2147483647 !important;
-                    transform: none !important;
-                    margin: 0 !important;
-                    background: rgba(15, 23, 42, 0.95) !important;
-                    backdrop-filter: blur(15px) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                    border-radius: 12px !important;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-                    padding: 16px !important;
-                    transition: opacity 0.3s ease !important;
-                    display: none !important;
-                    visibility: hidden !important;
-                    pointer-events: none !important;
-                `;
-                console.log('🔧 Applied hidden positioning styles');
-                return;
-            }
-            
-            // Force re-application of styles for visible state
-            stickyAudioPlayer.style.cssText = `
-                position: fixed !important;
-                top: 20px !important;
-                right: 20px !important;
-                width: 320px !important;
-                max-width: calc(100vw - 40px) !important;
-                z-index: 2147483647 !important;
-                transform: none !important;
-                margin: 0 !important;
-                background: rgba(15, 23, 42, 0.95) !important;
-                backdrop-filter: blur(15px) !important;
-                border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                border-radius: 12px !important;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-                padding: 16px !important;
-                transition: opacity 0.3s ease !important;
-                opacity: 1 !important;
-                visibility: visible !important;
-                pointer-events: auto !important;
-                display: block !important;
-            `;
-            
-            // Force reflow
-            stickyAudioPlayer.offsetHeight;
-            console.log('🔧 Applied visible positioning styles');
-        }
-        
-        function enableJavaScriptPositioning() {
-            console.log('🔧 Enabling JavaScript positioning fallback...');
-            isManualPositioning = true;
-            
-            // Override CSS positioning with JavaScript control
-            function updatePosition() {
-                if (!stickyAudioPlayer) return;
-                
-                // Check if the element should be visible based on .active class
-                const shouldBeVisible = stickyAudioPlayer.classList.contains('active');
-                
-                if (!shouldBeVisible) {
-                    // If not active, ensure it's hidden
-                    stickyAudioPlayer.style.cssText = `
-                        position: fixed !important;
-                        top: 20px !important;
-                        right: 20px !important;
-                        width: 320px !important;
-                        z-index: 2147483647 !important;
-                        transform: translate3d(0, 0, 0) !important;
-                        margin: 0 !important;
-                        background: rgba(15, 23, 42, 0.95) !important;
-                        backdrop-filter: blur(15px) !important;
-                        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                        border-radius: 12px !important;
-                        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-                        padding: 16px !important;
-                        display: none !important;
-                        visibility: hidden !important;
-                        pointer-events: none !important;
-                    `;
-                    return;
-                }
-                
-                // Calculate position based on viewport for visible state
-                const viewportWidth = window.innerWidth;
-                const elementWidth = Math.min(320, viewportWidth - 40);
-                
-                stickyAudioPlayer.style.cssText = `
-                    position: fixed !important;
-                    top: 20px !important;
-                    right: 20px !important;
-                    width: ${elementWidth}px !important;
-                    z-index: 2147483647 !important;
-                    transform: translate3d(0, 0, 0) !important;
-                    margin: 0 !important;
-                    background: rgba(15, 23, 42, 0.95) !important;
-                    backdrop-filter: blur(15px) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                    border-radius: 12px !important;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-                    padding: 16px !important;
-                    opacity: 1 !important;
-                    visibility: visible !important;
-                    pointer-events: auto !important;
-                    display: block !important;
-                `;
-            }
-            
-            // Update on scroll, resize, and animation frames
-            let ticking = false;
-            function requestTick() {
-                if (!ticking) {
-                    requestAnimationFrame(() => {
-                        updatePosition();
-                        ticking = false;
-                    });
-                    ticking = true;
-                }
-            }
-            
-            window.addEventListener('scroll', requestTick, { passive: true });
-            window.addEventListener('resize', requestTick, { passive: true });
-            
-            // Initial positioning
-            updatePosition();
-        }
-        
-        function setupJavaScriptPositioning() {
-            // Setup scroll-based positioning as emergency fallback
-            let scrollTimeout;
-            
-            window.addEventListener('scroll', () => {
-                if (!isManualPositioning) return;
-                
-                clearTimeout(scrollTimeout);
-                scrollTimeout = setTimeout(() => {
-                    correctStickyPosition();
-                }, 10);
-            }, { passive: true });
-            
-            window.addEventListener('resize', () => {
-                if (stickyAudioPlayer && stickyAudioPlayer.classList.contains('active')) {
-                    correctStickyPosition();
-                }
-            }, { passive: true });
-        }
-        
-        function enableStickyDebugMode() {
-            if (!stickyAudioPlayer) return;
-            
-            console.log('🔧 Enabling sticky debug mode (will auto-disable in 10 seconds)');
-            stickyAudioPlayer.classList.add('debug');
-            
-            // Auto-disable debug mode after 10 seconds
-            setTimeout(() => {
-                if (stickyAudioPlayer) {
-                    stickyAudioPlayer.classList.remove('debug');
-                    console.log('🔧 Sticky debug mode disabled');
-                }
-            }, 10000);
-        }
-        
-        function disableStickyDebugMode() {
-            if (stickyAudioPlayer) {
-                stickyAudioPlayer.classList.remove('debug');
-                console.log('🔧 Sticky debug mode manually disabled');
-            }
-        }
-        
-        // Expose debug functions to window for manual testing
-        window.stickyDebug = {
-            enable: enableStickyDebugMode,
-            disable: disableStickyDebugMode,
-            test: testFixedPositioning,
-            correct: correctStickyPosition,
-            info: () => {
-                if (!stickyAudioPlayer) return 'Element not found';
-                const rect = stickyAudioPlayer.getBoundingClientRect();
-                const computed = window.getComputedStyle(stickyAudioPlayer);
-                return {
-                    position: computed.position,
-                    top: computed.top,
-                    right: computed.right,
-                    zIndex: computed.zIndex,
-                    transform: computed.transform,
-                    rect: { top: rect.top, right: window.innerWidth - rect.right },
-                    isActive: stickyAudioPlayer.classList.contains('active'),
-                    isDebug: stickyAudioPlayer.classList.contains('debug'),
-                    manualPositioning: isManualPositioning
-                };
-            }
-        };
-        
-        // Initialize bulletproof sticky positioning when DOM is ready
+        // --- INITIALIZATION --- //
         document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initializeBulletproofSticky, 100);
+            loadUserPreferences();
+            applyPreferencesToUI();
+            setupEventListeners();
         });
-        
-        // Fallback initialization if DOMContentLoaded already fired
-        if (document.readyState !== 'loading') {
-            setTimeout(initializeBulletproofSticky, 100);
+
+        function setupEventListeners() {
+            const uploadArea = $('upload-area');
+            uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+            uploadArea.addEventListener('dragleave', (e) => uploadArea.classList.remove('dragover'));
+            uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+            uploadArea.addEventListener('click', () => $('pdf-input').click());
+            $('pdf-input').addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
+            
+            $('sticky-play-pause-btn').addEventListener('click', togglePlayPause);
+            $('sticky-stop-btn').addEventListener('click', stopPlayback);
+            $('sticky-close-btn').addEventListener('click', stopPlayback);
+            $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(parseFloat(e.target.value)));
+            $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
+            
+            $('read-another-pdf-btn').addEventListener('click', resetToUpload);
+            
+            document.addEventListener('keydown', (e) => { 
+                if (document.activeElement.tagName !== 'INPUT' && e.key === ' ') { 
+                    e.preventDefault(); 
+                    togglePlayPause(); 
+                } 
+            });
         }
 
-        // Upload area events
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        });
-
-        uploadArea.addEventListener('click', () => {
-            pdfInput.click();
-        });
-
-        pdfInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
-
-        // Handle file upload
+        // --- PDF PROCESSING & RENDERING --- //
         async function handleFile(file) {
-            if (!file.type.includes('pdf')) {
-                showError('Please select a PDF file.');
-                return;
-            }
-
-            if (file.size > 100 * 1024 * 1024) {
-                showError('File size too large. Maximum size is 100MB.');
-                return;
-            }
+            if (!file.type.includes('pdf')) return showError('Please select a PDF file.');
+            showUploadLoading(true, 'Uploading and processing PDF...');
+            await stopPlayback();
+            resetPdfState();
 
             const formData = new FormData();
             formData.append('file', file);
 
             try {
-                // Show upload-specific loading
-                if (uploadLoading) {
-                    uploadLoading.classList.remove('hidden');
-                }
-                if (uploadLoadingText) {
-                    uploadLoadingText.textContent = 'Uploading and processing PDF...';
-                }
-                
-                // Hide upload area clickable state
-                uploadArea.style.pointerEvents = 'none';
-                uploadArea.style.opacity = '0.7';
-                
+                // 1. Upload and get word data from server
                 const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData
                 });
 
-                const data = await response.json();
-
                 if (!response.ok) {
-                    throw new Error(data.error || 'Upload failed');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server error during PDF processing');
                 }
 
-                extractedText = data.text;
-                words = extractedText.split(/\s+/);
+                const data = await response.json();
+                wordMap = data.words;
+
+                // 2. Concurrently, load PDF for rendering on client
+                const arrayBuffer = await file.arrayBuffer();
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                pdfTotalPages = pdfDoc.numPages;
+
+                // 3. Update UI and render
+                updateFileInfo(data.filename, data.word_count);
+                $('upload-container').classList.add('hidden');
+                $('pdf-display').classList.remove('hidden');
                 
-                // Generate smart chunks with sentence boundaries
-                chunks = generateSmartChunks(words);
-                console.log(`Generated ${chunks.length} smart chunks (avg ${Math.round(chunks.reduce((sum, chunk) => sum + chunk.words.length, 0) / chunks.length)} words per chunk)`);
-                
-                fileName.textContent = data.filename;
-                textLength.textContent = `${data.text_length.toLocaleString()} characters`;
-                wordCount.textContent = `${words.length.toLocaleString()} words • ${chunks.length} audio segments`;
-                
-                // Show file info but skip voice selection - go directly to text display
-                fileInfo.classList.remove('hidden');
-                
-                // Setup text display immediately (no voice selection step)
-                setupTextDisplay();
-                
-                // Hide upload loading
-                if (uploadLoading) {
-                    uploadLoading.classList.add('hidden');
-                }
-                
-                // Reset upload area
-                uploadArea.style.pointerEvents = 'auto';
-                uploadArea.style.opacity = '1';
-                
-                hideError();
+                setupPdfControls();
+                await renderPage(1);
 
             } catch (error) {
-                console.error('Upload error:', error);
                 showError('Failed to process PDF: ' + error.message);
-                
-                // Hide upload loading and reset upload area
-                if (uploadLoading) {
-                    uploadLoading.classList.add('hidden');
-                }
-                uploadArea.style.pointerEvents = 'auto';
-                uploadArea.style.opacity = '1';
+                console.error(error);
+                resetToUpload();
+            } finally {
+                showUploadLoading(false);
             }
         }
+        
+        async function renderPage(pageNum) {
+            if (pdfRenderingInProgress) return;
+            pdfRenderingInProgress = true;
+            pdfCurrentPageNum = pageNum;
+            $('pdf-page-input').value = pageNum;
+            showLoading('Rendering page...');
 
-        // Generate smart chunks that end at sentence boundaries (full stops)
-        function generateSmartChunks(words) {
-            const MIN_CHUNK_SIZE = 80;
-            const MAX_CHUNK_SIZE = 150;
-            const PREFERRED_CHUNK_SIZE = 115; // Sweet spot
-            
-            const chunks = [];
-            let currentChunk = [];
-            let currentStartIndex = 0;
-            
-            for (let i = 0; i < words.length; i++) {
-                currentChunk.push(words[i]);
-                
-                // Check if current word ends with a period (sentence boundary)
-                const endsWithPeriod = words[i].endsWith('.') && 
-                                      !words[i].match(/\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|Ave|etc|vs|Inc|Ltd|Corp|Co|LLC)\.$/) && // Not abbreviations
-                                      !words[i].match(/^\d+\.$/) && // Not numbered lists
-                                      words[i].length > 1; // Not just a period
-                
-                const chunkSize = currentChunk.length;
-                
-                // Decide whether to end chunk here
-                let shouldEndChunk = false;
-                
-                if (chunkSize >= MAX_CHUNK_SIZE) {
-                    // Force end at max size
-                    shouldEndChunk = true;
-                    console.log(`📝 Force-ending chunk at ${chunkSize} words (max size)`);
-                } else if (chunkSize >= MIN_CHUNK_SIZE && endsWithPeriod) {
-                    // Good natural boundary within range
-                    shouldEndChunk = true;
-                    console.log(`📝 Natural chunk end at ${chunkSize} words (sentence boundary)`);
-                } else if (chunkSize >= PREFERRED_CHUNK_SIZE && endsWithPeriod) {
-                    // Preferred size with natural boundary
-                    shouldEndChunk = true;
-                    console.log(`📝 Preferred chunk end at ${chunkSize} words (preferred size + boundary)`);
-                } else if (i === words.length - 1) {
-                    // Last chunk
-                    shouldEndChunk = true;
-                    console.log(`📝 Final chunk at ${chunkSize} words (end of text)`);
-                }
-                
-                if (shouldEndChunk) {
-                    const chunk = {
-                        index: chunks.length,
-                        startWordIndex: currentStartIndex,
-                        endWordIndex: currentStartIndex + currentChunk.length - 1,
-                        words: [...currentChunk],
-                        text: currentChunk.join(' '),
-                        wordCount: currentChunk.length
-                    };
-                    
-                    chunks.push(chunk);
-                    console.log(`📝 Created chunk ${chunk.index}: words ${chunk.startWordIndex}-${chunk.endWordIndex} (${chunk.wordCount} words)`);
-                    
-                    // Start new chunk
-                    currentStartIndex = i + 1;
-                    currentChunk = [];
-                }
-            }
-            
-            // Handle any remaining words (shouldn't happen with the logic above)
-            if (currentChunk.length > 0) {
-                const chunk = {
-                    index: chunks.length,
-                    startWordIndex: currentStartIndex,
-                    endWordIndex: currentStartIndex + currentChunk.length - 1,
-                    words: [...currentChunk],
-                    text: currentChunk.join(' '),
-                    wordCount: currentChunk.length
-                };
-                chunks.push(chunk);
-                console.log(`📝 Final remaining chunk ${chunk.index}: words ${chunk.startWordIndex}-${chunk.endWordIndex} (${chunk.wordCount} words)`);
-            }
-            
-            return chunks;
-        }
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: pdfScale });
 
-        // Helper function to find which chunk contains a specific word index
-        function findChunkForWordIndex(wordIndex) {
-            for (let i = 0; i < chunks.length; i++) {
-                const chunk = chunks[i];
-                if (wordIndex >= chunk.startWordIndex && wordIndex <= chunk.endWordIndex) {
-                    return chunk;
-                }
-            }
-            return null;
-        }
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'pdf-page';
+            pageDiv.style.width = `${viewport.width}px`;
+            pageDiv.style.height = `${viewport.height}px`;
 
-        // Helper function to get chunk by index
-        function getChunk(chunkIndex) {
-            return chunkIndex >= 0 && chunkIndex < chunks.length ? chunks[chunkIndex] : null;
-        }
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            pageDiv.appendChild(canvas);
 
-        // Setup text display with pagination
-        function setupTextDisplay() {
-            calculatePagination();
-            displayCurrentPage();
-            textDisplay.classList.remove('hidden');
-            setupPaginationListeners();
+            const textLayer = document.createElement('div');
+            textLayer.className = 'text-layer';
+            pageDiv.appendChild(textLayer);
             
-            // Hide upload section after successful processing (voice selection no longer used)
-            if (uploadArea && uploadArea.parentElement) {
-                uploadArea.parentElement.classList.add('hidden');
-            }
-        }
+            $('pdf-viewer').innerHTML = '';
+            $('pdf-viewer').appendChild(pageDiv);
 
-        // Calculate pagination
-        function calculatePagination() {
-            if (wordsPerPage === 'all') {
-                totalPages = 1;
-            } else {
-                totalPages = Math.ceil(words.length / parseInt(wordsPerPage));
-            }
-            
-            // Update UI
-            totalPagesSpan.textContent = totalPages;
-            pageSelect.innerHTML = '';
-            for (let i = 1; i <= totalPages; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.textContent = i;
-                if (i === currentPage) option.selected = true;
-                pageSelect.appendChild(option);
-            }
-            
-            updatePaginationButtons();
-        }
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 
-        // Display current page of words
-        function displayCurrentPage() {
-            let startWord, endWord;
-            
-            if (wordsPerPage === 'all') {
-                startWord = 0;
-                endWord = words.length;
-            } else {
-                const wordsPerPageNum = parseInt(wordsPerPage);
-                startWord = (currentPage - 1) * wordsPerPageNum;
-                endWord = Math.min(startWord + wordsPerPageNum, words.length);
-            }
-            
-            const pageWords = words.slice(startWord, endWord);
-            
-            textContent.innerHTML = pageWords.map((word, pageIndex) => {
-                const globalIndex = startWord + pageIndex;
-                return `<span class="word" data-word-index="${globalIndex}">${word}</span>`;
-            }).join(' ');
-            
-            // Add click listeners to words
-            textContent.querySelectorAll('.word').forEach(wordSpan => {
-                wordSpan.addEventListener('click', () => {
-                    const wordIndex = parseInt(wordSpan.dataset.wordIndex);
-                    playFromWord(wordIndex);
-                });
-            });
-            
-            // Force update page select UI to show current page
-            console.log(`📄 Displaying page ${currentPage} of ${totalPages}, words ${startWord}-${endWord-1}`);
-            if (pageSelect) {
-                pageSelect.value = currentPage;
-            }
-        }
-
-        // Setup pagination event listeners
-        function setupPaginationListeners() {
-            prevPageBtn.addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage--;
-                    console.log(`📄 Previous page clicked, now on page ${currentPage}`);
-                    updatePaginationButtons();
-                    displayCurrentPage();
-                }
-            });
-            
-            nextPageBtn.addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    console.log(`📄 Next page clicked, now on page ${currentPage}`);
-                    updatePaginationButtons();
-                    displayCurrentPage();
-                }
-            });
-            
-            pageSelect.addEventListener('change', (e) => {
-                currentPage = parseInt(e.target.value);
-                console.log(`📄 Page select changed to page ${currentPage}`);
-                updatePaginationButtons();
-                displayCurrentPage();
-            });
-            
-            wordsPerPageSelect.addEventListener('change', (e) => {
-                wordsPerPage = e.target.value;
-                currentPage = 1;
-                console.log(`📄 Words per page changed to ${wordsPerPage}, reset to page 1`);
-                calculatePagination();
-                displayCurrentPage();
-            });
-        }
-
-        // Update pagination button states
-        function updatePaginationButtons() {
-            prevPageBtn.disabled = currentPage === 1;
-            nextPageBtn.disabled = currentPage === totalPages;
-            console.log(`📄 Updated pagination buttons - page ${currentPage}/${totalPages}`);
-        }
-
-        // Play audio starting from a specific word
-        async function playFromWord(wordIndex) {
-            try {
-                console.log(`🔍 playFromWord() START - wordIndex: ${wordIndex}`);
-                console.log(`🔍 Current state:`, {
-                    isPlaying, isPaused, currentPlaybackRate, 
-                    currentPlaybackRateType: typeof currentPlaybackRate,
-                    currentPlaybackRateFinite: isFinite(currentPlaybackRate),
-                    selectedModel, currentChunkIndex, currentWordIndex
-                });
-                
-                console.log(`Starting playback from word ${wordIndex}`);
-                
-                // Validate DOM elements before proceeding
-                if (!audioControls) {
-                    throw new Error('Audio controls element not found');
-                }
-                if (!playPauseBtn) {
-                    throw new Error('Play/pause button element not found');
-                }
-                
-                // CRITICAL: Validate currentPlaybackRate before proceeding
-                if (!isFinite(currentPlaybackRate) || currentPlaybackRate <= 0) {
-                    console.error('🔍 CRITICAL: Invalid currentPlaybackRate detected at start:', currentPlaybackRate);
-                    currentPlaybackRate = 1.0;
-                    console.log('🔍 Reset currentPlaybackRate to 1.0');
-                }
-                
-                console.log(`🔍 Validated currentPlaybackRate: ${currentPlaybackRate} (finite: ${isFinite(currentPlaybackRate)})`);
-                
-                // CRITICAL: Stop any existing playback first
-                if (isPlaying) {
-                    console.log('Stopping existing playback before starting new one');
-                    stopPlayback();
-                    // Give a small delay to ensure cleanup
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-                
-                // Use voice from sticky player selection (no need to check radio buttons)
-                console.log(`Using voice from sticky player: ${selectedModel}`);
-                
-                // Find which smart chunk contains this word
-                const chunk = findChunkForWordIndex(wordIndex);
-                if (!chunk) {
-                    throw new Error(`No chunk found for word index ${wordIndex}`);
-                }
-                
-                console.log(`Playing from word ${wordIndex}, smart chunk ${chunk.index} (${chunk.wordCount} words: ${chunk.startWordIndex}-${chunk.endWordIndex})`);
-                console.log(`Chunk text preview: "${chunk.text.substring(0, 100)}${chunk.text.length > 100 ? '...' : ''}"`);
-                
-                // Update current positions
-                currentWordIndex = wordIndex;
-                currentChunkIndex = chunk.index;
-                isPlaying = true;
-                isPaused = false;
-                
-                console.log(`🔍 Updated state after setting positions:`, {
-                    currentWordIndex, currentChunkIndex, isPlaying, isPaused,
-                    currentPlaybackRate, currentPlaybackRateFinite: isFinite(currentPlaybackRate)
-                });
-                
-                // Show ONLY the sticky player (no main audio controls)
-                if (stickyAudioPlayer) {
-                    stickyAudioPlayer.classList.add('active');
-                    
-                    // Force immediate position correction with the new system
-                    setTimeout(() => {
-                        if (window.stickyDebug && window.stickyDebug.correct) {
-                            window.stickyDebug.correct();
-                            console.log('🔧 Applied position correction after showing sticky player');
-                        }
-                    }, 50);
-                }
-                
-                // Update sticky play/pause button to show pause icon - with delay for DOM
-                setTimeout(() => {
-                    updatePlayPauseButtons('pause');
-                }, 50);
-                
-                // Load and play current chunk
-                showLoading(`Generating audio for ${chunk.wordCount} words starting from "${words[wordIndex]}"...`);
-                statusText.textContent = `Loading segment ${chunk.index + 1} of ${chunks.length}...`;
-                
-                console.log(`🔍 About to load chunk ${chunk.index} with currentPlaybackRate: ${currentPlaybackRate}`);
-                const audioUrl = await loadChunk(chunk.index, chunk.text);
-                console.log(`🔍 Loaded chunk, audioUrl: ${audioUrl ? 'valid' : 'invalid'}`);
-                
-                // Initialize Web Audio player if needed
-                if (!gaplessPlayer) {
-                    console.log(`🔍 Initializing Web Audio player with currentPlaybackRate: ${currentPlaybackRate}`);
-                    initializeWebAudioPlayer();
-                }
-                
-                console.log(`🔍 About to call playChunk with currentPlaybackRate: ${currentPlaybackRate} (finite: ${isFinite(currentPlaybackRate)})`);
-                
-                // Start playing current chunk
-                await playChunk(audioUrl, chunk.index);
-                
-                // Preload next chunk in background
-                if (chunk.index + 1 < chunks.length) {
-                    preloadNextChunk(chunk.index + 1);
-                }
-                
+            const wordsOnPage = wordMap.filter(w => w.page === pageNum);
+            if (wordsOnPage.length === 0) {
+                pdfRenderingInProgress = false;
                 hideLoading();
-                console.log(`🔍 playFromWord() COMPLETE`);
-                
-            } catch (error) {
-                console.error('🔍 ERROR in playFromWord:', error);
-                console.error('🔍 Error stack:', error.stack);
-                console.error('🔍 State at error:', {
-                    currentPlaybackRate, 
-                    currentPlaybackRateType: typeof currentPlaybackRate,
-                    currentPlaybackRateFinite: isFinite(currentPlaybackRate),
-                    isPlaying, isPaused, currentChunkIndex
-                });
-                showError('Failed to start playback: ' + error.message);
-                stopPlayback();
-                hideLoading();
+                updatePdfNavButtons();
+                return;
             }
+
+            const originalPage = {width: wordsOnPage[0].page_width, height: wordsOnPage[0].page_height};
+            const scaleX = viewport.width / originalPage.width;
+            const scaleY = viewport.height / originalPage.height;
+
+            for (const word of wordsOnPage) {
+                const span = document.createElement('span');
+                span.className = 'text-span';
+                span.dataset.wordIndex = word.index;
+                
+                const style = span.style;
+                style.left = `${word.x * scaleX}px`;
+                style.top = `${word.y * scaleY}px`;
+                style.width = `${word.width * scaleX}px`;
+                style.height = `${word.height * scaleY}px`;
+
+                span.addEventListener('click', () => playFromWord(word.index));
+                textLayer.appendChild(span);
+            }
+
+            pdfRenderingInProgress = false;
+            hideLoading();
+            updatePdfNavButtons();
+            if (isPlaying || isPaused) updateHighlighting();
         }
 
-        // Load audio for a specific chunk
-        async function loadChunk(chunkIndex, chunkText) {
-            // Check cache first
-            if (audioCache.has(chunkIndex)) {
-                console.log(`Using cached audio for chunk ${chunkIndex}`);
-                return audioCache.get(chunkIndex);
-            }
-            
-            console.log(`Loading chunk ${chunkIndex} from backend...`);
-            
-            const response = await fetch('/api/generate-audio', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: chunkText,
-                    model: selectedModel
-                })
+        function setupPdfControls() {
+            $('pdf-prev-page').addEventListener('click', () => { if (pdfCurrentPageNum > 1) renderPage(pdfCurrentPageNum - 1); });
+            $('pdf-next-page').addEventListener('click', () => { if (pdfCurrentPageNum < pdfTotalPages) renderPage(pdfCurrentPageNum + 1); });
+            $('pdf-page-input').addEventListener('change', (e) => { const page = parseInt(e.target.value); if (page >= 1 && page <= pdfTotalPages) renderPage(page); });
+            $('pdf-zoom-in').addEventListener('click', () => { pdfScale += 0.25; renderPage(pdfCurrentPageNum); });
+            $('pdf-zoom-out').addEventListener('click', () => { if (pdfScale > 0.5) { pdfScale -= 0.25; renderPage(pdfCurrentPageNum); }});
+            $('pdf-fit-width').addEventListener('click', async () => {
+                const page = await pdfDoc.getPage(pdfCurrentPageNum);
+                pdfScale = $('pdf-viewer').clientWidth / page.getViewport({ scale: 1 }).width;
+                renderPage(pdfCurrentPageNum);
             });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to generate audio');
-            }
-            
-            const data = await response.json();
-            
-            // Convert base64 to blob URL
-            const audioBlob = base64ToBlob(data.audio_data, 'audio/wav');
-            const audioUrl = URL.createObjectURL(audioBlob);
-            
-            // Cache the audio
-            audioCache.set(chunkIndex, audioUrl);
-            
-            console.log(`Cached chunk ${chunkIndex}, cache size: ${audioCache.size}`);
-            
-            return audioUrl;
+            $('pdf-total-pages').textContent = pdfTotalPages;
+            updatePdfNavButtons();
         }
 
-        // Preload next chunk in background
-        async function preloadNextChunk(chunkIndex) {
-            try {
-                if (audioCache.has(chunkIndex)) {
-                    console.log(`Chunk ${chunkIndex} already cached`);
-                    return;
-                }
-                
-                const chunk = getChunk(chunkIndex);
-                if (!chunk) {
-                    console.warn(`No chunk found for index ${chunkIndex}`);
-                    return;
-                }
-                
-                console.log(`Preloading smart chunk ${chunkIndex} in background (${chunk.wordCount} words)...`);
-                await loadChunk(chunkIndex, chunk.text);
-                
-            } catch (error) {
-                console.warn(`Failed to preload chunk ${chunkIndex}:`, error);
+        function updatePdfNavButtons() {
+            $('pdf-prev-page').disabled = (pdfCurrentPageNum <= 1);
+            $('pdf-next-page').disabled = (pdfCurrentPageNum >= pdfTotalPages);
+            $('pdf-zoom-level').textContent = `${Math.round(pdfScale * 100)}%`;
+        }
+        
+        async function navigateToWordIfNeeded(wordIndex) {
+            const word = wordMap.find(w => w.index === wordIndex);
+            if (word && word.page !== pdfCurrentPageNum) {
+                await renderPage(word.page);
             }
         }
 
-        // Initialize Web Audio player with pitch preservation support
-        function initializeWebAudioPlayer() {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            
-            // Check browser support for preservesPitch
-            const testAudio = new Audio();
-            const supportsPreservesPitch = 'preservesPitch' in testAudio || 
-                                         'mozPreservesPitch' in testAudio || 
-                                         'webkitPreservesPitch' in testAudio;
-            
-            console.log('Browser supports preservesPitch:', supportsPreservesPitch);
-            
-            gaplessPlayer = {
-                audioContext: new AudioContext(),
-                currentSource: null,
-                currentBuffer: null,
-                startTime: 0,
-                isPaused: false,
-                isDestroyed: false,
-                htmlAudio: null, // Add HTML audio element for pitch preservation
-                useHtmlAudio: true, // Flag to use HTML audio for pitch preservation
-                
-                // Safely stop any existing audio source
-                stopCurrentSource() {
-                    if (this.currentSource) {
-                        try {
-                            this.currentSource.stop();
-                            this.currentSource.disconnect();
-                        } catch (e) {
-                            console.log('Source already stopped:', e.message);
-                        }
-                        this.currentSource = null;
-                    }
-                    
-                    // Also stop HTML audio if being used
-                    if (this.htmlAudio) {
-                        this.htmlAudio.pause();
-                        this.htmlAudio.currentTime = 0;
-                    }
-                },
-                
-                async play(audioUrl, chunkIndex, startOffset = 0) {
-                    console.log(`🔍🎵 PLAY METHOD START`);
-                    console.log(`🔍🎵 Parameters:`, { audioUrl: audioUrl ? 'valid' : 'invalid', chunkIndex, startOffset });
-                    console.log(`🔍🎵 currentPlaybackRate:`, {
-                        value: currentPlaybackRate,
-                        type: typeof currentPlaybackRate,
-                        finite: isFinite(currentPlaybackRate),
-                        string: String(currentPlaybackRate),
-                        number: Number(currentPlaybackRate)
-                    });
-                    
-                    console.log(`🎵 PLAY METHOD START: chunk=${chunkIndex}, startOffset=${startOffset.toFixed(3)}s`);
-                    console.log(`🎵 Current rate: ${currentPlaybackRate}x, should use HTML: ${currentPlaybackRate !== 1.0}`);
-                    
-                    // Stop any existing source first to prevent multiple streams
-                    this.stopCurrentSource();
-                    
-                    // Reset state
-                    this.isDestroyed = false;
-                    this.isPaused = false;
-                    
-                    try {
-                        // Use HTML audio for pitch preservation when speed != 1.0
-                        if (this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                            console.log('🔍🎵 Entering HTML Audio path');
-                            console.log('🎵 Using HTML audio for pitch preservation at speed:', currentPlaybackRate);
-                            console.log(`🎵 Start offset for HTML audio: ${startOffset.toFixed(3)}s`);
-                            
-                            // COMPREHENSIVE Validate playback rate before use
-                            console.log(`🔍🎵 Pre-validation currentPlaybackRate:`, {
-                                raw: currentPlaybackRate,
-                                type: typeof currentPlaybackRate,
-                                finite: isFinite(currentPlaybackRate),
-                                greater_than_zero: currentPlaybackRate > 0,
-                                string_rep: String(currentPlaybackRate),
-                                json_rep: JSON.stringify(currentPlaybackRate)
-                            });
-                            
-                            if (!isFinite(currentPlaybackRate) || currentPlaybackRate <= 0) {
-                                console.error('🔍🎵 CRITICAL: Invalid playback rate detected:', currentPlaybackRate, 'falling back to 1.0x');
-                                currentPlaybackRate = 1.0;
-                                console.log('🔍🎵 Reset currentPlaybackRate to 1.0');
-                            }
-                            
-                            console.log(`🔍🎵 Post-validation currentPlaybackRate: ${currentPlaybackRate} (finite: ${isFinite(currentPlaybackRate)})`);
-                            
-                            // Create or reuse HTML audio element
-                            if (!this.htmlAudio) {
-                                console.log('🔍🎵 Creating new HTML audio element');
-                                console.log('🎵 Creating new HTML audio element');
-                                this.htmlAudio = new Audio();
-                                this.htmlAudio.preload = 'auto';
-                                
-                                // Check if preservesPitch is supported
-                                if ('preservesPitch' in this.htmlAudio) {
-                                    this.htmlAudio.preservesPitch = true;
-                                    console.log('preservesPitch property set to true');
-                                } else {
-                                    console.warn('preservesPitch property not supported in this browser');
-                                    // Try alternative property names
-                                    if ('mozPreservesPitch' in this.htmlAudio) {
-                                        this.htmlAudio.mozPreservesPitch = true;
-                                        console.log('mozPreservesPitch property set to true');
-                                    } else if ('webkitPreservesPitch' in this.htmlAudio) {
-                                        this.htmlAudio.webkitPreservesPitch = true;
-                                        console.log('webkitPreservesPitch property set to true');
-                                    }
-                                }
-                            } else {
-                                console.log('🔍🎵 Reusing existing HTML audio element');
-                                console.log('🎵 Reusing existing HTML audio element');
-                            }
-                            
-                            console.log(`🔍🎵 Setting HTML audio src: ${audioUrl ? 'valid URL' : 'invalid URL'}`);
-                            console.log(`🎵 Setting HTML audio src and properties...`);
-                            this.htmlAudio.src = audioUrl;
-                            
-                            // ULTRA-SAFE Validate and set playback rate
-                            console.log(`🔍🎵 About to set playbackRate - currentPlaybackRate inspection:`);
-                            console.log(`🔍🎵 - Value: ${currentPlaybackRate}`);
-                            console.log(`🔍🎵 - Type: ${typeof currentPlaybackRate}`);
-                            console.log(`🔍🎵 - isFinite: ${isFinite(currentPlaybackRate)}`);
-                            console.log(`🔍🎵 - > 0: ${currentPlaybackRate > 0}`);
-                            console.log(`🔍🎵 - String: "${String(currentPlaybackRate)}"`);
-                            console.log(`🔍🎵 - parseFloat: ${parseFloat(currentPlaybackRate)}`);
-                            console.log(`🔍🎵 - parseFloat isFinite: ${isFinite(parseFloat(currentPlaybackRate))}`);
-                            
-                            const safePlaybackRate = isFinite(currentPlaybackRate) && currentPlaybackRate > 0 ? currentPlaybackRate : 1.0;
-                            
-                            console.log(`🔍🎵 Computed safePlaybackRate:`, {
-                                safe: safePlaybackRate,
-                                original: currentPlaybackRate,
-                                same: safePlaybackRate === currentPlaybackRate,
-                                safeFinite: isFinite(safePlaybackRate),
-                                safeType: typeof safePlaybackRate
-                            });
-                            
-                            console.log(`🎵 Setting playback rate to ${safePlaybackRate} (original: ${currentPlaybackRate})`);
-                            
-                            // FINAL CHECK before setting
-                            if (!isFinite(safePlaybackRate) || safePlaybackRate <= 0) {
-                                console.error('🔍🎵 FINAL CHECK FAILED - safePlaybackRate is still invalid:', safePlaybackRate);
-                                console.error('🔍🎵 Forcing to 1.0 and throwing error');
-                                throw new Error(`Invalid playback rate computed: ${safePlaybackRate} (from ${currentPlaybackRate})`);
-                            }
-                            
-                            console.log(`🔍🎵 FINAL CHECK PASSED - About to set playbackRate to: ${safePlaybackRate}`);
-                            this.htmlAudio.playbackRate = safePlaybackRate;
-                            console.log(`🔍🎵 Successfully set playbackRate. Actual value now: ${this.htmlAudio.playbackRate}`);
-                            
-                            console.log(`🎵 Setting currentTime to ${startOffset.toFixed(3)}s`);
-                            this.htmlAudio.currentTime = startOffset;
-                            
-                            // Ensure pitch preservation is enabled (try all variants)
-                            if ('preservesPitch' in this.htmlAudio) {
-                                this.htmlAudio.preservesPitch = true;
-                            }
-                            if ('mozPreservesPitch' in this.htmlAudio) {
-                                this.htmlAudio.mozPreservesPitch = true;
-                            }
-                            if ('webkitPreservesPitch' in this.htmlAudio) {
-                                this.htmlAudio.webkitPreservesPitch = true;
-                            }
-                            
-                            console.log('🎵 HTML audio settings:', {
-                                playbackRate: this.htmlAudio.playbackRate,
-                                currentTime: this.htmlAudio.currentTime,
-                                preservesPitch: this.htmlAudio.preservesPitch,
-                                mozPreservesPitch: this.htmlAudio.mozPreservesPitch,
-                                webkitPreservesPitch: this.htmlAudio.webkitPreservesPitch
-                            });
-                            
-                            // Handle when chunk finishes
-                            this.htmlAudio.onended = () => {
-                                console.log(`🎵 HTML Audio chunk ${chunkIndex} ended, checking if should continue...`);
-                                console.log(`🎵 State check: isPaused=${this.isPaused}, isDestroyed=${this.isDestroyed}, isPlaying=${isPlaying}`);
-                                if (!this.isPaused && !this.isDestroyed && isPlaying) {
-                                    console.log(`🎵 Moving to next chunk after ${chunkIndex}`);
-                                    playNextChunk(chunkIndex);
-                                } else {
-                                    console.log(`🎵 Not continuing: audio ended but should not continue`);
-                                }
-                            };
-                            
-                            // Handle time updates
-                            this.htmlAudio.ontimeupdate = () => {
-                                if (!this.isPaused && !this.isDestroyed) {
-                                    this.updateProgressBar();
-                                }
-                            };
-                            
-                            // Handle loading
-                            this.htmlAudio.onloadeddata = () => {
-                                audioDuration = this.htmlAudio.duration;
-                                console.log(`🎵 HTML Audio loaded: duration=${audioDuration}s, will start at ${this.htmlAudio.currentTime}s`);
-                                if (totalTimeSpan) {
-                                    totalTimeSpan.textContent = this.formatTime(audioDuration);
-                                }
-                                console.log('🎵 HTML Audio loaded and starting playback at', currentPlaybackRate + 'x speed');
-                                console.log('🎵 Pitch preservation settings:', {
-                                    preservesPitch: this.htmlAudio.preservesPitch,
-                                    mozPreservesPitch: this.htmlAudio.mozPreservesPitch,
-                                    webkitPreservesPitch: this.htmlAudio.webkitPreservesPitch
-                                });
-                                this.htmlAudio.play().then(() => {
-                                    console.log('🎵 HTML Audio playback started successfully');
-                                    console.log(`🎵 Actual start position: ${this.htmlAudio.currentTime.toFixed(3)}s`);
-                                }).catch(error => {
-                                    console.error('🎵 HTML Audio playback failed:', error);
-                                });
-                                this.startTimeTracking();
-                            };
-                            
-                            console.log(`🔍🎵 HTML AUDIO SETUP COMPLETE`);
-                            console.log(`🎵 PLAY METHOD END (HTML AUDIO SETUP)`);
-                            return;
-                        }
-                        
-                        // Use Web Audio API for normal speed (1.0x) playback
-                        console.log('🎵 Using Web Audio API for normal speed playback');
-                        console.log(`🎵 Start offset for Web Audio: ${startOffset.toFixed(3)}s`);
-                        
-                        // ALWAYS load and decode the new audio for this chunk
-                        const response = await fetch(audioUrl);
-                        const arrayBuffer = await response.arrayBuffer();
-                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-                        this.currentBuffer = audioBuffer;
-                        
-                        // Check if we were stopped while loading
-                        if (this.isDestroyed) {
-                            console.log('🎵 Playback was stopped while loading');
-                            return;
-                        }
-                        
-                        // Store duration
-                        audioDuration = this.currentBuffer.duration;
-                        console.log(`🎵 Web Audio buffer loaded: duration=${audioDuration}s, will start at ${startOffset.toFixed(3)}s`);
-                        if (totalTimeSpan) {
-                            totalTimeSpan.textContent = this.formatTime(audioDuration);
-                        }
-                        
-                        // Create new source
-                        this.currentSource = this.audioContext.createBufferSource();
-                        this.currentSource.buffer = this.currentBuffer;
-                        this.currentSource.playbackRate.value = currentPlaybackRate;
-                        this.currentSource.connect(this.audioContext.destination);
-                        
-                        // Handle when chunk finishes
-                        this.currentSource.onended = () => {
-                            console.log(`🎵 Web Audio chunk ${chunkIndex} ended, checking if should continue...`);
-                            console.log(`🎵 State check: isPaused=${this.isPaused}, isDestroyed=${this.isDestroyed}, isPlaying=${isPlaying}, isSpeedChanging=${isSpeedChanging}`);
-                            if (!this.isPaused && !this.isDestroyed && isPlaying && !isSpeedChanging) {
-                                console.log(`🎵 Moving to next chunk after ${chunkIndex}`);
-                                playNextChunk(chunkIndex);
-                            } else {
-                                console.log(`🎵 Not continuing: audio ended but should not continue (speedChanging=${isSpeedChanging})`);
-                            }
-                        };
-                        
-                        // Start playback from specified offset
-                        this.startTime = this.audioContext.currentTime - startOffset;
-                        console.log(`🎵 Web Audio timing: contextTime=${this.audioContext.currentTime.toFixed(3)}s, startTime=${this.startTime.toFixed(3)}s, offset=${startOffset.toFixed(3)}s`);
-                        this.currentSource.start(0, startOffset);
-                        
-                        // Start time tracking
-                        this.startTimeTracking();
-                        
-                        console.log(`🎵 Successfully started chunk ${chunkIndex} at ${currentPlaybackRate}x speed from ${startOffset}s`);
-                        console.log(`🎵 PLAY METHOD END (WEB AUDIO STARTED)`);
-                        
-                    } catch (error) {
-                        console.error('🎵 Error playing audio:', error);
-                        console.error('🎵 Error stack:', error.stack);
-                        throw error;
-                    }
-                },
-                
-                pause() {
-                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                        // Pause HTML audio
-                        pausedAt = this.htmlAudio.currentTime;
-                        this.htmlAudio.pause();
-                        this.isPaused = true;
-                        isPaused = true;
-                        isPlaying = false;
-                        return pausedAt;
-                    }
-                    
-                    // Web Audio API pause logic (existing code)
-                    if (this.currentSource && !this.isPaused) {
-                        // Calculate current position
-                        pausedAt = this.getCurrentTime();
-                        console.log(`Pausing at ${pausedAt.toFixed(2)}s`);
-                        
-                        // Stop the current source
-                        this.stopCurrentSource();
-                        this.isPaused = true;
-                        isPaused = true;
-                        isPlaying = false;
-                        
-                        return pausedAt;
-                    }
-                    return 0;
-                },
-                
-                resume() {
-                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                        // Resume HTML audio
-                        this.htmlAudio.currentTime = pausedAt;
-                        this.htmlAudio.play();
-                        this.isPaused = false;
-                        isPaused = false;
-                        isPlaying = true;
-                        return true;
-                    }
-                    
-                    // Web Audio API resume logic (existing code)
-                    if (this.isPaused && this.currentBuffer) {
-                        console.log(`Resuming from ${pausedAt.toFixed(2)}s`);
-                        
-                        // Create new source starting from paused position
-                        this.currentSource = this.audioContext.createBufferSource();
-                        this.currentSource.buffer = this.currentBuffer;
-                        this.currentSource.playbackRate.value = currentPlaybackRate;
-                        this.currentSource.connect(this.audioContext.destination);
-                        
-                        // Handle when chunk finishes
-                        this.currentSource.onended = () => {
-                            if (!this.isPaused && !this.isDestroyed && isPlaying) {
-                                console.log(`Chunk ${currentChunkIndex} finished playing after resume`);
-                                playNextChunk(currentChunkIndex);
-                            }
-                        };
-                        
-                        // Start from paused position
-                        this.startTime = this.audioContext.currentTime - pausedAt;
-                        this.currentSource.start(0, pausedAt);
-                        
-                        this.isPaused = false;
-                        isPaused = false;
-                        isPlaying = true;
-                        
-                        // Restart time tracking
-                        this.startTimeTracking();
-                        
-                        return true;
-                    }
-                    return false;
-                },
-                
-                setPlaybackRate(rate, oldRate = null) {
-                    console.log(`🎵 ===== SPEED CHANGE DEBUG START =====`);
-                    console.log(`🎵 setPlaybackRate: ${oldRate || currentPlaybackRate}x → ${rate}x`);
-                    console.log(`🎵 Current state: playing=${isPlaying}, paused=${isPaused}, chunk=${currentChunkIndex}`);
-                    console.log(`🎵 Audio duration: ${audioDuration}s, pausedAt: ${pausedAt}s`);
-                    console.log(`🎵 HTML Audio exists: ${!!this.htmlAudio}, Current source exists: ${!!this.currentSource}`);
-                    
-                    // If no audio is playing, just update the rate for future playback
-                    if (!isPlaying && !isPaused) {
-                        console.log('🎵 No audio active, just updating rate for future');
-                        // currentPlaybackRate is already updated in changePlaybackRate
-                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (NO AUDIO) =====`);
-                        return;
-                    }
-                    
-                    // Get the ACTUAL current playback rate from the audio source
-                    // Use the oldRate parameter if provided, otherwise try to detect from audio elements
-                    let actualCurrentRate = 1.0;
-                    if (oldRate !== null) {
-                        // Use the provided old rate for accurate detection
-                        actualCurrentRate = oldRate;
-                        console.log(`🎵 Using provided old rate: ${actualCurrentRate}`);
-                    } else if (this.htmlAudio && this.htmlAudio.playbackRate) {
-                        actualCurrentRate = this.htmlAudio.playbackRate;
-                        console.log(`🎵 Detected from HTML audio: ${actualCurrentRate}`);
-                    } else if (this.currentSource && this.currentSource.playbackRate) {
-                        actualCurrentRate = this.currentSource.playbackRate.value;
-                        console.log(`🎵 Detected from Web Audio: ${actualCurrentRate}`);
-                    } else {
-                        // Fallback - this shouldn't happen with oldRate parameter
-                        actualCurrentRate = 1.0; // assume Web Audio was being used
-                        console.log(`🎵 Fallback to 1.0 (assuming Web Audio)`);
-                    }
-                    
-                    console.log(`🎵 Actual current audio rate: ${actualCurrentRate}, requested rate: ${rate}`);
-                    
-                    // If changing from/to same rate, do nothing
-                    if (Math.abs(actualCurrentRate - rate) < 0.01) {
-                        console.log('🎵 Same rate, no change needed');
-                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (SAME RATE) =====`);
-                        return;
-                    }
-                    
-                    // Determine audio method requirements
-                    const wasUsingHtmlAudio = actualCurrentRate !== 1.0;
-                    const shouldUseHtmlAudio = rate !== 1.0;
-                    
-                    console.log(`🎵 Method check: was HTML: ${wasUsingHtmlAudio}, should HTML: ${shouldUseHtmlAudio}`);
-                    console.log(`🎵 Method switch needed: ${wasUsingHtmlAudio !== shouldUseHtmlAudio}`);
-                    
-                    // Case 1: No method switch needed - just update rate in place
-                    if (wasUsingHtmlAudio === shouldUseHtmlAudio) {
-                        console.log('🎵 Same method, updating rate in place - IMMEDIATE');
-                        
-                        if (this.htmlAudio && shouldUseHtmlAudio) {
-                            // Just change HTML audio rate immediately
-                            console.log(`🎵 Updating HTML audio rate immediately to ${rate}`);
-                            console.log(`🎵 HTML audio before: playbackRate=${this.htmlAudio.playbackRate}, paused=${this.htmlAudio.paused}`);
-                            
-                            // Validate rate before setting
-                            const safeRate = isFinite(rate) && rate > 0 ? rate : 1.0;
-                            if (safeRate !== rate) {
-                                console.error('🎵 Invalid rate for HTML audio:', rate, 'using:', safeRate);
-                            }
-                            
-                            // Set the new rate immediately
-                            this.htmlAudio.playbackRate = safeRate;
-                            console.log(`🎵 HTML audio after: playbackRate=${this.htmlAudio.playbackRate}, paused=${this.htmlAudio.paused}`);
-                            
-                            // Verify the rate was actually set
-                            if (Math.abs(this.htmlAudio.playbackRate - safeRate) > 0.01) {
-                                console.warn(`🎵 Rate not set correctly: expected ${safeRate}, got ${this.htmlAudio.playbackRate}`);
-                            } else {
-                                console.log(`🎵 ✅ HTML audio rate successfully updated to ${this.htmlAudio.playbackRate}x`);
-                            }
-                            
-                        } else if (this.currentSource && this.currentSource.playbackRate) {
-                            // Just change Web Audio rate immediately
-                            console.log(`🎵 Updating Web Audio rate immediately to ${rate}`);
-                            console.log(`🎵 Web Audio before: playbackRate=${this.currentSource.playbackRate.value}`);
-                            
-                            // Validate rate before setting
-                            const safeRate = isFinite(rate) && rate > 0 ? rate : 1.0;
-                            if (safeRate !== rate) {
-                                console.error('🎵 Invalid rate for Web Audio:', rate, 'using:', safeRate);
-                            }
-                            
-                            // Set the new rate immediately
-                            this.currentSource.playbackRate.value = safeRate;
-                            console.log(`🎵 Web Audio after: playbackRate=${this.currentSource.playbackRate.value}`);
-                            
-                            // Verify the rate was actually set
-                            if (Math.abs(this.currentSource.playbackRate.value - safeRate) > 0.01) {
-                                console.warn(`🎵 Rate not set correctly: expected ${safeRate}, got ${this.currentSource.playbackRate.value}`);
-                            } else {
-                                console.log(`🎵 ✅ Web Audio rate successfully updated to ${this.currentSource.playbackRate.value}x`);
-                            }
-                            
-                        } else {
-                            console.warn('🎵 No active audio source found for immediate rate change');
-                            // Force a restart in this case
-                            console.log('🎵 Forcing restart due to no active source');
-                        }
-                        
-                        // Clear speed changing flag immediately for immediate changes
-                        isSpeedChanging = false;
-                        if (speedChangeTimeout) {
-                            clearTimeout(speedChangeTimeout);
-                            speedChangeTimeout = null;
-                        }
-                        console.log('🎵 Speed change flag cleared immediately (immediate rate change)');
-                        
-                        console.log(`🎵 ===== SPEED CHANGE DEBUG END (IMMEDIATE UPDATE) =====`);
-                        return;
-                    }
-                    
-                    // Case 2: Method switch required - restart with new method
-                    console.log('🎵 Method switch required - restarting with new method');
-                    
-                    // Save current state 
-                    let currentTime = 0;
-                    let wasActuallyPlaying = isPlaying && !isPaused;
-                    
-                    if (this.htmlAudio && wasUsingHtmlAudio) {
-                        currentTime = this.htmlAudio.currentTime || 0;
-                    } else if (this.isPaused) {
-                        currentTime = pausedAt || 0;
-                    } else {
-                        currentTime = this.getCurrentTime();
-                    }
-                    
-                    console.log(`🎵 Saved state: time=${currentTime.toFixed(3)}s, wasPlaying=${wasActuallyPlaying}`);
-                    
-                    // Stop current source
-                    this.stopCurrentSource();
-                    
-                    // Restart immediately if currently playing
-                    if (wasActuallyPlaying && currentChunkIndex >= 0) {
-                        const chunk = getChunk(currentChunkIndex);
-                        if (chunk) {
-                            console.log(`🎵 Method switch restart: chunk ${currentChunkIndex} from ${currentTime.toFixed(3)}s at ${rate}x`);
-                            
-                            // Restart from current position with new rate
-                            loadChunk(currentChunkIndex, chunk.text).then(audioUrl => {
-                                return this.play(audioUrl, currentChunkIndex, currentTime);
-                            }).then(() => {
-                                console.log(`🎵 ✅ Successfully restarted with new rate ${rate}x`);
-                                if (!wasActuallyPlaying) {
-                                    // If it was paused, pause it again
-                                    setTimeout(() => this.pause(), 100);
-                                }
-                            }).catch(error => {
-                                console.error('🎵 Error restarting with new speed:', error);
-                            });
-                        }
-                    } else if (isPaused) {
-                        // If paused, just update the internal state - when resumed it will use new rate
-                        console.log(`🎵 Audio is paused, rate will apply when resumed`);
-                    }
-                    
-                    console.log(`🎵 ===== SPEED CHANGE DEBUG END (METHOD SWITCH) =====`);
-                },
-                
-                seekTo(offsetSeconds) {
-                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                        // HTML audio seeking
-                        const newTime = Math.max(0, Math.min(this.htmlAudio.currentTime + offsetSeconds, this.htmlAudio.duration));
-                        this.htmlAudio.currentTime = newTime;
-                        return;
-                    }
-                    
-                    // Web Audio API seeking (existing code)
-                    if (!this.currentBuffer || (!isPlaying && !isPaused)) return;
-                    
-                    console.log(`Seeking by ${offsetSeconds} seconds`);
-                    
-                    // Calculate new position
-                    const currentTime = isPaused ? pausedAt : this.getCurrentTime();
-                    const newTime = Math.max(0, Math.min(currentTime + offsetSeconds, audioDuration));
-                    
-                    console.log(`Current: ${currentTime.toFixed(2)}s, New: ${newTime.toFixed(2)}s`);
-                    
-                    // Stop current source to prevent multiple streams
-                    this.stopCurrentSource();
-                    
-                    if (isPaused) {
-                        // If paused, just update the paused position
-                        pausedAt = newTime;
-                        this.updateProgressBar();
-                        console.log(`Updated pause position to ${newTime.toFixed(2)}s`);
-                    } else {
-                        // If playing, restart from new position
-                        this.currentSource = this.audioContext.createBufferSource();
-                        this.currentSource.buffer = this.currentBuffer;
-                        this.currentSource.playbackRate.value = currentPlaybackRate;
-                        this.currentSource.connect(this.audioContext.destination);
-                        
-                        // Handle when chunk finishes
-                        this.currentSource.onended = () => {
-                            if (!this.isPaused && !this.isDestroyed && isPlaying) {
-                                console.log(`Chunk ${currentChunkIndex} finished playing after seek`);
-                                playNextChunk(currentChunkIndex);
-                            }
-                        };
-                        
-                        // Start from new position
-                        this.startTime = this.audioContext.currentTime - (newTime / currentPlaybackRate);
-                        this.currentSource.start(0, newTime);
-                        
-                        console.log(`Resumed playback from ${newTime.toFixed(2)}s`);
-                    }
-                },
-                
-                getCurrentTime() {
-                    if (this.htmlAudio && this.useHtmlAudio && currentPlaybackRate !== 1.0) {
-                        return this.htmlAudio.currentTime || 0;
-                    }
-                    
-                    if (!this.startTime || this.isDestroyed) return 0;
-                    if (this.isPaused) return pausedAt;
-                    return Math.max(0, (this.audioContext.currentTime - this.startTime) * currentPlaybackRate);
-                },
-                
-                startTimeTracking() {
-                    const updateTime = () => {
-                        if ((isPlaying || isPaused) && !this.isDestroyed) {
-                            currentAudioTime = this.getCurrentTime();
-                            this.updateProgressBar();
-                            if (!isPaused) {
-                                requestAnimationFrame(updateTime);
-                            }
-                        }
-                    };
-                    updateTime();
-                },
-                
-                updateProgressBar() {
-                    if (audioDuration > 0) {
-                        const time = isPaused ? pausedAt : currentAudioTime;
-                        const progress = (time / audioDuration) * 100;
-                        
-                        // Update main progress bar (hidden but still functional for internal tracking)
-                        if (progressBar && progressHandle && currentTimeSpan) {
-                            progressBar.style.width = `${progress}%`;
-                            progressHandle.style.left = `${progress}%`;
-                            currentTimeSpan.textContent = this.formatTime(time);
-                        }
-                    }
-                },
-                
-                formatTime(seconds) {
-                    const mins = Math.floor(seconds / 60);
-                    const secs = Math.floor(seconds % 60);
-                    return `${mins}:${secs.toString().padStart(2, '0')}`;
-                },
-                
-                stop() {
-                    console.log('Stopping audio player');
-                    this.isDestroyed = true;
-                    this.isPaused = false;
-                    this.stopCurrentSource();
-                    this.startTime = 0;
-                    this.currentBuffer = null;
-                    currentAudioTime = 0;
-                    pausedAt = 0;
-                    
-                    // Reset progress bar
-                    progressBar.style.width = '0%';
-                    progressHandle.style.left = '0%';
-                    currentTimeSpan.textContent = '0:00';
-                    totalTimeSpan.textContent = '0:00';
+        function scrollToWord(wordIndex) {
+            const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+            if (wordSpan) {
+                wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // --- AUDIO PLAYBACK & CHUNKING --- //
+        function getChunkStartingAt(startIndex) {
+            const chunkSize = 100;
+            if (startIndex >= wordMap.length) return null;
+
+            let endWordIndex = Math.min(startIndex + chunkSize - 1, wordMap.length - 1);
+
+            // Try to end chunk at a sentence break for more natural pauses
+            const lastThirdStartIndex = Math.floor(startIndex + (endWordIndex - startIndex) * 0.6);
+            for (let i = endWordIndex; i > lastThirdStartIndex; i--) {
+                if (wordMap[i].text.endsWith('.')) {
+                    endWordIndex = i;
+                    break;
                 }
+            }
+
+            const wordsInChunk = wordMap.slice(startIndex, endWordIndex + 1);
+            const text = wordsInChunk.map(w => w.text).join(' ');
+            
+            return {
+                startIndex: startIndex,
+                endIndex: endWordIndex,
+                text: text,
+                id: `chunk-${startIndex}`
             };
         }
 
-        // Play a specific chunk
-        async function playChunk(audioUrl, chunkIndex) {
+        async function playFromWord(wordIndex) {
+            if (isPlaying) await stopPlayback();
+            
+            const chunk = getChunkStartingAt(wordIndex);
+            if (!chunk) return showError('Audio chunk not found for this word.');
+            
+            currentChunk = chunk;
+            updateHighlighting();
+            
+            await navigateToWordIfNeeded(wordIndex);
+            scrollToWord(wordIndex);
+            
             isPlaying = true;
             isPaused = false;
             
-            // Update chunk highlighting based on current playback position
-            updateChunkHighlighting();
-            
-            // Update status
-            statusText.textContent = `Playing chunk ${chunkIndex + 1}`;
-            
-            // Play audio
-            await gaplessPlayer.play(audioUrl, chunkIndex);
-        }
+            $('sticky-audio-player').classList.add('active');
+            setTimeout(() => {
+                applyPreferencesToUI();
+            }, 100);
+            updatePlayPauseButtons('pause');
+            showLoading(`Generating audio...`);
 
-        // Debug function to check audio settings
-        function debugAudioSettings() {
-            if (gaplessPlayer && gaplessPlayer.htmlAudio) {
-                console.log('=== HTML Audio Debug Info ===');
-                console.log('Current playback rate:', currentPlaybackRate);
-                console.log('HTML Audio playbackRate:', gaplessPlayer.htmlAudio.playbackRate);
-                console.log('preservesPitch:', gaplessPlayer.htmlAudio.preservesPitch);
-                console.log('mozPreservesPitch:', gaplessPlayer.htmlAudio.mozPreservesPitch);
-                console.log('webkitPreservesPitch:', gaplessPlayer.htmlAudio.webkitPreservesPitch);
-                console.log('Audio source:', gaplessPlayer.htmlAudio.src ? 'Set' : 'Not set');
-                console.log('Audio readyState:', gaplessPlayer.htmlAudio.readyState);
-                console.log('Audio paused:', gaplessPlayer.htmlAudio.paused);
-                console.log('=============================');
-            } else {
-                console.log('HTML Audio not available or not initialized');
-            }
-        }
-
-        // Update chunk highlighting based on current playback position
-        function updateChunkHighlighting() {
-            // Clear all highlighting
-            textContent.querySelectorAll('.word').forEach(wordSpan => {
-                wordSpan.classList.remove('word-current', 'word-next', 'word-playing-chunk', 'word-next-chunk');
-            });
-            
-            if (!isPlaying || currentChunkIndex === -1) return;
-            
-            // Get current and next chunks
-            const currentChunk = getChunk(currentChunkIndex);
-            const nextChunk = getChunk(currentChunkIndex + 1);
-            
-            if (!currentChunk) return;
-            
-            console.log(`🎨 Highlighting chunk ${currentChunkIndex}: words ${currentChunk.startWordIndex}-${currentChunk.endWordIndex} (${currentChunk.wordCount} words)`);
-            
-            textContent.querySelectorAll('.word').forEach(wordSpan => {
-                const wordIndex = parseInt(wordSpan.dataset.wordIndex);
-                
-                // Highlight current chunk being played
-                if (wordIndex >= currentChunk.startWordIndex && wordIndex <= currentChunk.endWordIndex) {
-                    wordSpan.classList.add('word-playing-chunk');
-                }
-                
-                // Highlight next chunk if it exists
-                if (nextChunk && wordIndex >= nextChunk.startWordIndex && wordIndex <= nextChunk.endWordIndex) {
-                    wordSpan.classList.add('word-next-chunk');
-                }
-            });
-        }
-
-        // Play next chunk automatically
-        async function playNextChunk(finishedChunkIndex) {
-            const nextChunkIndex = finishedChunkIndex + 1;
-            
-            if (nextChunkIndex >= chunks.length) {
-                // End of document
-                console.log('Reached end of document');
-                stopPlayback();
-                statusText.textContent = 'Playback completed';
-                return;
-            }
-            
             try {
-                const nextChunk = getChunk(nextChunkIndex);
-                if (!nextChunk) {
-                    throw new Error(`No chunk found for index ${nextChunkIndex}`);
+                const audioUrl = await loadChunk(chunk);
+                if (!gaplessPlayer) initializeWebAudioPlayer();
+                await gaplessPlayer.play(audioUrl, chunk.id);
+                
+                const nextChunkStartIndex = chunk.endIndex + 1;
+                if (nextChunkStartIndex < wordMap.length) {
+                    preloadNextChunk(nextChunkStartIndex);
                 }
-                
-                // Update current positions
-                currentChunkIndex = nextChunkIndex;
-                currentWordIndex = nextChunk.startWordIndex;
-                
-                console.log(`Playing next chunk ${nextChunkIndex}: ${nextChunk.wordCount} words (${nextChunk.startWordIndex}-${nextChunk.endWordIndex})`);
-                
-                // Load next chunk (should be cached)
-                const audioUrl = await loadChunk(nextChunkIndex, nextChunk.text);
-                
-                // Navigate to page containing this chunk if needed
-                navigateToWordIfNeeded(currentWordIndex);
-                
-                // Play next chunk
-                await playChunk(audioUrl, nextChunkIndex);
-                
-                // Preload the chunk after next
-                if (nextChunkIndex + 1 < chunks.length) {
-                    preloadNextChunk(nextChunkIndex + 1);
-                }
-                
-            } catch (error) {
-                console.error('Error playing next chunk:', error);
-                showError('Failed to continue playback: ' + error.message);
+            } catch (error) { 
+                showError('Playback failed: ' + error.message); 
+                stopPlayback(); 
+            } finally { 
+                hideLoading(); 
+            }
+        }
+
+        async function playNextChunk() {
+            const nextChunkStartIndex = currentChunk.endIndex + 1;
+            if (nextChunkStartIndex >= wordMap.length) {
                 stopPlayback();
+                return;
             }
-        }
 
-        // Navigate to page containing a specific word
-        function navigateToWordIfNeeded(wordIndex) {
-            if (wordsPerPage === 'all') return;
-            
-            const wordsPerPageNum = parseInt(wordsPerPage);
-            const targetPage = Math.ceil((wordIndex + 1) / wordsPerPageNum);
-            
-            if (targetPage !== currentPage) {
-                console.log(`📄 Auto-navigating from page ${currentPage} to page ${targetPage} for word ${wordIndex}`);
-                currentPage = targetPage;
-                updatePaginationButtons();
-                displayCurrentPage();
-            }
-        }
-
-        // Stop playback
-        function stopPlayback() {
-            console.log('🛑 Stopping playback...');
-            console.log('🛑 Current state before stop:', {
-                isPlaying, isPaused, currentChunkIndex, currentWordIndex,
-                stickyPlayerVisible: stickyAudioPlayer ? stickyAudioPlayer.classList.contains('active') : 'N/A'
-            });
-            
-            isPlaying = false;
-            isPaused = false;
-            currentChunkIndex = -1;
-            currentWordIndex = -1;
-            
-            // Reset audio state
-            currentAudioTime = 0;
-            audioDuration = 0;
-            pausedAt = 0;
-            
-            // Stop audio player
-            if (gaplessPlayer) {
-                gaplessPlayer.stop();
-                console.log('Stopping audio player');
-            }
-            
-            // Stop the positioning monitoring to prevent re-showing
-            if (window.positionMonitorInterval) {
-                clearInterval(window.positionMonitorInterval);
-                window.positionMonitorInterval = null;
-                console.log('🔧 Stopped position monitoring to allow hiding');
-            }
-            
-            // Hide sticky audio player
-            if (stickyAudioPlayer) {
-                console.log('🛑 Hiding sticky audio player...');
-                stickyAudioPlayer.classList.remove('active');
-                // Force immediate hide with inline styles to override positioning system
-                stickyAudioPlayer.style.cssText = `
-                    position: fixed !important;
-                    top: 20px !important;
-                    right: 20px !important;
-                    width: 320px !important;
-                    max-width: calc(100vw - 40px) !important;
-                    z-index: 2147483647 !important;
-                    transform: none !important;
-                    margin: 0 !important;
-                    background: rgba(15, 23, 42, 0.95) !important;
-                    backdrop-filter: blur(15px) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-                    border-radius: 12px !important;
-                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
-                    padding: 16px !important;
-                    transition: opacity 0.3s ease !important;
-                    display: none !important;
-                    visibility: hidden !important;
-                    pointer-events: none !important;
-                `;
-                console.log('🛑 Applied forced hide styles');
-            }
-            
-            // Update play/pause button
-            updatePlayPauseButtons('play');
-            
-            // Clear chunk highlighting
-            clearChunkHighlighting();
-            
-            console.log('🛑 Playback stopped successfully');
-            console.log('🛑 Final state after stop:', {
-                isPlaying, isPaused, currentChunkIndex, currentWordIndex,
-                stickyPlayerVisible: stickyAudioPlayer ? stickyAudioPlayer.classList.contains('active') : 'N/A'
-            });
-            console.log('🛑 ✅ Sticky player successfully hidden');
-        }
-
-        // Modern player event handlers
-        
-        // Play/Pause button toggle
-        if (playPauseBtn) {
-            playPauseBtn.addEventListener('click', () => {
-                if (isPlaying) {
-                    // Pause playback
-                    if (gaplessPlayer) {
-                        gaplessPlayer.pause();
-                        
-                        // Update button to show play icon
-                        const playIcon = playPauseBtn.querySelector('i');
-                        if (playIcon) {
-                            playIcon.setAttribute('data-lucide', 'play');
-                            lucide.createIcons();
-                        }
-                        
-                        statusText.textContent = `Paused at chunk ${currentChunkIndex + 1}`;
-                        console.log('Playback paused');
-                    }
-                } else if (isPaused) {
-                    // Resume playback
-                    if (gaplessPlayer && gaplessPlayer.resume()) {
-                        // Update button to show pause icon
-                        const playIcon = playPauseBtn.querySelector('i');
-                        if (playIcon) {
-                            playIcon.setAttribute('data-lucide', 'pause');
-                            lucide.createIcons();
-                        }
-                        
-                        statusText.textContent = `Playing chunk ${currentChunkIndex + 1}`;
-                        console.log('Playback resumed');
-                    }
-                } else {
-                    // Start new playback if we have a current word position
-                    if (currentWordIndex >= 0) {
-                        playFromWord(currentWordIndex);
-                    }
-                }
-            });
-        }
-
-        // Progress bar seeking
-        if (progressContainer) {
-            progressContainer.addEventListener('click', (e) => {
-                if (!isPlaying || audioDuration === 0) return;
-                
-                const rect = progressContainer.getBoundingClientRect();
-                const clickPercent = (e.clientX - rect.left) / rect.width;
-                const seekTime = clickPercent * audioDuration;
-                const seekOffset = seekTime - currentAudioTime;
-                
-                if (gaplessPlayer) {
-                    gaplessPlayer.seekTo(seekOffset);
-                }
-            });
-        }
-
-        // Stop button event
-        if (stopBtn) {
-            stopBtn.addEventListener('click', stopPlayback);
-        }
-
-        // Audio control event listeners
-        if (speedSelect) {
-            speedSelect.addEventListener('change', (e) => {
-                const newRate = parseFloat(e.target.value);
-                console.log(`🎵 Main speed dropdown changed to: ${newRate}x`);
-                console.log(`🎵 Current state before speed change - isPlaying: ${isPlaying}, isPaused: ${isPaused}, chunk: ${currentChunkIndex}`);
-                
-                // Validate the new rate before processing
-                if (!isFinite(newRate) || newRate <= 0) {
-                    console.error('🎵 Invalid speed value from dropdown:', e.target.value, 'parsed as:', newRate);
-                    // Reset dropdown to current valid rate
-                    e.target.value = currentPlaybackRate.toString();
-                    return;
-                }
-                
-                // Sync sticky speed select
-                if (stickySpeedSelect) {
-                    stickySpeedSelect.value = newRate;
-                }
-                
-                changePlaybackRate(newRate);
-                
-                // Log state after speed change
-                setTimeout(() => {
-                    console.log(`🎵 State after speed change - isPlaying: ${isPlaying}, isPaused: ${isPaused}, chunk: ${currentChunkIndex}`);
-                }, 150);
-            });
-        }
-
-        if (stickySpeedSelect) {
-            stickySpeedSelect.addEventListener('change', (e) => {
-                const newRate = parseFloat(e.target.value);
-                console.log(`🎵 Sticky speed select changed to ${newRate}x`);
-                
-                // Validate the new rate before processing
-                if (!isFinite(newRate) || newRate <= 0) {
-                    console.error('🎵 Invalid speed value from sticky dropdown:', e.target.value, 'parsed as:', newRate);
-                    // Reset dropdown to current valid rate
-                    e.target.value = currentPlaybackRate.toString();
-                    return;
-                }
-                
-                // Sync main speed select if it exists
-                if (speedSelect) {
-                    speedSelect.value = newRate;
-                }
-                
-                changePlaybackRate(newRate);
-            });
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Only handle shortcuts if no input is focused
-            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+            const nextChunk = getChunkStartingAt(nextChunkStartIndex);
+            if (!nextChunk) {
+                stopPlayback();
                 return;
             }
             
-            if (e.key === ' ' || e.key === 'Spacebar') {
-                e.preventDefault();
-                console.log('Spacebar pressed. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
-                
-                if (isPlaying && !isPaused) {
-                    // Currently playing, so pause
-                    pausePlayback();
-                } else if (isPaused) {
-                    // Currently paused, so resume
-                    resumePlayback();
-                } else if (currentWordIndex >= 0) {
-                    // Not playing at all, start from current word
-                    playFromWord(currentWordIndex);
-                } else {
-                    console.log('No audio loaded to play');
-                }
-            }
-        });
+            currentChunk = nextChunk;
+            updateHighlighting();
+            await navigateToWordIfNeeded(currentChunk.startIndex);
+            scrollToWord(currentChunk.startIndex);
 
-        // Sticky Player Event Listeners
-        if (stickyPlayPauseBtn) {
-            stickyPlayPauseBtn.addEventListener('click', () => {
-                console.log('Sticky play/pause button clicked. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
-                
-                if (isPlaying && !isPaused) {
-                    // Currently playing, so pause
-                    pausePlayback();
-                } else if (isPaused) {
-                    // Currently paused, so resume
-                    resumePlayback();
-                } else if (currentWordIndex >= 0) {
-                    // Not playing at all, start from current word
-                    playFromWord(currentWordIndex);
-                } else {
-                    console.log('No audio loaded to play');
-                }
-            });
-        }
+            try {
+                const audioUrl = await loadChunk(nextChunk);
+                await gaplessPlayer.play(audioUrl, nextChunk.id);
 
-        if (stickyStopBtn) {
-            stickyStopBtn.addEventListener('click', () => {
-                console.log('🛑 Sticky stop button clicked');
+                const subsequentChunkIndex = nextChunk.endIndex + 1;
+                if (subsequentChunkIndex < wordMap.length) {
+                    preloadNextChunk(subsequentChunkIndex);
+                }
+            } catch (error) {
+                showError('Playback failed: ' + error.message);
                 stopPlayback();
-            });
-            console.log('✅ Sticky stop button event listener attached');
-        } else {
-            console.warn('⚠️ Sticky stop button not found during initialization');
-        }
-
-        if (stickySpeedSelect) {
-            stickySpeedSelect.addEventListener('change', (e) => {
-                const newRate = parseFloat(e.target.value);
-                changePlaybackRate(newRate);
-            });
-        }
-
-        // Voice selection event listener  
-        if (stickyVoiceSelect) {
-            stickyVoiceSelect.addEventListener('change', (e) => {
-                handleVoiceChange(e.target.value);
-            });
-        }
-
-        // Helper functions
-        function base64ToBlob(base64, mimeType) {
-            const byteCharacters = atob(base64);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            return new Blob([byteArray], { type: mimeType });
-        }
-
-        function showLoading(text) {
-            if (loadingText) {
-                loadingText.textContent = text;
-            }
-            if (loadingIndicator) {
-                loadingIndicator.classList.remove('hidden');
             }
         }
 
-        function hideLoading() {
-            if (loadingIndicator) {
-                loadingIndicator.classList.add('hidden');
+        function togglePlayPause() {
+            if (!currentChunk) return;
+            if (isPlaying && !isPaused) { 
+                if (gaplessPlayer) { isPaused = true; isPlaying = false; gaplessPlayer.pause(); updatePlayPauseButtons('play'); }
+            } else if (isPaused) { 
+                if (gaplessPlayer) { isPaused = false; isPlaying = true; gaplessPlayer.resume(); updatePlayPauseButtons('pause'); }
             }
         }
 
-        function showError(message) {
-            if (errorMessage) {
-                errorMessage.textContent = message;
-            }
-            if (errorSection) {
-                errorSection.classList.remove('hidden');
-                errorSection.scrollIntoView({ behavior: 'smooth' });
-            }
+        async function stopPlayback() {
+            isPlaying = false; isPaused = false; currentChunk = null;
+            if (gaplessPlayer) gaplessPlayer.stop();
+            $('sticky-audio-player').classList.remove('active');
+            updatePlayPauseButtons('play');
+            updateHighlighting();
         }
 
-        function hideError() {
-            if (errorSection) {
-                errorSection.classList.add('hidden');
-            }
-        }
-
-        // Helper functions for sticky player controls
-        function pausePlayback() {
-            console.log('🎵 pausePlayback called. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
+        async function loadChunk(chunk) {
+            if (audioCache.has(chunk.id)) return audioCache.get(chunk.id);
             
-            if (gaplessPlayer && isPlaying && !isPaused) {
-                const pauseTime = gaplessPlayer.pause();
-                isPaused = true;
-                isPlaying = false;
-                pausedAt = pauseTime || 0;
-                
-                console.log('🎵 Playback paused at', pausedAt, 'State now - isPlaying:', isPlaying, 'isPaused:', isPaused);
-                
-                // Update sticky play/pause button to show play icon - with delay for DOM
-                setTimeout(() => {
-                    updatePlayPauseButtons('play');
-                }, 20);
-                
-            } else {
-                console.log('🎵 Cannot pause - invalid state or no player');
-            }
-        }
-
-        function resumePlayback() {
-            console.log('🎵 resumePlayback called. Current state - isPlaying:', isPlaying, 'isPaused:', isPaused);
-            
-            if (gaplessPlayer && isPaused && gaplessPlayer.resume()) {
-                isPaused = false;
-                isPlaying = true;
-                
-                console.log('🎵 Playback resumed. State now - isPlaying:', isPlaying, 'isPaused:', isPaused);
-                
-                // Update sticky play/pause button to show pause icon - with delay for DOM
-                setTimeout(() => {
-                    updatePlayPauseButtons('pause');
-                }, 20);
-                
-            } else {
-                console.log('🎵 Cannot resume - invalid state or resume failed');
-            }
-        }
-
-        function updatePlayPauseButtons(state) {
-            const iconName = state === 'play' ? 'play' : 'pause';
-            
-            console.log('Updating play/pause button icon to:', iconName);
-            console.log('Current button state check:', {
-                stickyPlayPauseBtn: !!stickyPlayPauseBtn,
-                hasIcon: !!stickyPlayPauseBtn?.querySelector('i')
+            const response = await fetch('/api/generate-audio', {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: chunk.text, model: selectedModel })
             });
+            if (!response.ok) throw new Error((await response.json()).error || 'API Error');
             
-            // Update sticky player button with robust approach
-            if (stickyPlayPauseBtn) {
-                try {
-                    // Clear all existing content and rebuild
-                    stickyPlayPauseBtn.innerHTML = '';
-                    
-                    // Create completely new icon element
-                    const newIcon = document.createElement('i');
-                    newIcon.setAttribute('data-lucide', iconName);
-                    newIcon.className = 'h-6 w-6 text-white';
-                    
-                    // Add the new icon to the button
-                    stickyPlayPauseBtn.appendChild(newIcon);
-                    
-                    // Force recreation of ALL icons on page
-                    setTimeout(() => {
-                        lucide.createIcons();
-                        console.log(`Icon updated successfully to ${iconName}`);
-                    }, 10);
-                    
-                } catch (error) {
-                    console.error('Error updating play/pause button:', error);
-                }
-            } else {
-                console.warn('Sticky play/pause button not found');
+            const data = await response.json();
+            const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            audioCache.set(chunk.id, url);
+            return url;
+        }
+
+        async function preloadNextChunk(wordIndex) {
+            const chunk = getChunkStartingAt(wordIndex);
+            if (chunk && !audioCache.has(chunk.id)) {
+                await loadChunk(chunk);
+            }
+        }
+
+        // --- UI & STATE MANAGEMENT --- //
+        function updateHighlighting() {
+            document.querySelectorAll('.text-span').forEach(s => s.classList.remove('word-playing-chunk'));
+            
+            if (!currentChunk || (!isPlaying && !isPaused)) return;
+
+            for (let i = currentChunk.startIndex; i <= currentChunk.endIndex; i++) {
+                const span = document.querySelector(`.text-span[data-word-index="${i}"]`);
+                if (span) span.classList.add('word-playing-chunk');
+            }
+        }
+
+        async function handleVoiceChange(newVoice) {
+            selectedModel = newVoice;
+            saveUserPreferences();
+            applyPreferencesToUI();
+            audioCache.clear();
+            if (isPlaying || isPaused) {
+                const savedIndex = currentChunk.startIndex;
+                const wasPlaying = isPlaying;
+                await stopPlayback();
+                if(wasPlaying) await playFromWord(savedIndex);
             }
         }
 
         function changePlaybackRate(newRate) {
-            console.log(`=== SPEED CHANGE START: ${currentPlaybackRate}x → ${newRate}x ===`);
-            console.log(`Current state: isPlaying=${isPlaying}, isPaused=${isPaused}, chunk=${currentChunkIndex}, speedChanging=${isSpeedChanging}`);
-            
-            // Validate the new rate
-            if (!isFinite(newRate) || newRate <= 0 || newRate > 3.0) {
-                console.error('🎵 Invalid playback rate requested:', newRate, 'ignoring request');
-                return;
-            }
-            
-            // Prevent rapid speed changes
-            if (isSpeedChanging) {
-                console.log('🎵 Speed change already in progress, ignoring rapid change request');
-                return;
-            }
-            
-            // Clear any existing speed change timeout
-            if (speedChangeTimeout) {
-                clearTimeout(speedChangeTimeout);
-                speedChangeTimeout = null;
-            }
-            
-            // Set speed changing flag
-            isSpeedChanging = true;
-            
-            // Save the old rate before updating
-            const oldRate = currentPlaybackRate;
-            
-            // Update the rate 
-            currentPlaybackRate = newRate;
-            
-            // Save the speed preference immediately
+            currentPlaybackRate = String(newRate);
             saveUserPreferences();
-            console.log(`Speed preference saved: ${newRate}x`);
-            
-            try {
-                if (gaplessPlayer) {
-                    // Pass the old rate so setPlaybackRate can properly determine current method
-                    gaplessPlayer.setPlaybackRate(newRate, oldRate);
-                } else {
-                    console.warn('No gapless player available for speed change');
-                }
-            } catch (error) {
-                console.error('🎵 Error during speed change:', error);
-                // Reset flag on error
-                isSpeedChanging = false;
-                throw error;
-            }
-            
-            // Clear the speed changing flag after a delay to allow the change to settle
-            speedChangeTimeout = setTimeout(() => {
-                isSpeedChanging = false;
-                console.log('🎵 Speed change flag cleared - ready for next change');
-            }, 1000); // 1 second delay
-            
-            console.log(`=== SPEED CHANGE END ===`);
-        }
-
-        function seekTo(newTime) {
-            if (!gaplessPlayer || audioDuration === 0) return;
-            
-            const currentTime = isPaused ? pausedAt : currentAudioTime;
-            const seekOffset = newTime - currentTime;
-            gaplessPlayer.seekTo(seekOffset);
-        }
-
-        // Voice selection change handler
-        function handleVoiceChange(newVoice) {
-            const oldVoice = selectedModel;
-            selectedModel = newVoice;
-            
-            // Save the voice preference immediately
-            saveUserPreferences();
-            
-            console.log(`Voice changed from ${oldVoice} to ${newVoice} (saved to preferences)`);
-            
-            // Clear cache when voice changes
-            audioCache.forEach(url => URL.revokeObjectURL(url));
-            audioCache.clear();
-            console.log('Cleared audio cache due to voice change');
-            
-            // If audio is currently playing or paused, restart with new voice
-            if ((isPlaying || isPaused) && currentChunkIndex >= 0) {
-                console.log('Restarting playback with new voice...');
-                
-                // Save current state
-                const currentTime = gaplessPlayer ? gaplessPlayer.getCurrentTime() : 0;
-                const wasPlaying = isPlaying && !isPaused;
-                const savedChunkIndex = currentChunkIndex;
-                const savedWordIndex = currentWordIndex;
-                
-                console.log(`Saving state: chunk ${savedChunkIndex}, time ${currentTime}s, wasPlaying: ${wasPlaying}`);
-                
-                // Stop current playback
-                if (gaplessPlayer) {
-                    gaplessPlayer.stop();
-                }
-                
-                // Reset state
-                isPlaying = false;
-                isPaused = false;
-                
-                // Generate new audio with new voice for current chunk
-                const chunk = getChunk(savedChunkIndex);
-                if (!chunk) {
-                    console.error(`No chunk found for index ${savedChunkIndex}`);
-                    hideLoading();
-                    showError('Failed to restart with new voice: Invalid chunk');
-                    return;
-                }
-                
-                console.log(`Restarting chunk ${savedChunkIndex} with new voice: ${chunk.wordCount} words`);
-                
-                // Show loading indicator for voice change
-                showLoading(`Generating audio with new voice...`);
-                
-                // Load new audio chunk with new voice
-                loadChunk(savedChunkIndex, chunk.text).then(audioUrl => {
-                    hideLoading();
-                    
-                    // Restart playback from the same position
-                    if (gaplessPlayer) {
-                        // Update the state back
-                        currentChunkIndex = savedChunkIndex;
-                        currentWordIndex = savedWordIndex;
-                        isPlaying = true;
-                        isPaused = false;
-                        
-                        // Show sticky player
-                        if (stickyAudioPlayer) {
-                            stickyAudioPlayer.classList.add('active');
-                        }
-                        
-                        // Play from saved position
-                        gaplessPlayer.play(audioUrl, savedChunkIndex, currentTime).then(() => {
-                            if (!wasPlaying) {
-                                // If it was paused, pause it again
-                                setTimeout(() => {
-                                    pausePlayback();
-                                }, 100);
-                            } else {
-                                // Update button to show pause icon
-                                updatePlayPauseButtons('pause');
-                            }
-                            
-                            // Update highlighting to match current playback
-                            updateChunkHighlighting();
-                            
-                        }).catch(error => {
-                            console.error('Error restarting playback with new voice:', error);
-                            showError('Failed to restart playback with new voice: ' + error.message);
-                        });
-                    }
-                }).catch(error => {
-                    hideLoading();
-                    console.error('Error loading new voice audio:', error);
-                    showError('Failed to generate audio with new voice: ' + error.message);
-                });
+            if (gaplessPlayer) {
+                gaplessPlayer.changeSpeed(parseFloat(currentPlaybackRate));
             }
         }
-
-        // Setup error retry button
-        if (retryBtn) {
-            retryBtn.addEventListener('click', hideError);
-        }
-
-        // Setup "Read Another PDF" button
-        if (readAnotherPdfBtn) {
-            readAnotherPdfBtn.addEventListener('click', resetToUpload);
-        }
-
-        // Initialize voice selection to default
-        // if (stickyVoiceSelect) {
-        //     selectedModel = stickyVoiceSelect.value || 'edge-tts-andrew';
-        //     console.log('Initial voice selection:', selectedModel);
-        // }
-
-        // Function to reset to upload state
+        
         function resetToUpload() {
-            // Stop any current playback
             stopPlayback();
-            
-            // Hide text display
-            textDisplay.classList.add('hidden');
-            
-            // Show only upload section (voice selection no longer needed)
-            if (uploadArea && uploadArea.parentElement) {
-                uploadArea.parentElement.classList.remove('hidden');
-            }
-            
-            // Hide file info
-            if (fileInfo) {
-                fileInfo.classList.add('hidden');
-            }
-            
-            // Reset document-specific variables only (preserve user preferences)
-            extractedText = '';
-            words = [];
-            chunks = [];
-            currentPage = 1;
-            audioCache.clear();
-            
-            // DON'T reset user preferences - keep voice and speed settings
-            // selectedModel and currentPlaybackRate are preserved
-            console.log('🎯 Preserved user preferences during reset:', {
-                voice: selectedModel,
-                speed: currentPlaybackRate
-            });
-            
-            // Apply preserved preferences to UI
-            applyPreferencesToUI();
-            
-            // Reset upload area
-            uploadArea.style.pointerEvents = 'auto';
-            uploadArea.style.opacity = '1';
-            if (uploadLoading) {
-                uploadLoading.classList.add('hidden');
-            }
-            
-            // Reset file input
-            if (pdfInput) {
-                pdfInput.value = '';
+            $('pdf-display').classList.add('hidden');
+            $('upload-container').classList.remove('hidden');
+            resetPdfState();
+            $('pdf-input').value = '';
+        }
+        
+        function resetPdfState() {
+            pdfDoc = null; wordMap = []; audioCache.clear(); currentChunk = null;
+            if ($('pdf-viewer')) $('pdf-viewer').innerHTML = '';
+        }
+
+        function loadUserPreferences() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('pdf-reader-prefs'));
+                if (prefs) { 
+                    selectedModel = prefs.voice || 'edge-tts-andrew'; 
+                    currentPlaybackRate = prefs.speed || "1.0"; 
+                }
+            } catch (e) { console.error("Could not load user preferences", e); }
+        }
+
+        function saveUserPreferences() { 
+            localStorage.setItem('pdf-reader-prefs', JSON.stringify({ voice: selectedModel, speed: currentPlaybackRate })); 
+        }
+
+        function applyPreferencesToUI() {
+            $('sticky-voice-select').value = selectedModel;
+            $('sticky-speed-select').value = currentPlaybackRate;
+        }
+
+        function updateFileInfo(name, wordCount) {
+            $('file-name').textContent = name;
+            $('word-count').textContent = `${wordCount}`;
+            $('chunk-count').textContent = `${Math.ceil(wordCount / 100)}`;
+            $('file-info').classList.remove('hidden');
+        }
+
+        function showUploadLoading(show, text = '') {
+            $('upload-loading').classList.toggle('hidden', !show);
+            if (show) $('upload-loading-text').textContent = text;
+            $('upload-area').style.pointerEvents = show ? 'none' : 'auto';
+        }
+
+        function showLoading(text) { 
+            $('loading-indicator').classList.remove('hidden'); 
+            $('loading-text').textContent = text; 
+        }
+        function hideLoading() { 
+            $('loading-indicator').classList.add('hidden'); 
+        }
+        function showError(msg) { 
+            const errorSection = $('error-section');
+            errorSection.classList.remove('hidden'); 
+            $('error-message').textContent = msg; 
+            setTimeout(() => {
+                errorSection.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function updatePlayPauseButtons(state) {
+            const icon = $('sticky-play-pause-btn').querySelector('i');
+            if (icon) { 
+                icon.setAttribute('data-lucide', state); 
+                lucide.createIcons(); 
             }
         }
 
-        // Chaos testing monitoring and logging
-        let chaosTestLog = [];
-        let lastLoggedState = null;
-        let monitoringInterval = null;
-        
-        // Enhanced monitoring function
-        function monitorSystemState() {
-            const currentState = {
-                timestamp: Date.now(),
-                isPlaying: isPlaying,
-                isPaused: isPaused,
-                isSpeedChanging: isSpeedChanging,
-                currentChunkIndex: currentChunkIndex,
-                currentWordIndex: currentWordIndex,
-                selectedModel: selectedModel,
-                currentPlaybackRate: currentPlaybackRate,
-                audioDuration: audioDuration,
-                pausedAt: pausedAt,
-                currentAudioTime: gaplessPlayer ? gaplessPlayer.getCurrentTime() : 0,
-                cacheSize: audioCache.size,
-                stickyPlayerVisible: stickyAudioPlayer ? stickyAudioPlayer.classList.contains('active') : false,
-                htmlAudioActive: gaplessPlayer?.htmlAudio ? !gaplessPlayer.htmlAudio.paused : false,
-                webAudioActive: gaplessPlayer?.currentSource ? true : false,
-                playingMethod: currentPlaybackRate !== 1.0 ? 'HTML Audio' : 'Web Audio',
-                currentPage: currentPage,
-                totalPages: totalPages,
-                wordsPerPage: wordsPerPage
+        // --- WEB AUDIO PLAYER (HTML5 Audio Element based) --- //
+        function initializeWebAudioPlayer() {
+            const audioEl = $('audio-player-element');
+            
+            gaplessPlayer = {
+                play: (url, chunkId) => {
+                    audioEl.src = url;
+                    audioEl.playbackRate = parseFloat(currentPlaybackRate);
+                    audioEl.play();
+                    
+                    audioEl.onplaying = () => {
+                        updateHighlighting();
+                    };
+                },
+                pause: () => { 
+                    audioEl.pause();
+                },
+                resume: () => { 
+                    audioEl.play();
+                },
+                stop: () => { 
+                    if (!audioEl.paused) {
+                        audioEl.pause();
+                    }
+                    audioEl.removeAttribute('src');
+                    audioEl.load();
+                },
+                changeSpeed: (newRate) => {
+                    currentPlaybackRate = String(newRate);
+                    audioEl.playbackRate = newRate;
+                    saveUserPreferences();
+                },
+                getSource: () => null // Not applicable for HTML5 audio
             };
-            
-            // Only log if state has changed significantly
-            if (!lastLoggedState || hasSignificantStateChange(lastLoggedState, currentState)) {
-                const logEntry = {
-                    ...currentState,
-                    changes: lastLoggedState ? getStateChanges(lastLoggedState, currentState) : ['Initial state']
-                };
-                
-                chaosTestLog.push(logEntry);
-                console.log('🎭 CHAOS MONITOR:', logEntry);
-                
-                // Keep only last 100 log entries to prevent memory issues
-                if (chaosTestLog.length > 100) {
-                    chaosTestLog = chaosTestLog.slice(-100);
-                }
-                
-                lastLoggedState = { ...currentState };
-            }
-            
-            return currentState;
-        }
-        
-        function hasSignificantStateChange(oldState, newState) {
-            const significantFields = [
-                'isPlaying', 'isPaused', 'isSpeedChanging', 'currentChunkIndex', 
-                'selectedModel', 'currentPlaybackRate', 'playingMethod', 'htmlAudioActive', 'webAudioActive'
-            ];
-            
-            for (const field of significantFields) {
-                if (oldState[field] !== newState[field]) {
-                    return true;
-                }
-            }
-            
-            // Check for significant time changes (more than 0.5 seconds)
-            if (Math.abs(oldState.currentAudioTime - newState.currentAudioTime) > 0.5) {
-                return true;
-            }
-            
-            return false;
-        }
-        
-        function getStateChanges(oldState, newState) {
-            const changes = [];
-            
-            Object.keys(newState).forEach(key => {
-                if (key === 'timestamp' || key === 'changes') return;
-                
-                if (oldState[key] !== newState[key]) {
-                    changes.push(`${key}: ${oldState[key]} → ${newState[key]}`);
-                }
-            });
-            
-            return changes;
-        }
-        
-        function startChaosMonitoring() {
-            console.log('🎭 Starting chaos testing monitoring...');
-            monitoringInterval = setInterval(() => {
-                monitorSystemState();
-            }, 100); // Monitor every 100ms
-            
-            // Initial state log
-            monitorSystemState();
-        }
-        
-        function stopChaosMonitoring() {
-            if (monitoringInterval) {
-                clearInterval(monitoringInterval);
-                monitoringInterval = null;
-                console.log('🎭 Stopped chaos testing monitoring');
-            }
-        }
-        
-        function exportChaosTestLog() {
-            const logData = {
-                testRun: new Date().toISOString(),
-                totalEntries: chaosTestLog.length,
-                log: chaosTestLog
-            };
-            
-            console.log('🎭 CHAOS TEST LOG EXPORT:', logData);
-            return logData;
-        }
-        
-        // Expose chaos testing functions to window for browser automation
-        window.chaosTest = {
-            start: startChaosMonitoring,
-            stop: stopChaosMonitoring,
-            export: exportChaosTestLog,
-            getState: monitorSystemState,
-            getLog: () => chaosTestLog
-        };
-        
-        // Initialize application with user preferences
-        function initializeApplication() {
-            console.log('🔍🎯 initializeApplication() START');
-            console.log('🎯 Initializing application with user preferences...');
-            
-            // Log state before loading preferences
-            console.log('🔍🎯 Pre-load state:', {
-                selectedModel, 
-                currentPlaybackRate, 
-                currentPlaybackRateType: typeof currentPlaybackRate,
-                currentPlaybackRateFinite: isFinite(currentPlaybackRate)
-            });
-            
-            // Load saved preferences
-            loadUserPreferences();
-            
-            // Log state after loading preferences
-            console.log('🔍🎯 Post-load state:', {
-                selectedModel, 
-                currentPlaybackRate, 
-                currentPlaybackRateType: typeof currentPlaybackRate,
-                currentPlaybackRateFinite: isFinite(currentPlaybackRate)
-            });
-            
-            // Apply preferences to UI elements
-            applyPreferencesToUI();
-            
-            // Force immediate UI update
-            if (stickyVoiceSelect) {
-                console.log('🔍🎯 Setting stickyVoiceSelect to:', selectedModel);
-                stickyVoiceSelect.value = selectedModel;
-                stickyVoiceSelect.dispatchEvent(new Event('change'));
-            }
-            
-            if (stickySpeedSelect) {
-                console.log('🔍🎯 Setting stickySpeedSelect to:', currentPlaybackRate.toString());
-                // Convert to proper format for dropdown (ensure .0 suffix for whole numbers)
-                const speedValue = currentPlaybackRate === 1 ? "1.0" : 
-                                 currentPlaybackRate === 2 ? "2.0" : 
-                                 currentPlaybackRate.toString();
-                console.log('🔍🎯 Setting stickySpeedSelect to:', speedValue, '(from', currentPlaybackRate, ')');
-                stickySpeedSelect.value = speedValue;
-                stickySpeedSelect.dispatchEvent(new Event('change'));
-            }
-            
-            const finalState = {
-                voice: selectedModel,
-                speed: currentPlaybackRate,
-                speedType: typeof currentPlaybackRate,
-                speedFinite: isFinite(currentPlaybackRate),
-                voiceUI: stickyVoiceSelect?.value,
-                speedUI: stickySpeedSelect?.value
-            };
-            
-            console.log('🔍🎯 Final initialization state:', finalState);
-            console.log('🎯 Application initialized with preferences:', finalState);
-            
-            // Additional validation
-            if (!isFinite(currentPlaybackRate) || currentPlaybackRate <= 0) {
-                console.error('🔍🎯 CRITICAL: currentPlaybackRate is invalid after initialization!', currentPlaybackRate);
-                currentPlaybackRate = 1.0;
-                console.log('🔍🎯 Reset to 1.0 after invalid initialization');
-            }
-            
-            console.log('🔍🎯 initializeApplication() COMPLETE');
-        }
-        
-        // Initialize when DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🎯 DOM loaded, initializing application...');
-            initializeApplication();
-        });
-        
-        // Fallback initialization if DOMContentLoaded already fired
-        if (document.readyState === 'loading') {
-            // DOMContentLoaded will fire
-        } else {
-            // DOM is already ready
-            console.log('🎯 DOM already ready, initializing immediately...');
-            initializeApplication();
-        }
 
-        // Clear chunk highlighting helper function
-        function clearChunkHighlighting() {
-            if (textContent) {
-                textContent.querySelectorAll('.word').forEach(wordSpan => {
-                    wordSpan.classList.remove('word-current', 'word-speaking', 'word-next', 'word-playing-chunk', 'word-next-chunk');
-                });
-                console.log('🛑 Cleared all chunk highlighting');
-            }
-        }
-
-        // Sticky close button
-        const stickyCloseBtn = document.getElementById('sticky-close-btn');
-        if (stickyCloseBtn) {
-            stickyCloseBtn.addEventListener('click', () => {
-                console.log('🛑 Sticky close button clicked');
-                stopPlayback();
-            });
-            console.log('✅ Sticky close button event listener attached');
-        } else {
-            console.warn('⚠️ Sticky close button not found during initialization');
+            audioEl.onended = () => {
+                if (isPlaying && !isPaused) {
+                    playNextChunk();
+                }
+            };
         }
     </script>
 </body>

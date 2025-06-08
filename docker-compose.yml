@@ -46,8 +46,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ${PDF_STORAGE_HOST_PATH:-/var/lib/ebook-reader/pdfs}:/app/pdf_storage
-      - ${MUSIC_STORAGE_HOST_PATH:-/var/lib/ebook-reader/music}:/app/music_storage
+      - ${PDF_STORAGE_HOST_PATH:-/mnt/user/ebook-reader/pdf_storage}:/app/pdf_storage
+      - ${MUSIC_STORAGE_HOST_PATH:-/mnt/user/ebook-reader/music_storage}:/app/music_storage
     environment:
       - HOST=0.0.0.0
       - PORT=8000

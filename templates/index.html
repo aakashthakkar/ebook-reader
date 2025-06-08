@@ -59,7 +59,7 @@
             background-color: transparent;
         }
         .text-span:hover { background-color: hsla(var(--primary), 0.3) !important; }
-        .text-span.word-playing-chunk { background-color: hsla(142, 71%, 41%, 0.2) !important; }
+        .text-span.word-playing-chunk { background-color: hsla(217, 91%, 60%, 0.3) !important; }
         .text-span.word-next-chunk { background-color: hsla(var(--primary), 0.15) !important; }
         .text-span.word-current {
             background-color: hsla(142, 71%, 41%, 0.6) !important;
@@ -75,11 +75,11 @@
         }
     </style>
 </head>
-<body class="overscroll-none">
+<body class="bg-slate-950 text-slate-200 selection:bg-slate-700">
     <main id="app-container" class="transition-all duration-300">
         <div id="upload-container">
-            <header class="absolute top-0 left-0 right-0 p-4">
-                <div class="flex items-center justify-center max-w-5xl mx-auto">
+            <header class="absolute top-0 left-0 right-0 z-20 bg-slate-950/50 backdrop-blur-lg border-b border-slate-800/50">
+                <div class="flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
                      <div class="flex items-center space-x-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-500">
                             <path d="M2.75 12C2.75 11.5858 3.08579 11.25 3.5 11.25H4.25C4.66421 11.25 5 11.5858 5 12V16C5 16.4142 4.66421 16.75 4.25 16.75H3.5C3.08579 16.75 2.75 16.4142 2.75 16V12Z" fill="currentColor" />
@@ -88,54 +88,288 @@
                             <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
                             <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
                         </svg>
-                        <h1 class="text-xl font-bold">SonicRead</h1>
+                        <h1 class="text-xl font-bold text-slate-100">SonicRead</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="user-welcome" class="hidden sm:block text-sm text-slate-400"></span>
+                        <button id="logout-btn" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 hover:bg-slate-700/80 text-white text-sm rounded-lg transition-colors border border-slate-700">
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                            <span class="hidden sm:inline">Logout</span>
+                        </button>
                     </div>
                 </div>
             </header>
-            <div class="min-h-screen flex items-center justify-center p-4">
-                <div class="text-center w-full max-w-2xl">
-                    <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">Listen to your PDFs, hands-free.</h2>
-                    <p class="text-lg md:text-xl text-slate-400 mb-8 max-w-xl mx-auto">Upload any PDF and have it read out to you with perfectly synced text highlighting.</p>
+            <div class="min-h-screen flex flex-col items-center justify-center p-4 pt-24">
+                <div class="text-center w-full max-w-4xl mx-auto">
+                    <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4">
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Listen to your PDFs,</span>
+                        <span class="text-slate-200">hands-free.</span>
+                    </h2>
+                    <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto">Upload any document and have it read out to you with perfectly synced, real-time text highlighting.</p>
 
-                    <div id="upload-area" class="upload-area bg-slate-900/50 border-2 border-dashed border-slate-700 rounded-2xl p-8 md:p-12 text-center cursor-pointer group transition-all duration-300 hover:border-blue-500 hover:bg-slate-800/60">
-                        <div class="flex flex-col items-center space-y-4">
-                            <i data-lucide="upload-cloud" class="h-16 w-16 text-slate-500 group-hover:text-blue-500 transition-colors"></i>
-                            <h4 class="text-2xl font-semibold text-slate-200">Drop your PDF here</h4>
-                            <p class="text-lg text-slate-400">or <span class="text-blue-400 font-medium">click to browse</span></p>
+                    <!-- User's PDF Files Section -->
+                    <div id="user-pdfs-section" class="mb-12">
+                        <div id="user-pdfs-loading" class="text-center py-8">
+                            <div class="w-6 h-6 mx-auto spinner border-2 border-blue-400 border-t-transparent rounded-full"></div>
+                            <p class="text-sm text-slate-400 mt-3">Loading your PDFs...</p>
                         </div>
-                        <input type="file" id="pdf-input" accept=".pdf" class="hidden">
-                    </div>
-                    
-                    <div id="upload-loading" class="hidden mt-8">
-                        <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
-                        <p class="text-lg font-medium text-blue-300 mt-4" id="upload-loading-text">Processing PDF...</p>
+                        
+                        <div id="user-pdfs-list" class="hidden">
+                            <div class="flex items-center justify-between mb-8">
+                                <h3 class="text-2xl font-bold text-slate-100">Your PDF Library</h3>
+                                <span class="text-sm text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full" id="pdf-count">0 documents</span>
+                            </div>
+                            <div id="pdfs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                <!-- PDF items will be inserted here -->
+                            </div>
+                        </div>
+                        
+                        <div id="user-pdfs-empty" class="hidden text-center py-12">
+                            <div class="bg-slate-800/30 rounded-2xl p-8 max-w-md mx-auto">
+                                <i data-lucide="book-open" class="h-12 w-12 text-slate-500 mx-auto mb-4"></i>
+                                <h4 class="text-lg font-semibold text-slate-200 mb-2">No PDFs yet</h4>
+                                <p class="text-slate-400 text-sm">Upload your first PDF to start listening!</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div id="file-info" class="hidden mt-6 p-4 bg-green-500/10 rounded-xl border border-green-500/30 text-left w-full max-w-md mx-auto">
-                        <div class="font-semibold text-green-300" id="file-name"></div>
-                        <div class="text-sm text-green-200"><span id="word-count"></span> words • <span id="chunk-count"></span> audio segments</div>
+
+
+
+                    <!-- Upload Sections Container -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- PDF Upload Card -->
+                        <div class="group relative overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 transition-all duration-300 hover:border-blue-500/50 hover:bg-slate-800/60">
+                            <div class="flex items-center gap-4 mb-6">
+                                <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+                                    <i data-lucide="file-text" class="h-6 w-6 text-blue-400"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-slate-100">Upload PDF</h3>
+                                    <p class="text-sm text-slate-400">Add documents to your library</p>
+                                </div>
+                            </div>
+                            
+                            <div id="upload-area" class="upload-area border-2 border-dashed border-slate-600/60 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500/60 transition-all duration-300">
+                                <div class="flex flex-col items-center space-y-3">
+                                    <div class="w-14 h-14 bg-slate-800/50 rounded-2xl flex items-center justify-center group-hover:bg-blue-500/10 transition-all duration-300">
+                                        <i data-lucide="upload-cloud" class="h-7 w-7 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-medium text-slate-200 mb-1">Drop your PDF here</h4>
+                                        <p class="text-sm text-slate-400">or <span class="text-blue-400 font-medium hover:text-blue-300 transition-colors">click to browse</span></p>
+                                    </div>
+                                    <p class="text-xs text-slate-500">Supports PDF files up to 500MB</p>
+                                </div>
+                                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                            </div>
+                        </div>
+
+                        <!-- Background Music Upload Card -->
+                        <div class="group relative overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 transition-all duration-300 hover:border-purple-500/50 hover:bg-slate-800/60">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
+                                        <i data-lucide="music" class="h-6 w-6 text-purple-400"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-slate-100">Background Music</h3>
+                                        <p class="text-sm text-slate-400">Enhance your experience</p>
+                                    </div>
+                                </div>
+                                <button id="upload-music-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all duration-200 hover:scale-105 shadow-sm shadow-black/20">
+                                    <i data-lucide="upload" class="h-4 w-4"></i>
+                                    Upload
+                                </button>
+                            </div>
+                            
+                            <!-- YouTube Download Instructions -->
+                            <div class="mb-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <i data-lucide="info" class="h-4 w-4 text-blue-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-blue-200 mb-1">Get music from YouTube</h4>
+                                        <p class="text-xs text-blue-300/80">
+                                            Use a service like <a href="https://ytmp3.cc/mZ9P" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline font-medium">ytmp3.cc</a> to download audio, then upload here.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="music-list-loading" class="text-center py-6">
+                                <div class="w-5 h-5 mx-auto spinner border-2 border-purple-400 border-t-transparent rounded-full"></div>
+                                <p class="text-sm text-slate-400 mt-3">Loading music...</p>
+                            </div>
+                            
+                            <div id="music-list-container" class="hidden">
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-medium text-slate-300">Uploaded Music</h4>
+                                </div>
+                                <div id="music-list" class="space-y-2 max-h-36 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50 pr-2">
+                                    <!-- Music items will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <div id="music-list-empty" class="hidden text-center py-6">
+                                <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <i data-lucide="music" class="h-6 w-6 text-purple-400"></i>
+                                </div>
+                                <p class="text-sm text-slate-400">No background music yet</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="upload-loading-text" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
+                        <div class="bg-slate-800 p-8 rounded-2xl shadow-lg flex flex-col items-center gap-4">
+                            <div class="w-8 h-8 spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
+                            <p class="text-lg font-medium text-blue-300" id="upload-loading-text-inner">Processing PDF...</p>
+                        </div>
+                    </div>
+
+                    <!-- Default Voice Settings Section -->
+                    <div class="max-w-2xl mx-auto mt-16">
+                        <div class="text-center mb-8">
+                            <h3 class="text-2xl font-bold text-slate-100 mb-4">Default Voice Settings</h3>
+                            <p class="text-slate-400">Configure your preferred voice and speed. These settings will be applied to all new PDFs by default.</p>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                                <!-- Voice Selection -->
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+                                            <i data-lucide="mic" class="h-5 w-5 text-blue-400"></i>
+                                        </div>
+                                        <div>
+                                            <label for="default-voice-select" class="text-sm font-medium text-slate-200">Voice</label>
+                                            <p class="text-xs text-slate-400">Choose your preferred narrator</p>
+                                        </div>
+                                    </div>
+                                    <div class="relative">
+                                        <select id="default-voice-select" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 pr-10 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                                            {% for key, model in models.items() %}
+                                            <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Speed Selection -->
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center border border-green-500/20">
+                                            <i data-lucide="gauge" class="h-5 w-5 text-green-400"></i>
+                                        </div>
+                                        <div>
+                                            <label for="default-speed-select" class="text-sm font-medium text-slate-200">Speed</label>
+                                            <p class="text-xs text-slate-400">Set your reading pace</p>
+                                        </div>
+                                    </div>
+                                    <div class="relative">
+                                        <select id="default-speed-select" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 pr-10 border border-slate-700 focus:border-green-500 focus:ring-0 outline-none appearance-none">
+                                            <option value="0.5">0.5x (Very Slow)</option>
+                                            <option value="0.75">0.75x (Slow)</option>
+                                            <option value="1.0" selected>1.0x (Normal)</option>
+                                            <option value="1.25">1.25x (Fast)</option>
+                                            <option value="1.5">1.5x (Faster)</option>
+                                            <option value="2.0">2.0x (Very Fast)</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Skip Patterns Option -->
+                            <div class="mb-8 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
+                                            <i data-lucide="skip-forward" class="h-5 w-5 text-purple-400"></i>
+                                        </div>
+                                        <div>
+                                            <label for="default-skip-patterns" class="text-sm font-medium text-slate-200">Skip Headers/Footers</label>
+                                            <p class="text-xs text-slate-400">Automatically skip page numbers and headers</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="default-skip-patterns" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <button id="test-voice-btn" class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-green-600/20">
+                                    <i data-lucide="play-circle" class="h-5 w-5"></i>
+                                    <span id="test-voice-btn-text">Test Voice & Speed</span>
+                                </button>
+                                <button id="save-default-prefs-btn" class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-blue-600/20">
+                                    <i data-lucide="save" class="h-5 w-5"></i>
+                                    Save as Default
+                                </button>
+                            </div>
+                            
+                            <!-- Test audio player -->
+                            <audio id="test-audio-player" style="display:none;"></audio>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="pdf-display" class="hidden">
-            <div id="pdf-top-bar" class="fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700 shadow-md">
-                <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-                    <div class="flex items-center justify-between h-16">
-                        <div class="flex items-center space-x-1 sm:space-x-2">
-                             <button id="pdf-start-reading" class="flex items-center gap-2 px-2 md:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all"><i data-lucide="play-circle" class="h-5 w-5"></i><span class="hidden md:inline">Start Reading</span></button>
-                             <button id="top-go-to-current" class="hidden items-center gap-2 px-2 md:px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-all"><i data-lucide="crosshair" class="h-5 w-5"></i><span class="hidden md:inline">Go to Current</span></button>
+            <div class="bg-slate-900/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b border-slate-700">
+                <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+                    <div class="flex items-center h-16 gap-1 sm:gap-2">
+                        <!-- Left section - more compact -->
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                             <button id="pdf-start-reading" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-9 sm:w-auto sm:px-4 sm:py-2 sm:gap-2">
+                                <i data-lucide="play-circle" class="h-4 w-4"></i>
+                                <span class="hidden sm:inline">Start</span>
+                             </button>
+                             <button id="top-go-to-current" class="hidden md:inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-600 bg-slate-800 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-3 py-2 gap-2">
+                                <i data-lucide="crosshair" class="h-4 w-4"></i>
+                                <span class="hidden lg:inline">Go to Current</span>
+                             </button>
                         </div>
-                        <div class="flex items-center space-x-1 text-slate-300">
-                             <button id="pdf-zoom-out" class="p-2 rounded-md hover:bg-slate-700 transition-colors"><i data-lucide="zoom-out" class="h-5 w-5"></i></button>
-                             <span id="pdf-zoom-level" class="text-sm font-medium w-14 sm:w-16 text-center">100%</span>
-                             <button id="pdf-zoom-in" class="p-2 rounded-md hover:bg-slate-700 transition-colors"><i data-lucide="zoom-in" class="h-5 w-5"></i></button>
+                        
+                        <!-- Center section - very compact on mobile -->
+                        <div class="flex items-center space-x-1 text-slate-300 flex-1 justify-center min-w-0">
+                             <button id="pdf-zoom-out" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-8 w-8">
+                                <i data-lucide="zoom-out" class="h-3 w-3"></i>
+                             </button>
+                             <span id="pdf-zoom-level" class="text-xs font-medium w-8 sm:w-12 text-center">100%</span>
+                             <button id="pdf-zoom-in" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-8 w-8">
+                                <i data-lucide="zoom-in" class="h-3 w-3"></i>
+                             </button>
+                             <!-- Progress indicator - hidden on mobile -->
+                             <div class="hidden lg:flex items-center space-x-2 ml-2">
+                                <div class="relative w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="reading-progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <span id="reading-progress-text" class="text-xs font-medium text-slate-400 w-8 text-center">0%</span>
+                             </div>
                         </div>
-                        <div class="flex items-center space-x-1 sm:space-x-2">
-                             <span id="pdf-page-indicator" class="text-sm font-medium text-slate-400 w-20 sm:w-24 text-center">Page 1 / 1</span>
-                             <button id="pdf-fit-width" class="p-2 rounded-md hover:bg-slate-700 transition-colors hidden sm:block"><i data-lucide="move-horizontal" class="h-5 w-5"></i></button>
-                             <button id="top-read-another-pdf-btn" class="flex items-center gap-2 px-2 md:px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all"><i data-lucide="file-plus-2" class="h-5 w-5"></i><span class="hidden md:inline">New PDF</span></button>
+                        
+                        <!-- Right section - compact -->
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                             <span id="pdf-page-indicator" class="hidden sm:block text-xs font-medium text-slate-400 w-12 sm:w-16 text-center">1/1</span>
+                             <button id="pdf-fit-width" class="hidden xl:inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9">
+                                <i data-lucide="move-horizontal" class="h-4 w-4"></i>
+                             </button>
+                             <button id="top-read-another-pdf-btn" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-purple-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-9 sm:w-auto sm:px-4 sm:py-2 sm:gap-2">
+                                <i data-lucide="x" class="h-4 w-4"></i>
+                                <span class="hidden sm:inline">Exit</span>
+                             </button>
                         </div>
                     </div>
                 </div>
@@ -159,24 +393,57 @@
 
     <div id="sticky-audio-player" class="fixed bottom-0 left-0 right-0 z-[9999] bg-slate-900/80 backdrop-blur-xl border-t border-slate-700 transform translate-y-full transition-transform duration-300 ease-in-out">
         <!-- This is the player for larger screens -->
-        <div class="hidden sm:flex items-center justify-between p-4 max-w-5xl mx-auto">
-             <div class="flex items-center gap-4">
-                <button id="sticky-play-pause-btn" class="p-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all"><i data-lucide="pause" class="h-6 w-6"></i></button>
-                <div class="flex items-center gap-3">
-                    <div class="text-sm text-slate-400">Voice:</div>
-                    <select id="sticky-voice-select" class="bg-slate-800 text-white text-sm rounded-md px-3 py-1.5 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
-                        {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
-                    </select>
+        <div class="hidden sm:block p-3 max-w-6xl mx-auto">
+            <!-- Main controls row -->
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <button id="sticky-play-pause-btn" class="p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all flex-shrink-0">
+                        <i data-lucide="pause" class="h-5 w-5"></i>
+                    </button>
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="text-xs text-slate-400 hidden lg:block">Voice:</div>
+                        <select id="sticky-voice-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none min-w-0 flex-shrink">
+                            {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-xs text-slate-400 hidden md:block">Speed:</div>
+                        <select id="sticky-speed-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                            <option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
+                        </select>
+                    </div>
+                    <div class="hidden xl:flex items-center gap-2">
+                        <div class="text-xs text-slate-400">Skip Headers:</div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="sticky-skip-patterns" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
                 </div>
-                <div class="flex items-center gap-3">
-                     <div class="text-sm text-slate-400">Speed:</div>
-                     <select id="sticky-speed-select" class="bg-slate-800 text-white text-sm rounded-md px-3 py-1.5 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
-                        <option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
-                     </select>
-                </div>
+                <button id="sticky-stop-btn" class="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all flex-shrink-0">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
             </div>
-            <div class="flex items-center gap-4">
-                <button id="sticky-stop-btn" class="p-2.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all"><i data-lucide="x" class="h-6 w-6"></i></button>
+            
+            <!-- Background Music Controls Row -->
+            <div class="flex items-center gap-2 border-t border-slate-700/50 pt-3">
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <div class="text-xs text-slate-400">🎵 Background:</div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="background-music-toggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                </div>
+                <div id="background-music-controls" class="hidden flex items-center gap-2 flex-1 min-w-0">
+                    <select id="background-music-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-purple-500 focus:ring-0 outline-none appearance-none min-w-0 flex-1 max-w-[200px]">
+                        <option value="">Select Music</option>
+                    </select>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <div class="text-xs text-slate-400">Vol:</div>
+                        <input type="range" id="background-music-volume" min="0" max="50" value="10" class="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
+                        <span id="background-volume-text" class="text-xs text-slate-400 w-6 text-center">10%</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -191,18 +458,35 @@
                         <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
                         <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
                     </svg>
-                    <div class="text-sm font-medium">Now Playing</div>
+                                         <div class="flex items-center gap-2">
+                        <div class="text-sm font-medium">Now Playing</div>
+                        <div id="mobile-bg-music-status" class="hidden text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">🎵 BG</div>
+                    </div>
                 </div>
                  <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
             </div>
             <div class="flex items-center justify-between">
-                <button id="mobile-speed-btn" class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 text-sm font-bold">1.0x</button>
+                <div class="relative">
+                    <select id="mobile-speed-select" class="w-16 h-12 bg-slate-800 text-white text-sm font-bold rounded-full border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none text-center">
+                        <option value="0.75">0.75x</option>
+                        <option value="1.0" selected>1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-1 flex items-center pointer-events-none">
+                        <i data-lucide="chevron-down" class="h-3 w-3 text-slate-400"></i>
+                    </div>
+                </div>
                 <div class="flex items-center gap-4">
                      <button id="mobile-rewind-btn" class="p-3 text-slate-300"><i data-lucide="rewind" class="h-6 w-6"></i></button>
                      <button id="mobile-play-pause-btn" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-500/30"><i data-lucide="pause" class="h-8 w-8"></i></button>
                      <button id="mobile-forward-btn" class="p-3 text-slate-300"><i data-lucide="fast-forward" class="h-6 w-6"></i></button>
                 </div>
-                <button id="mobile-options-btn" class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800"><i data-lucide="more-horizontal" class="h-6 w-6"></i></button>
+                <button id="mobile-options-btn" class="relative w-12 h-12 flex items-center justify-center rounded-full bg-slate-800">
+                    <i data-lucide="more-horizontal" class="h-6 w-6"></i>
+                    <div id="mobile-music-indicator" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full border border-slate-900"></div>
+                </button>
             </div>
              <!-- Mobile options panel -->
             <div id="mobile-options-panel" class="hidden bg-slate-800 rounded-lg p-4">
@@ -213,34 +497,177 @@
                              {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
                         </select>
                     </div>
+                    <div class="flex items-center justify-between">
+                        <label for="mobile-skip-patterns" class="text-sm text-slate-400">Skip Headers/Footers</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="mobile-skip-patterns" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+                    <!-- Background Music Controls for Mobile -->
+                    <div class="border-t border-slate-700 pt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <label for="mobile-background-music-toggle" class="text-sm text-slate-400">Background Music</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="mobile-background-music-toggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        <div id="mobile-background-music-controls" class="hidden space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label for="mobile-background-music-select" class="text-sm text-slate-400">Music</label>
+                                <select id="mobile-background-music-select" class="bg-slate-700 text-white text-sm rounded-md px-3 py-1.5 border border-slate-600 focus:border-purple-500 focus:ring-0 outline-none appearance-none">
+                                    <option value="">Select Music</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <label for="mobile-background-music-volume" class="text-sm text-slate-400">Volume</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="mobile-background-music-volume" min="0" max="50" value="10" class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
+                                    <span id="mobile-background-volume-text" class="text-xs text-slate-400 w-8">10%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Hidden file inputs -->
+    <input type="file" id="music-input" accept=".mp3,.wav,.m4a,.aac,.ogg,.flac" class="hidden">
+    
+    <!-- Audio elements -->
     <audio id="audio-player-element" style="display:none;"></audio>
+    <audio id="background-music-element" style="display:none;" loop></audio>
 
     <script>
-        lucide.createIcons();
+        // --- AUTHENTICATION CHECK --- //
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthentication();
+        });
+
+        async function checkAuthentication() {
+            const token = localStorage.getItem('auth_token');
+            
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user_data');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    // Store user data and initialize the app
+                    localStorage.setItem('user_data', JSON.stringify(data.user));
+                    displayUserInfo(data.user);
+                    await initializeApp();
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Authentication check failed:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        async function initializeApp() {
+            lucide.createIcons();
+            await loadUserPreferences();
+            applyPreferencesToUI();
+            setupEventListeners();
+            initializeWebAudioPlayer();
+            loadUserPDFs();
+            loadBackgroundMusic();
+            
+            // Enhanced progress saving on page unload with multiple event listeners
+            setupUnloadProgressSaving();
+        }
+
+        // Add authorization header to all API requests
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('auth_token');
+            const headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+            
+            return fetch(url, {
+                ...options,
+                headers
+            });
+        }
         
         // --- GLOBAL STATE --- //
         let wordMap = [];
         let pdfDoc = null, pdfTotalPages = 0, pdfScale = 1.0;
-        let audioCache = new Map(), gaplessPlayer = null, isPlaying = false, isPaused = false, currentChunk = null;
-        let currentPlaybackRate = 1.0, selectedModel = 'edge-tts-andrew';
+        let currentChunk = null;
+        let isPlaying = false;
+        let currentFileId = null;
+        let progressSaveInterval = null;
+        let progressUpdateInterval = null;
+        let audioCache = new Map(), gaplessPlayer = null, isPaused = false, currentPlaybackRate = 1.0, selectedModel = 'edge-tts-andrew';
         let currentViewingPage = 1;
         let isViewChanging = false;
+        let hasUserInteracted = false;
+        let skipPatterns = false; // Pattern filtering preference
+        
+        // Smart Auto-Scroll State
+        let autoScrollEnabled = true;
+        let isUserBrowsing = false;
+        let browsePauseTimeout = null;
+        let lastScrollTime = 0;
+        let userScrollDetectionTimeout = null;
+        
+        // Rate limiting for progress updates
+        let lastProgressUpdate = 0;
+        const PROGRESS_UPDATE_COOLDOWN = 12000; // 12 seconds (5 requests per minute)
+
+        // Background Music State
+        let backgroundMusicFiles = [];
+        let backgroundMusicEnabled = false;
+        let currentBackgroundMusic = null;
+        let backgroundMusicVolume = 0.1; // Default 10%
+        let backgroundAudioContext = null;
+        let backgroundGainNode = null;
+        let ttsGainNode = null;
 
         const $ = (id) => document.getElementById(id);
-        
-        // --- INITIALIZATION --- //
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUserPreferences();
-            applyPreferencesToUI();
-            setupEventListeners();
-        });
+
+        function displayUserInfo(user) {
+            const welcomeEl = $('user-welcome');
+            welcomeEl.textContent = `Welcome, ${user.name || user.email}`;
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            window.location.href = '/login';
+        }
 
         function setupEventListeners() {
+            // Track user interactions for autoplay policy
+            const markUserInteracted = () => { hasUserInteracted = true; };
+            document.addEventListener('click', markUserInteracted, { once: true });
+            document.addEventListener('keydown', markUserInteracted, { once: true });
+            document.addEventListener('touchstart', markUserInteracted, { once: true });
+            
+            // Logout button
+            $('logout-btn').addEventListener('click', logout);
+            
             const uploadArea = $('upload-area');
             uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
             uploadArea.addEventListener('dragleave', (e) => uploadArea.classList.remove('dragover'));
@@ -253,6 +680,7 @@
             $('sticky-stop-btn').addEventListener('click', closePlayer);
             $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
+            $('sticky-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
 
             // Top bar controls
             $('pdf-start-reading').addEventListener('click', () => playFromWord(0));
@@ -265,11 +693,24 @@
             // Mobile player controls
             $('mobile-play-pause-btn').addEventListener('click', togglePlayPause);
             $('mobile-sticky-stop-btn').addEventListener('click', closePlayer);
-            $('mobile-speed-btn').addEventListener('click', cyclePlaybackSpeed);
+            $('mobile-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
+            $('mobile-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
             $('mobile-options-btn').addEventListener('click', () => $('mobile-options-panel').classList.toggle('hidden'));
             $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
             $('mobile-forward-btn').addEventListener('click', () => seek(10));
+
+            // Background music controls
+            $('upload-music-btn').addEventListener('click', () => $('music-input').click());
+            $('music-input').addEventListener('change', (e) => { if (e.target.files.length) handleMusicUpload(e.target.files[0]); });
+            $('background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
+            $('background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
+            $('background-music-volume').addEventListener('input', (e) => setBackgroundMusicVolume(e.target.value));
+            
+            // Mobile background music controls
+            $('mobile-background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
+            $('mobile-background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
+            $('mobile-background-music-volume').addEventListener('input', (e) => setBackgroundMusicVolume(e.target.value));
 
             document.addEventListener('keydown', (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -278,49 +719,27 @@
                     togglePlayPause(); 
                 }
             });
+
+            // Default preferences controls
+            $('test-voice-btn').addEventListener('click', testVoiceAndSpeed);
+            $('save-default-prefs-btn').addEventListener('click', saveDefaultPreferences);
+            $('default-voice-select').addEventListener('change', updateDefaultPreferencesUI);
+            $('default-speed-select').addEventListener('change', updateDefaultPreferencesUI);
+            $('default-skip-patterns').addEventListener('change', updateDefaultPreferencesUI);
         }
 
         // --- PDF PROCESSING & RENDERING --- //
         async function handleFile(file) {
             if (!file.type.includes('pdf')) return showError('Please select a PDF file.');
-            showUploadLoading(true, 'Uploading and processing PDF...');
             await stopPlayback();
             resetPdfState();
 
-            const formData = new FormData();
-            formData.append('file', file);
-
             try {
-                const response = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Server error during PDF processing');
-                }
-
-                const data = await response.json();
-                wordMap = data.words;
-
-                const arrayBuffer = await file.arrayBuffer();
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-                pdfDoc = await loadingTask.promise;
-                pdfTotalPages = pdfDoc.numPages;
-
-                updateFileInfo(data.filename, data.word_count);
-                $('upload-container').classList.add('hidden');
-                $('pdf-display').classList.remove('hidden');
-                
-                await fitToWidth();
-                await renderInitialView();
-                setupScrollListener();
-                updatePageIndicator();
-
+                await processPDFFile(file);
             } catch (error) {
                 showError('Failed to process PDF: ' + error.message);
                 console.error(error);
                 resetToUpload();
-            } finally {
-                showUploadLoading(false);
             }
         }
         
@@ -355,17 +774,33 @@
         async function renderSinglePage(pageNum, viewer) {
              try {
                 const page = await pdfDoc.getPage(pageNum);
-                const viewport = page.getViewport({ scale: pdfScale });
+                // Ensure we always use the current pdfScale value and log it for debugging
+                const currentScale = pdfScale; // Capture scale at render time
+                console.log(`Rendering page ${pageNum} with scale: ${currentScale}`);
+                const viewport = page.getViewport({ scale: currentScale });
 
                 const pageDiv = document.createElement('div');
                 pageDiv.className = 'pdf-page';
                 pageDiv.dataset.pageNum = pageNum;
+                pageDiv.dataset.renderScale = currentScale; // Store scale used for this page
                 pageDiv.style.width = `${viewport.width}px`;
                 pageDiv.style.height = `${viewport.height}px`;
 
                 const canvas = document.createElement('canvas');
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+                // Store the pixel ratio for crisp rendering
+                const context = canvas.getContext('2d');
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                const displayWidth = viewport.width;
+                const displayHeight = viewport.height;
+                
+                canvas.width = displayWidth * devicePixelRatio;
+                canvas.height = displayHeight * devicePixelRatio;
+                canvas.style.width = displayWidth + 'px';
+                canvas.style.height = displayHeight + 'px';
+                
+                context.scale(devicePixelRatio, devicePixelRatio);
                 pageDiv.appendChild(canvas);
 
                 const textLayer = document.createElement('div');
@@ -374,7 +809,7 @@
                 
                 viewer.appendChild(pageDiv);
 
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                await page.render({ canvasContext: context, viewport }).promise;
 
                 const wordsOnPage = wordMap.filter(w => w.page === pageNum);
                 if (wordsOnPage.length > 0) {
@@ -393,10 +828,15 @@
                         style.width = `${word.width * scaleX}px`;
                         style.height = `${word.height * scaleY}px`;
 
-                        span.addEventListener('click', () => playFromWord(word.index));
+                        span.addEventListener('click', () => {
+                            playFromWord(word.index);
+                            updateProgressWithRateLimit(word.index);
+                        });
                         textLayer.appendChild(span);
                     }
                 }
+                
+                console.log(`Successfully rendered page ${pageNum} with scale ${currentScale}`);
             } catch(e) {
                 console.error(`Failed to render page ${pageNum}`, e);
                 showError(`Error rendering page ${pageNum}.`);
@@ -407,7 +847,17 @@
             if (!pdfDoc) return;
             const page = await pdfDoc.getPage(1);
             const containerWidth = $('pdf-container').clientWidth;
-            pdfScale = containerWidth / page.getViewport({ scale: 1 }).width;
+            const pageViewport = page.getViewport({ scale: 1 });
+            
+            // Calculate scale but limit it to reasonable bounds
+            let calculatedScale = containerWidth / pageViewport.width;
+            
+            // Prevent excessive zoom - limit to max 150% for better readability
+            calculatedScale = Math.min(calculatedScale, 1.5);
+            // Also ensure minimum zoom of 50%
+            calculatedScale = Math.max(calculatedScale, 0.5);
+            
+            pdfScale = calculatedScale;
             updateZoomLevel();
         }
 
@@ -415,8 +865,14 @@
             const viewer = $('pdf-viewer');
             let scrollTimeout;
             
-            viewer.addEventListener('scroll', async () => {
+            // Listen to both viewer scroll and window scroll
+            const handleScroll = async () => {
                 if (isViewChanging) return;
+                
+                // Detect user browsing when they scroll during playback
+                if (!isViewChanging && (isPlaying || isPaused)) {
+                    detectUserBrowsing();
+                }
 
                 const { scrollTop, scrollHeight, clientHeight } = viewer;
                 if (scrollHeight - scrollTop - clientHeight < clientHeight * 1.5) { // Load when 1.5 screens away from bottom
@@ -424,8 +880,29 @@
                     await maintainSlidingWindow();
                     isViewChanging = false;
                 }
-                 updateCurrentViewingPage();
+                updateCurrentViewingPage();
+            };
+            
+            viewer.addEventListener('scroll', handleScroll, { passive: true });
+            window.addEventListener('scroll', handleScroll, { passive: true });
+            
+            // Also detect browsing on touch/mouse events that might lead to scrolling
+            viewer.addEventListener('touchstart', () => {
+                if (isPlaying || isPaused) {
+                    detectUserBrowsing();
+                }
             }, { passive: true });
+            
+            viewer.addEventListener('mousedown', () => {
+                if (isPlaying || isPaused) {
+                    detectUserBrowsing();
+                }
+            }, { passive: true });
+            
+            // Also update page on initial load
+            setTimeout(() => {
+                updateCurrentViewingPage();
+            }, 500);
         }
 
         function updateCurrentViewingPage() {
@@ -447,6 +924,7 @@
         function updatePageIndicator() {
             if (pdfDoc) {
                 $('pdf-page-indicator').textContent = `Page ${currentViewingPage} / ${pdfTotalPages}`;
+                // Progress is now tracked via audio chunks, not page changes
             }
         }
 
@@ -459,26 +937,42 @@
 
                 if (lastRenderedPage >= pdfTotalPages) return;
 
-                const nextPatoLoad = lastRenderedPage + 1;
+                const nextPageToLoad = lastRenderedPage + 1;
                 const endPageToLoad = Math.min(lastRenderedPage + 3, pdfTotalPages); // Load 3 more pages
 
-                if (nextPatoLoad > endPageToLoad) return;
+                if (nextPageToLoad > endPageToLoad) return;
 
-                showLoading(`Loading pages ${nextPatoLoad}-${endPageToLoad}...`);
+                showLoading(`Loading pages ${nextPageToLoad}-${endPageToLoad}...`);
                 const viewer = $('pdf-viewer');
-                for (let pageNum = nextPatoLoad; pageNum <= endPageToLoad; pageNum++) {
+                
+                // Use document fragment for batch DOM updates
+                const fragment = document.createDocumentFragment();
+                for (let pageNum = nextPageToLoad; pageNum <= endPageToLoad; pageNum++) {
                     if (!document.querySelector(`[data-page-num="${pageNum}"]`)) {
-                        await renderSinglePage(pageNum, viewer);
+                        await renderSinglePage(pageNum, fragment);
                     }
                 }
+                
+                // Append all new pages at once
+                if (fragment.children.length > 0) {
+                    viewer.appendChild(fragment);
+                }
+                
                 hideLoading();
             } catch(e) {
                 console.error("Error in maintainSlidingWindow: ", e);
+                hideLoading();
             }
         }
 
-        async function scrollToWord(wordIndex) {
+        async function scrollToWord(wordIndex, forceScroll = false) {
             if (isViewChanging) return;
+            
+            // Check if auto-scroll is enabled and user is not browsing, or if forced
+            if (!forceScroll && autoScrollEnabled && isUserBrowsing) {
+                console.log('Auto-scroll paused - user is browsing');
+                return;
+            }
 
             const wordInfo = wordMap[wordIndex];
             if (!wordInfo) return;
@@ -497,6 +991,7 @@
                     const startPage = Math.max(1, targetPageNum - 2);
                     const endPage = Math.min(pdfTotalPages, targetPageNum + 2);
 
+                    // Use a document fragment to build all pages before adding to DOM
                     const fragment = document.createDocumentFragment();
                     for (let i = startPage; i <= endPage; i++) {
                         await renderSinglePage(i, fragment);
@@ -511,32 +1006,195 @@
                 }
             }
             
-            const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
-            if (wordSpan) {
-                wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                currentViewingPage = targetPageNum;
-                updatePageIndicator();
-            }
+            // Wait a tick to ensure DOM is updated before scrolling
+            setTimeout(() => {
+                const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+                if (wordSpan) {
+                    wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    currentViewingPage = targetPageNum;
+                    updatePageIndicator();
+                }
+            }, 50);
         }
 
         async function goToCurrentHighlight() {
             if (!currentChunk) return showError('Nothing is playing.');
             const firstWordIndex = currentChunk.startIndex;
-            await scrollToWord(firstWordIndex);
+            
+            // Resume auto-scroll when user manually goes to current
+            resumeAutoScroll();
+            
+            // Force scroll even if auto-scroll is paused
+            await scrollToWord(firstWordIndex, true);
+        }
+        
+        // --- SMART AUTO-SCROLL FUNCTIONS --- //
+        function detectUserBrowsing() {
+            lastScrollTime = Date.now();
+            
+            // Clear existing timeout
+            if (userScrollDetectionTimeout) {
+                clearTimeout(userScrollDetectionTimeout);
+            }
+            
+            // If auto-scroll is enabled and we're playing, mark as user browsing
+            if (autoScrollEnabled && (isPlaying || isPaused)) {
+                if (!isUserBrowsing) {
+                    isUserBrowsing = true;
+                    console.log('User browsing detected - auto-scroll paused');
+                    updateGoToCurrentButton();
+                }
+                
+                // Clear any existing resume timeout
+                if (browsePauseTimeout) {
+                    clearTimeout(browsePauseTimeout);
+                }
+                
+                // Set timeout to resume auto-scroll after 15 seconds of inactivity
+                browsePauseTimeout = setTimeout(() => {
+                    if (isUserBrowsing) {
+                        resumeAutoScroll();
+                        console.log('Auto-scroll resumed after inactivity');
+                    }
+                }, 15000); // 15 seconds
+            }
+        }
+        
+        function resumeAutoScroll() {
+            if (isUserBrowsing) {
+                isUserBrowsing = false;
+                console.log('Auto-scroll resumed manually');
+                
+                // Clear the inactivity timeout
+                if (browsePauseTimeout) {
+                    clearTimeout(browsePauseTimeout);
+                    browsePauseTimeout = null;
+                }
+                
+                updateGoToCurrentButton();
+                
+                // Immediately scroll to current position if playing
+                if (currentChunk && (isPlaying || isPaused)) {
+                    scrollToWord(currentChunk.startIndex);
+                }
+            }
+        }
+        
+        function updateGoToCurrentButton() {
+            const goToCurrentBtn = $('top-go-to-current');
+            if (!goToCurrentBtn) return;
+            
+            if (isUserBrowsing && (isPlaying || isPaused)) {
+                // Show the button when user is browsing during playback
+                goToCurrentBtn.classList.remove('hidden');
+                goToCurrentBtn.classList.add('flex');
+                
+                // Update button text to indicate auto-scroll is paused
+                const buttonText = goToCurrentBtn.querySelector('span');
+                if (buttonText) {
+                    buttonText.textContent = 'Go to Current';
+                }
+            } else if (currentChunk && (isPlaying || isPaused)) {
+                // Hide or show based on whether we're playing
+                goToCurrentBtn.classList.remove('hidden');
+                goToCurrentBtn.classList.add('flex');
+                
+                // Reset button text
+                const buttonText = goToCurrentBtn.querySelector('span');
+                if (buttonText) {
+                    buttonText.textContent = 'Go to Current';
+                }
+            } else {
+                // Hide when not playing
+                goToCurrentBtn.classList.add('hidden');
+                goToCurrentBtn.classList.remove('flex');
+            }
         }
 
         // --- AUDIO PLAYBACK & CHUNKING --- //
         function getChunkForWord(wordIndex) {
-            if (wordIndex >= wordMap.length) return null;
+            console.log(`getChunkForWord called with wordIndex: ${wordIndex}, wordMap.length: ${wordMap.length}`);
+            if (wordIndex >= wordMap.length) {
+                console.log('wordIndex >= wordMap.length, returning null');
+                return null;
+            }
 
+            const startWord = wordMap[wordIndex];
             let startIndex = wordIndex;
+            let endIndex = startIndex;
+            
+            // Limits for safety
+            const maxCharacters = 9500; // Leave some buffer below the 10,000 limit
+            const maxWordsPerChunk = 400; // Maximum words per chunk (increased for paragraphs)
+            
+            // Try paragraph-based chunking first
+            if (startWord.paragraph_id !== undefined) {
+                endIndex = getEndOfParagraph(startIndex);
+                console.log(`Using paragraph-based chunking: paragraph ${startWord.paragraph_id}`);
+            } else {
+                // Fallback to sentence-based chunking if no paragraph data
+                console.log('No paragraph data available, falling back to sentence-based chunking');
+                endIndex = getSentenceBasedEnd(startIndex);
+            }
+            
+            // Apply safety limits
+            const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+            const text = wordsInChunk.map(w => w.text).join(' ');
+            
+            // Check if chunk exceeds limits
+            if (text.length > maxCharacters || wordsInChunk.length > maxWordsPerChunk) {
+                console.log(`Chunk too large (${text.length} chars, ${wordsInChunk.length} words), applying limits`);
+                endIndex = applySafetyLimits(startIndex, maxCharacters, maxWordsPerChunk);
+            }
+            
+            const finalWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+            const finalText = finalWordsInChunk.map(w => w.text).join(' ');
+            
+            console.log(`Generated chunk from ${startIndex} to ${endIndex}: "${finalText.substring(0, 100)}..." (${finalText.length} characters, ${finalWordsInChunk.length} words, paragraph: ${startWord.paragraph_id || 'N/A'})`);
+            
+            return {
+                startIndex: startIndex,
+                endIndex: endIndex,
+                text: finalText,
+                id: `chunk-${startIndex}`,
+                paragraphId: startWord.paragraph_id
+            };
+        }
+        
+        function getEndOfParagraph(startIndex) {
+            const startWord = wordMap[startIndex];
+            const targetParagraphId = startWord.paragraph_id;
+            
+            // Find the end of the current paragraph
+            for (let i = startIndex; i < wordMap.length; i++) {
+                const word = wordMap[i];
+                
+                // If we've moved to a different paragraph, stop at previous word
+                if (word.paragraph_id !== targetParagraphId) {
+                    return i - 1;
+                }
+                
+                // If this word is marked as paragraph end, include it and stop
+                if (word.paragraph_end) {
+                    return i;
+                }
+            }
+            
+            // If we reach the end of the document, return the last word
+            return wordMap.length - 1;
+        }
+        
+        function getSentenceBasedEnd(startIndex) {
+            // Fallback to the old sentence-based logic
             let endIndex = startIndex;
             let sentenceCount = 0;
             const targetSentenceCount = 3;
-
+            
             for (let i = startIndex; i < wordMap.length; i++) {
                 endIndex = i;
                 const wordText = wordMap[i].text;
+                
+                // Check for sentence endings
                 if (wordText.match(/[.?!]\s*$/)) {
                     sentenceCount++;
                     if (sentenceCount >= targetSentenceCount) {
@@ -545,38 +1203,77 @@
                 }
             }
             
-            const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
-            const text = wordsInChunk.map(w => w.text).join(' ');
+            return endIndex;
+        }
+        
+        function applySafetyLimits(startIndex, maxCharacters, maxWordsPerChunk) {
+            let endIndex = startIndex;
             
-            return {
-                startIndex: startIndex,
-                endIndex: endIndex,
-                text: text,
-                id: `chunk-${startIndex}`
-            };
+            for (let i = startIndex; i < wordMap.length; i++) {
+                const wordsInChunk = wordMap.slice(startIndex, i + 1);
+                const text = wordsInChunk.map(w => w.text).join(' ');
+                
+                // If adding this word would exceed limits, stop at previous word
+                if (text.length > maxCharacters || wordsInChunk.length > maxWordsPerChunk) {
+                    break;
+                }
+                
+                endIndex = i;
+            }
+            
+            return endIndex;
         }
 
         async function playFromWord(wordIndex) {
-            if (isPlaying) await stopPlayback();
+            console.log(`playFromWord called with wordIndex: ${wordIndex}`);
+            // Ensure complete stop before starting new playback
+            if (isPlaying || isPaused) {
+                await stopPlayback();
+                // Wait a bit to ensure the stop is complete
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
             
             const chunk = getChunkForWord(wordIndex);
+            console.log('Chunk returned from getChunkForWord:', chunk);
             if (!chunk) return showError('Audio chunk not found for this word.');
             
             currentChunk = chunk;
             
+            // Reset auto-scroll state when starting playback
+            isUserBrowsing = false;
+            if (browsePauseTimeout) {
+                clearTimeout(browsePauseTimeout);
+                browsePauseTimeout = null;
+            }
+            
             showPlayer();
-            await scrollToWord(wordIndex);
-            
-            isPlaying = true;
-            isPaused = false;
-            
-            updatePlayPauseButtons('pause');
-            updateHighlighting();
+            await scrollToWord(wordIndex, true); // Force scroll for initial playback
             
             try {
+                // Ensure audio player is initialized only once
+                if (!gaplessPlayer) {
+                    initializeWebAudioPlayer();
+                }
+                
                 const audioUrl = await loadChunk(chunk);
-                if (!gaplessPlayer) initializeWebAudioPlayer();
+                
+                // Only set playing state after audio starts successfully
                 await gaplessPlayer.play(audioUrl, chunk.id);
+                
+                // Now that audio is playing, update state
+                isPlaying = true;
+                isPaused = false;
+                
+                updatePlayPauseButtons('pause');
+                updateHighlighting();
+                
+                // Start progress tracking only after successful start
+                startProgressTracking();
+                
+                // Start background music if enabled
+                if (backgroundMusicEnabled && currentBackgroundMusic) {
+                    await playBackgroundMusic();
+                }
                 
                 const nextChunkStartIndex = chunk.endIndex + 1;
                 if (nextChunkStartIndex < wordMap.length) {
@@ -584,7 +1281,7 @@
                 }
             } catch (error) { 
                 showError('Playback failed: ' + error.message); 
-                stopPlayback(); 
+                await stopPlayback(); 
             }
         }
 
@@ -620,27 +1317,64 @@
             }
         }
 
-        function togglePlayPause() {
+        async function togglePlayPause() {
             if (!currentChunk) return;
             if (isPlaying && !isPaused) {
-                if (gaplessPlayer) { isPaused = true; isPlaying = false; gaplessPlayer.pause(); updatePlayPauseButtons('play'); }
+                if (gaplessPlayer) { 
+                    isPaused = true; 
+                    isPlaying = false; 
+                    gaplessPlayer.pause(); 
+                    updatePlayPauseButtons('play'); 
+                    // Save progress when pausing
+                    saveReadingProgress();
+                    stopProgressTracking();
+                }
             } else if (isPaused) {
-                if (gaplessPlayer) { isPaused = false; isPlaying = true; gaplessPlayer.resume(); updatePlayPauseButtons('pause'); }
+                if (gaplessPlayer) { 
+                    try {
+                        await gaplessPlayer.resume(); 
+                        isPaused = false; 
+                        isPlaying = true; 
+                        updatePlayPauseButtons('pause');
+                        // Resume progress tracking
+                        startProgressTracking();
+                    } catch (error) {
+                        showError('Failed to resume playback: ' + error.message);
+                        await stopPlayback();
+                    }
+                }
             }
         }
         
         function closePlayer() {
+            // Save progress before closing player
+            if (currentChunk) {
+                saveReadingProgress();
+            }
+            stopProgressTracking();
             hidePlayer();
             stopPlayback();
         }
 
         async function stopPlayback() {
+            // Save progress before stopping
+            if (currentChunk) {
+                saveReadingProgress();
+            }
+            stopProgressTracking();
+            
             isPlaying = false; isPaused = false; currentChunk = null;
+            
+            // Reset auto-scroll state
+            isUserBrowsing = false;
+            if (browsePauseTimeout) {
+                clearTimeout(browsePauseTimeout);
+                browsePauseTimeout = null;
+            }
+            
             if (gaplessPlayer) gaplessPlayer.stop();
             updatePlayPauseButtons('play');
             updateHighlighting();
-            $('top-go-to-current').classList.add('hidden');
-            $('top-go-to-current').classList.remove('flex');
         }
 
         async function loadChunk(chunk, showIndicator = true) {
@@ -649,7 +1383,7 @@
             if (showIndicator) showLoading('Generating audio...');
             
             try {
-                const response = await fetch('/api/generate-audio', {
+                const response = await makeAuthenticatedRequest('/api/generate-audio', {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: chunk.text, model: selectedModel })
@@ -694,14 +1428,18 @@
         function updateHighlighting() {
             document.querySelectorAll('.text-span.word-playing-chunk').forEach(s => s.classList.remove('word-playing-chunk'));
             
-            if (!currentChunk || (!isPlaying && !isPaused)) return;
+            if (!currentChunk || (!isPlaying && !isPaused)) {
+                updateGoToCurrentButton();
+                return;
+            }
 
             for (let i = currentChunk.startIndex; i <= currentChunk.endIndex; i++) {
                 const span = document.querySelector(`.text-span[data-word-index="${i}"]`);
                 if (span) span.classList.add('word-playing-chunk');
             }
-            $('top-go-to-current').classList.remove('hidden');
-            $('top-go-to-current').classList.add('flex');
+            
+            // Update the go to current button based on browsing state
+            updateGoToCurrentButton();
         }
 
         async function handleVoiceChange(newVoice) {
@@ -716,6 +1454,86 @@
                 if(wasPlaying) {
                     await playFromWord(savedIndex);
                 }
+            }
+        }
+
+        let skipPatternsChangeTimeout = null;
+        
+        async function handleSkipPatternsChange(newSkipPatterns) {
+            // Debounce rapid changes
+            if (skipPatternsChangeTimeout) {
+                clearTimeout(skipPatternsChangeTimeout);
+            }
+            
+            const oldSkipPatterns = skipPatterns;
+            skipPatterns = newSkipPatterns;
+            saveUserPreferences();
+            applyPreferencesToUI();
+            
+            // If we have a current file loaded and the setting changed, reload the words
+            if (currentFileId && oldSkipPatterns !== newSkipPatterns) {
+                skipPatternsChangeTimeout = setTimeout(async () => {
+                    await reloadCurrentPDFWithNewSettings();
+                    skipPatternsChangeTimeout = null;
+                }, 300); // 300ms debounce
+            }
+        }
+
+        let isReloadingSettings = false;
+        
+        async function reloadCurrentPDFWithNewSettings() {
+            if (isReloadingSettings) {
+                console.log('Already reloading settings, skipping duplicate request');
+                return;
+            }
+            
+            isReloadingSettings = true;
+            showLoading('Applying pattern filtering...');
+            
+            try {
+                // Fetch words with new pattern filtering setting
+                const url = new URL(`/api/user/pdfs/${currentFileId}/words`, window.location.origin);
+                url.searchParams.set('skip_patterns', skipPatterns.toString());
+                
+                const response = await makeAuthenticatedRequest(url);
+                if (!response.ok) {
+                    throw new Error('Failed to reload PDF words');
+                }
+                
+                const data = await response.json();
+                if (data.cached && data.words) {
+                    const oldWordIndex = currentChunk ? currentChunk.startIndex : 0;
+                    
+                    // Update word map
+                    wordMap = data.words;
+                    
+                    // Clear audio cache since word indices might have changed
+                    audioCache.clear();
+                    
+                    // Show feedback about filtering
+                    if (data.patterns_filtered > 0) {
+                        showSuccessMessage(`Filtered ${data.patterns_filtered} repeated words (headers/footers/page numbers)`);
+                    }
+                    
+                    // Try to maintain playback position if we were playing
+                    if (isPlaying || isPaused) {
+                        // Find the closest word position in the new filtered text
+                        const newPosition = Math.min(oldWordIndex, wordMap.length - 1);
+                        await stopPlayback();
+                        setTimeout(() => {
+                            playFromWord(newPosition);
+                        }, 100);
+                    }
+                    
+                    // Re-render the PDF to update word mappings
+                    await rerenderVisiblePages();
+                }
+            } catch (error) {
+                console.error('Error reloading PDF with new settings:', error);
+                showError('Failed to apply pattern filtering setting');
+            } finally {
+                hideLoading();
+                isReloadingSettings = false;
             }
         }
 
@@ -735,14 +1553,32 @@
             changePlaybackRate(speeds[nextIndex]);
         }
         
-        function resetToUpload() {
-            closePlayer();
-            $('pdf-display').classList.add('hidden');
-            $('upload-container').classList.remove('hidden');
-            document.body.classList.remove('reading');
-            $('app-container').style.paddingBottom = '0px';
-            resetPdfState();
-            $('pdf-input').value = '';
+        async function resetToUpload() {
+            showUploadLoading('Exiting...');
+            try {
+                // Save progress before exiting PDF (only if audio was played)
+                if (currentFileId && wordMap.length > 0 && currentChunk) {
+                    await saveReadingProgress();
+                }
+                stopProgressTracking();
+                
+                closePlayer();
+                $('pdf-display').classList.add('hidden');
+                $('upload-container').classList.remove('hidden');
+                document.body.classList.remove('reading');
+                $('app-container').style.paddingBottom = '0px';
+                resetPdfState();
+                $('pdf-input').value = '';
+                
+                // Reload the PDF library to show updated progress
+                await loadUserPDFs();
+                
+                // Clear current file ID and saved progress when exiting
+                currentFileId = null;
+                savedProgress = null;
+            } finally {
+                hideUploadLoading();
+            }
         }
         
         function resetPdfState() {
@@ -750,23 +1586,127 @@
             if ($('pdf-viewer')) $('pdf-viewer').innerHTML = '';
         }
 
-        function loadUserPreferences() {
+        async function loadUserPreferences() {
             try {
-                const prefs = JSON.parse(localStorage.getItem('sonic-reader-prefs'));
-                if (prefs) { 
-                    selectedModel = prefs.voice || 'edge-tts-andrew'; 
-                    currentPlaybackRate = parseFloat(prefs.speed || 1.0); 
+                // First check if we have localStorage preferences to migrate
+                const localPrefs = localStorage.getItem('sonic-reader-prefs');
+                if (localPrefs) {
+                    console.log("Found localStorage preferences, migrating to database...");
+                    try {
+                        const response = await fetch('/api/user/preferences/migrate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                            },
+                            body: JSON.stringify({
+                                localStorage_prefs: JSON.parse(localPrefs)
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            console.log("Successfully migrated preferences to database");
+                            localStorage.removeItem('sonic-reader-prefs');
+                        }
+                    } catch (migrationError) {
+                        console.error("Failed to migrate preferences:", migrationError);
+                    }
+                }
+                
+                // Load preferences from database
+                const response = await fetch('/api/user/preferences', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.preferences) {
+                        selectedModel = data.preferences.voice_model || 'edge-tts-andrew';
+                        currentPlaybackRate = data.preferences.voice_speed || 1.0;
+                        skipPatterns = data.preferences.skip_patterns || false;
+                        console.log("Loaded user preferences from database:", data.preferences);
+                    } else {
+                        setDefaultPreferences();
+                    }
                 } else {
-                    currentPlaybackRate = 1.0;
+                    console.error("Failed to load preferences from database");
+                    setDefaultPreferences();
                 }
             } catch (e) { 
                 console.error("Could not load user preferences", e); 
-                currentPlaybackRate = 1.0;
+                setDefaultPreferences();
             }
         }
 
-        function saveUserPreferences() { 
-            localStorage.setItem('sonic-reader-prefs', JSON.stringify({ voice: selectedModel, speed: currentPlaybackRate })); 
+        function setDefaultPreferences() {
+            selectedModel = 'edge-tts-andrew';
+            currentPlaybackRate = 1.0;
+            skipPatterns = false;
+        }
+
+        async function saveUserPreferences() { 
+            try {
+                if (currentFileId) {
+                    // Save as book-specific preferences if a PDF is open
+                    await saveBookPreferences();
+                } else {
+                    // Save as user default preferences
+                    const response = await fetch('/api/user/preferences', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                        },
+                        body: JSON.stringify({
+                            voice_model: selectedModel,
+                            voice_speed: currentPlaybackRate,
+                            skip_patterns: skipPatterns
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log("User preferences saved to database");
+                    } else {
+                        console.error("Failed to save preferences to database");
+                    }
+                }
+            } catch (e) {
+                console.error("Error saving preferences:", e);
+            }
+        }
+
+        async function saveBookPreferences() {
+            if (!currentFileId) return;
+            
+            try {
+                const preferences = {
+                    voice_model: selectedModel,
+                    voice_speed: currentPlaybackRate,
+                    skip_patterns: skipPatterns,
+                    background_music_enabled: backgroundMusicEnabled,
+                    background_music_file_id: currentBackgroundMusic,
+                    background_music_volume: backgroundMusicVolume
+                };
+
+                const response = await fetch(`/api/user/preferences/book/${currentFileId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    },
+                    body: JSON.stringify(preferences)
+                });
+                
+                if (response.ok) {
+                    console.log("Book preferences saved to database");
+                } else {
+                    console.error("Failed to save book preferences to database");
+                }
+            } catch (e) {
+                console.error("Error saving book preferences:", e);
+            }
         }
 
         function applyPreferencesToUI() {
@@ -779,15 +1719,17 @@
                 speedValue = currentPlaybackRate.toFixed(1);
             }
             $('sticky-speed-select').value = speedValue;
-            $('mobile-speed-btn').textContent = `${speedValue}x`;
+            $('mobile-speed-select').value = speedValue;
+            
+            // Apply skip patterns preference
+            $('sticky-skip-patterns').checked = skipPatterns;
+            $('mobile-skip-patterns').checked = skipPatterns;
+            
+            // Apply preferences to default preferences UI on homepage
+            applyPreferencesToDefaultUI();
         }
 
-        function updateFileInfo(name, wordCount) {
-            $('file-name').textContent = name;
-            $('word-count').textContent = `${wordCount}`;
-            $('chunk-count').textContent = `${Math.ceil(wordCount / 100)}`;
-            $('file-info').classList.remove('hidden');
-        }
+
 
         function showUploadLoading(show, text = '') {
             $('upload-loading').classList.toggle('hidden', !show);
@@ -837,26 +1779,76 @@
         function initializeWebAudioPlayer() {
             const audioEl = $('audio-player-element');
             
+            // Clear all existing event listeners to prevent conflicts
+            audioEl.onplaying = null;
+            audioEl.onerror = null;
+            audioEl.onended = null;
+            audioEl.onpause = null;
+            
             gaplessPlayer = {
                 play: (url, chunkId) => {
                     return new Promise((resolve, reject) => {
+                        // Stop any existing playback first
+                        if (!audioEl.paused) {
+                            audioEl.pause();
+                        }
+                        
+                        // Clear event listeners
+                        audioEl.onplaying = null;
+                        audioEl.onerror = null;
+                        
+                        // Set source and playback rate
                         audioEl.src = url;
                         audioEl.playbackRate = currentPlaybackRate;
-                        audioEl.play().catch(e => {
-                            showError("Playback was interrupted.");
-                            reject(e);
-                        });
                         
-                        audioEl.onplaying = () => {
+                        // Create a one-time playing event handler
+                        const onPlayingHandler = () => {
+                            audioEl.removeEventListener('playing', onPlayingHandler);
+                            audioEl.removeEventListener('error', onErrorHandler);
                             resolve();
                         };
+                        
+                        const onErrorHandler = (e) => {
+                            audioEl.removeEventListener('playing', onPlayingHandler);
+                            audioEl.removeEventListener('error', onErrorHandler);
+                            reject(new Error("Audio playback error: " + e.message));
+                        };
+                        
+                        // Add event listeners
+                        audioEl.addEventListener('playing', onPlayingHandler, { once: true });
+                        audioEl.addEventListener('error', onErrorHandler, { once: true });
+                        
+                        // Start playback with user gesture check
+                        const playPromise = audioEl.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(e => {
+                                audioEl.removeEventListener('playing', onPlayingHandler);
+                                audioEl.removeEventListener('error', onErrorHandler);
+                                console.error("Play promise failed:", e);
+                                
+                                // Check if it's an autoplay policy issue
+                                if (e.name === 'NotAllowedError') {
+                                    reject(new Error("Autoplay is not allowed. Please interact with the page first."));
+                                } else {
+                                    reject(e);
+                                }
+                            });
+                        }
                     });
                 },
                 pause: () => { 
-                    audioEl.pause();
+                    if (!audioEl.paused) {
+                        audioEl.pause();
+                    }
                 },
                 resume: () => { 
-                    audioEl.play();
+                    return audioEl.play().catch(e => {
+                        console.error("Resume failed:", e);
+                        if (e.name === 'NotAllowedError') {
+                            throw new Error("Autoplay is not allowed. Please interact with the page first.");
+                        }
+                        throw e;
+                    });
                 },
                 stop: () => { 
                     if (!audioEl.paused) {
@@ -872,11 +1864,844 @@
                 }
             };
 
-            audioEl.onended = () => {
+            // Set up the ended event listener only once
+            audioEl.addEventListener('ended', () => {
                 if (isPlaying && !isPaused) {
                     playNextChunk();
                 }
+            }, { once: false });
+        }
+
+        // --- READING PROGRESS FUNCTIONS --- //
+        function updateReadingProgressDisplay() {
+            if (!wordMap.length) return;
+            
+            let progressPercentage = 0;
+            
+            if (currentChunk) {
+                // Calculate progress based on current audio chunk position
+                const currentWordIndex = currentChunk.startIndex;
+                progressPercentage = Math.round((currentWordIndex / wordMap.length) * 100);
+            }
+            // If no currentChunk, progress stays at 0% or shows last saved progress
+            
+            // Update header progress bar
+            const progressBar = $('reading-progress-bar');
+            const progressText = $('reading-progress-text');
+            
+            if (progressBar && progressText) {
+                progressBar.style.width = `${progressPercentage}%`;
+                progressText.textContent = `${progressPercentage}%`;
+            }
+        }
+        
+        function updateHeaderButtonForResume(hasProgress = false) {
+            const startButton = $('pdf-start-reading');
+            console.log('updateHeaderButtonForResume called with hasProgress:', hasProgress, 'savedProgress:', savedProgress);
+            if (startButton && hasProgress) {
+                startButton.innerHTML = `
+                    <i data-lucide="play-circle" class="h-5 w-5"></i>
+                    <span class="hidden md:inline">Resume</span>
+                `;
+                // Remove all existing event listeners by cloning the button
+                const buttonContainer = startButton.parentElement;
+                const newButton = startButton.cloneNode(true);
+                startButton.parentNode.replaceChild(newButton, startButton);
+                // Set the new event handler
+                newButton.onclick = () => resumeFromSavedPosition();
+                
+                // Add start over button next to it
+                if (!$('pdf-start-over')) {
+                    const startOverButton = document.createElement('button');
+                    startOverButton.id = 'pdf-start-over';
+                    startOverButton.className = 'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 border border-slate-600 bg-slate-800 shadow-sm shadow-black/5 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-4 py-2 gap-2';
+                    startOverButton.innerHTML = `
+                        <i data-lucide="rotate-ccw" class="h-5 w-5"></i>
+                        <span class="hidden md:inline">Start Over</span>
+                    `;
+                    startOverButton.onclick = () => playFromWord(0);
+                    buttonContainer.insertBefore(startOverButton, newButton.nextSibling);
+                    
+                    // Reinitialize icons
+                    lucide.createIcons();
+                }
+            }
+        }
+        
+        function updateHeaderButtonForStart() {
+            const startButton = $('pdf-start-reading');
+            if (startButton) {
+                startButton.innerHTML = `
+                    <i data-lucide="play-circle" class="h-5 w-5"></i>
+                    <span class="hidden md:inline">Start Reading</span>
+                `;
+                // Remove all existing event listeners by cloning the button
+                const newButton = startButton.cloneNode(true);
+                startButton.parentNode.replaceChild(newButton, startButton);
+                // Set the new event handler
+                newButton.onclick = () => playFromWord(0);
+                
+                // Remove start over button if it exists
+                const startOverButton = $('pdf-start-over');
+                if (startOverButton) {
+                    startOverButton.remove();
+                }
+                
+                // Reinitialize icons
+                lucide.createIcons();
+            }
+        }
+        
+        let savedProgress = null; // Store saved progress globally
+        
+        async function loadBookPreferences(fileId) {
+            try {
+                console.log('Loading book preferences for fileId:', fileId);
+                const response = await makeAuthenticatedRequest(`/api/user/preferences/effective/${fileId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.preferences) {
+                        console.log('Book preferences loaded:', data.preferences);
+                        
+                        // Apply book preferences
+                        selectedModel = data.preferences.voice_model || 'edge-tts-andrew';
+                        currentPlaybackRate = data.preferences.voice_speed || 1.0;
+                        skipPatterns = data.preferences.skip_patterns || false;
+                        
+                        // Apply background music preferences
+                        if (data.preferences.background_music_enabled && data.preferences.background_music_file_id) {
+                            backgroundMusicEnabled = true;
+                            currentBackgroundMusic = data.preferences.background_music_file_id;
+                            backgroundMusicVolume = data.preferences.background_music_volume || 0.10;
+                            
+                            // Update UI
+                            $('background-music-toggle').checked = true;
+                            $('mobile-background-music-toggle').checked = true;
+                            $('background-music-select').value = currentBackgroundMusic;
+                            $('mobile-background-music-select').value = currentBackgroundMusic;
+                            setBackgroundMusicVolume(backgroundMusicVolume * 100); // Convert to percentage
+                            
+                            // Show the background music controls
+                            toggleBackgroundMusic(true);
+                        } else {
+                            backgroundMusicEnabled = false;
+                            currentBackgroundMusic = null;
+                            $('background-music-toggle').checked = false;
+                            $('mobile-background-music-toggle').checked = false;
+                            $('background-music-select').value = '';
+                            $('mobile-background-music-select').value = '';
+                            
+                            // Hide the background music controls
+                            toggleBackgroundMusic(false);
+                        }
+                        
+                        // Update UI to reflect preferences
+                        applyPreferencesToUI();
+                        
+                        // Show indicator if book has custom preferences
+                        if (data.preferences.has_book_overrides) {
+                            console.log('Book has custom preferences');
+                            // Could add a visual indicator here
+                        }
+                    }
+                } else {
+                    console.error('Failed to load book preferences');
+                }
+            } catch (error) {
+                console.error('Error loading book preferences:', error);
+            }
+        }
+
+        async function loadReadingProgress(fileId) {
+            try {
+                currentFileId = fileId;
+                console.log('loadReadingProgress called for fileId:', fileId);
+                
+                // Load book preferences first
+                await loadBookPreferences(fileId);
+                
+                const response = await makeAuthenticatedRequest(`/api/reading-progress?pdf_id=${fileId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Progress data received:', data);
+                    if (data.progress && data.progress.current_word_index > 0) {
+                        savedProgress = data.progress; // Store saved progress
+                        console.log('Saved progress set to:', savedProgress);
+                        
+                        // Update header to show resume button
+                        updateHeaderButtonForResume(true);
+                        
+                        // Show saved progress in header
+                        displaySavedProgress();
+                        
+                        // Auto-scroll to saved position
+                        const savedWordIndex = data.progress.current_word_index;
+                        console.log(`Will scroll to word index: ${savedWordIndex}`);
+                        
+                        setTimeout(() => {
+                            scrollToWordByIndex(savedWordIndex);
+                        }, 1000);
+                    } else {
+                        console.log('No progress found or progress is 0');
+                        savedProgress = null;
+                        updateHeaderButtonForStart();
+                        displaySavedProgress(); // Show 0% progress
+                    }
+                } else {
+                    console.log('Failed to load progress, response not ok');
+                    savedProgress = null;
+                    updateHeaderButtonForStart();
+                    displaySavedProgress(); // Show 0% progress
+                }
+            } catch (error) {
+                console.error('Error loading reading progress:', error);
+                savedProgress = null;
+                updateHeaderButtonForStart();
+                displaySavedProgress(); // Show 0% progress
+            }
+        }
+        
+        function displaySavedProgress() {
+            const progressBar = $('reading-progress-bar');
+            const progressText = $('reading-progress-text');
+            
+            if (progressBar && progressText) {
+                if (savedProgress && savedProgress.total_words > 0) {
+                    const progressPercentage = Math.round((savedProgress.current_word_index / savedProgress.total_words) * 100);
+                    progressBar.style.width = `${progressPercentage}%`;
+                    progressText.textContent = `${progressPercentage}%`;
+                } else {
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '0%';
+                }
+            }
+        }
+        
+        function resumeFromSavedPosition() {
+            console.log('resumeFromSavedPosition called, savedProgress:', savedProgress);
+            if (savedProgress && savedProgress.current_word_index > 0) {
+                console.log(`Attempting to resume from word index: ${savedProgress.current_word_index}`);
+                playFromWord(savedProgress.current_word_index);
+            } else {
+                console.log('No saved progress found, starting from beginning');
+                playFromWord(0);
+            }
+        }
+        
+        async function saveReadingProgress() {
+            if (!currentFileId || !wordMap.length || !currentChunk) return;
+            
+            try {
+                // Use current audio chunk position for progress
+                const currentWordIndex = currentChunk.startIndex;
+                const progressPercentage = Math.round((currentWordIndex / wordMap.length) * 100);
+                
+                // Get current page from word data
+                const currentWordData = wordMap[currentWordIndex];
+                const currentPage = currentWordData ? currentWordData.page : 1;
+                
+                const response = await makeAuthenticatedRequest('/api/reading-progress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pdf_id: currentFileId,
+                        current_word_index: currentWordIndex,
+                        total_words: wordMap.length,
+                        progress_percentage: progressPercentage,
+                        current_page: currentPage
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log(`Progress saved: ${progressPercentage}% (word ${currentWordIndex}/${wordMap.length}) on page ${currentPage}`);
+                    // Update the progress display
+                    updateReadingProgressDisplay();
+                } else {
+                    console.error('Failed to save reading progress');
+                }
+            } catch (error) {
+                console.error('Error saving reading progress:', error);
+            }
+        }
+
+        // --- USER PDF LIBRARY FUNCTIONS --- //
+        async function loadUserPDFs() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/user/pdfs');
+                if (!response.ok) {
+                    throw new Error('Failed to load user PDFs');
+                }
+                
+                const data = await response.json();
+                await displayUserPDFs(data.pdfs || []);
+            } catch (error) {
+                console.error('Error loading user PDFs:', error);
+                $('user-pdfs-loading').classList.add('hidden');
+                $('user-pdfs-empty').classList.remove('hidden');
+            }
+        }
+        
+        async function displayUserPDFs(pdfs) {
+            $('user-pdfs-loading').classList.add('hidden');
+            
+            // Always hide the list first to ensure proper state management
+            $('user-pdfs-list').classList.add('hidden');
+            $('user-pdfs-empty').classList.add('hidden');
+            
+            // Update PDF count
+            const countElement = $('pdf-count');
+            const count = pdfs.length;
+            countElement.textContent = `${count} document${count !== 1 ? 's' : ''}`;
+            
+            if (pdfs.length === 0) {
+                $('user-pdfs-empty').classList.remove('hidden');
+                console.log('No PDFs to display - showing empty state');
+                return;
+            }
+            
+            const grid = $('pdfs-grid');
+            // Force clear the grid
+            grid.innerHTML = '';
+            
+            console.log(`Displaying ${pdfs.length} PDFs`);
+            
+            // Show loading placeholder for cards
+            grid.innerHTML = '<div class="col-span-full text-center text-slate-400">Loading progress data...</div>';
+            
+            // Create all PDF cards asynchronously
+            const cardPromises = pdfs.map(async (pdf, index) => {
+                console.log(`Creating card for PDF ${index + 1}: ${pdf.filename}`);
+                return await createPDFCard(pdf);
+            });
+            
+            // Wait for all cards to be created
+            const pdfCards = await Promise.all(cardPromises);
+            
+            // Clear loading and add all cards
+            grid.innerHTML = '';
+            pdfCards.forEach(card => {
+                grid.appendChild(card);
+            });
+            
+            $('user-pdfs-list').classList.remove('hidden');
+            
+            // Reinitialize Lucide icons after DOM updates
+            setTimeout(() => {
+                lucide.createIcons();
+                console.log('Lucide icons reinitialized');
+            }, 50);
+        }
+        
+        async function createPDFCard(pdf) {
+            const card = document.createElement('div');
+            card.className = 'pdf-item group relative overflow-hidden bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 hover:border-blue-500/50 hover:bg-slate-800/70 transition-all duration-300 cursor-pointer';
+            
+            const createdDate = new Date(pdf.created_at).toLocaleDateString();
+            const fileSize = formatFileSize(pdf.file_size || 0);
+            
+            // Truncate filename if too long (very conservative to prevent overlapping)
+            const truncatedFilename = truncateFilename(pdf.filename, 15);
+            
+            // Get reading progress for this PDF
+            let progressPercentage = 0;
+            try {
+                const progressResponse = await makeAuthenticatedRequest(`/api/reading-progress?pdf_id=${pdf.file_id}`);
+                if (progressResponse.ok) {
+                    const progressData = await progressResponse.json();
+                    if (progressData.progress && progressData.progress.total_words > 0) {
+                        progressPercentage = Math.round((progressData.progress.current_word_index / progressData.progress.total_words) * 100);
+                    }
+                }
+            } catch (error) {
+                console.log('Could not fetch progress for PDF:', pdf.filename);
+            }
+            
+            // Generate PDF thumbnail
+            let thumbnailElement = `<i data-lucide="file-text" class="h-8 w-8 text-blue-400"></i>`;
+            try {
+                const thumbnailDataUrl = await generatePDFThumbnail(pdf.file_id);
+                if (thumbnailDataUrl) {
+                    thumbnailElement = `<img src="${thumbnailDataUrl}" alt="PDF thumbnail" class="w-full h-full object-cover rounded">`;
+                }
+            } catch (error) {
+                console.log('Could not generate thumbnail for PDF:', pdf.filename);
+            }
+            
+            const progressColor = progressPercentage > 90 ? 'bg-green-500' : progressPercentage > 50 ? 'bg-blue-500' : 'bg-gray-500';
+            const progressDisplay = progressPercentage > 0 ? `${progressPercentage}% complete` : 'Not started';
+            
+            card.innerHTML = `
+                <!-- Gradient overlay -->
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <!-- Delete Button -->
+                <button class="delete-pdf-btn absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center text-slate-500 bg-slate-800/50 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-all duration-200 opacity-0 group-hover:opacity-100" 
+                        data-pdf-id="${pdf.file_id}" title="Delete PDF">
+                    <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+                </button>
+
+                <!-- New Badge -->
+                ${progressPercentage === 0 ? '<div class="absolute top-4 left-4 z-10"><span class="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full font-medium">New</span></div>' : ''}
+                
+                <div class="relative h-full flex flex-col text-center">
+                    <!-- Thumbnail Section -->
+                    <div class="mb-4">
+                        <div class="relative w-24 h-32 bg-slate-800/70 rounded-lg overflow-hidden flex items-center justify-center mx-auto shadow-md">
+                            ${thumbnailElement}
+                            ${progressPercentage > 0 ? `
+                                <div class="absolute bottom-1 right-1 px-1.5 py-0.5 bg-slate-900/70 backdrop-blur-sm rounded-md flex items-center justify-center border border-slate-700">
+                                    <span class="text-xs font-bold text-blue-300">${Math.round(progressPercentage)}%</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- Flexible Content Section -->
+                    <div class="flex flex-col flex-1 justify-between">
+                        <!-- Title & Progress -->
+                        <div>
+                            <h4 class="font-semibold text-slate-100 mb-1 leading-tight" title="${escapeHtml(pdf.filename)}">${escapeHtml(truncatedFilename)}</h4>
+                            <p class="text-xs text-slate-400 mb-3">${createdDate}</p>
+
+                            <div class="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden" title="${progressDisplay}">
+                                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500" 
+                                     style="width: ${progressPercentage}%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Action Button -->
+                        <div class="mt-4">
+                            <button class="load-pdf-btn w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40" 
+                                    data-pdf-id="${pdf.file_id}">
+                                <i data-lucide="play" class="h-4 w-4"></i>
+                                <span>${progressPercentage > 0 ? 'Continue Reading' : 'Start Reading'}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add event listeners
+            const loadBtn = card.querySelector('.load-pdf-btn');
+            const deleteBtn = card.querySelector('.delete-pdf-btn');
+            
+            loadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadExistingPDF(pdf.file_id, pdf.filename);
+            });
+            
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deletePDF(pdf.file_id, pdf.filename);
+            });
+            
+            return card;
+        }
+        
+        async function generatePDFThumbnail(fileId) {
+            try {
+                // Get the PDF file
+                const response = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`);
+                if (!response.ok) return null;
+                
+                const pdfBlob = await response.blob();
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                
+                // Load PDF with PDF.js
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                
+                // Get the first page
+                const page = await pdf.getPage(1);
+                
+                // Set up canvas for thumbnail (high quality for large display)
+                const viewport = page.getViewport({ scale: 1.0 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                // Render the page
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+                
+                // Convert to data URL
+                return canvas.toDataURL('image/jpeg', 0.8);
+                
+            } catch (error) {
+                console.error('Error generating thumbnail:', error);
+                return null;
+            }
+        }
+        
+        async function loadExistingPDF(fileId, filename) {
+            try {
+                showUploadLoading(true, 'Loading PDF...');
+                
+                // Get PDF file data
+                const response = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load PDF file');
+                }
+                
+                const pdfBlob = await response.blob();
+                const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+                
+                // Load the PDF without uploading it again
+                await loadExistingPDFData(file, fileId);
+                
+            } catch (error) {
+                console.error('Error loading existing PDF:', error);
+                showError('Failed to load PDF: ' + error.message);
+                showUploadLoading(false);
+            }
+        }
+        
+        async function loadExistingPDFData(file, fileId) {
+            try {
+                // First try to load cached word data with current skip patterns preference
+                console.log('Checking for cached word data...');
+                
+                const url = new URL(`/api/user/pdfs/${fileId}/words`, window.location.origin);
+                url.searchParams.set('skip_patterns', skipPatterns.toString());
+                
+                const cachedResponse = await makeAuthenticatedRequest(url);
+                
+                if (cachedResponse.ok) {
+                    const cachedData = await cachedResponse.json();
+                    
+                    if (cachedData.cached && cachedData.words && cachedData.words.length > 0) {
+                        console.log(`Using cached word data: ${cachedData.word_count} words (cached at ${cachedData.cached_at})`);
+                        wordMap = cachedData.words;
+                        
+                        // Show feedback about pattern filtering if applied
+                        if (cachedData.skip_patterns_enabled && cachedData.patterns_filtered > 0) {
+                            showSuccessMessage(`Filtered ${cachedData.patterns_filtered} repeated words (headers/footers/page numbers) from ${cachedData.original_word_count} total words`);
+                        }
+                        
+                        showUploadLoading(false);
+                        await displayPDF(file);
+                        
+                        // Set the current file ID for progress tracking
+                        currentFileId = fileId;
+                        
+                        // Load reading progress and resume from last position
+                        await loadReadingProgress(fileId);
+                        return;
+                    }
+                }
+                
+                // No cache available, extract words from the PDF file
+                console.log('No cached data found, extracting words from PDF...');
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('file_id', fileId); // Include file_id for caching
+                formData.append('skip_patterns', skipPatterns.toString());
+                
+                // Call extract-words endpoint which will cache the results
+                const response = await makeAuthenticatedRequest('/api/extract-words', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    wordMap = data.words || [];
+                    
+                    // Show feedback about pattern filtering if applied
+                    if (data.skip_patterns_enabled && data.patterns_filtered > 0) {
+                        showSuccessMessage(`Filtered ${data.patterns_filtered} repeated words (headers/footers/page numbers) from ${data.original_word_count} total words`);
+                    }
+                    
+                    if (data.cached) {
+                        console.log(`Used cached word data: ${data.word_count} words`);
+                    } else {
+                        console.log(`Extracted and cached word data: ${data.word_count} words`);
+                    }
+                } else {
+                    throw new Error('Failed to extract words from PDF');
+                }
+                
+                showUploadLoading(false);
+                await displayPDF(file);
+                
+                // Set the current file ID for progress tracking
+                currentFileId = fileId;
+                
+                // Load reading progress and resume from last position
+                await loadReadingProgress(fileId);
+                
+            } catch (error) {
+                console.error('Error loading existing PDF data:', error);
+                showUploadLoading(false);
+                showError('Failed to load PDF: ' + error.message);
+            }
+        }
+        
+        async function deletePDF(fileId, filename) {
+            if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                // Show loading state
+                const deleteBtn = document.querySelector(`[data-pdf-id="${fileId}"]`);
+                if (deleteBtn) {
+                    deleteBtn.disabled = true;
+                    deleteBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i>';
+                    lucide.createIcons();
+                }
+                
+                const response = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to delete PDF');
+                }
+                
+                const result = await response.json();
+                console.log('Delete response:', result);
+                
+                // If this is the currently open file, reset to upload view
+                if (currentFileId === fileId) {
+                    resetToUpload();
+                }
+                
+                // Force UI refresh with a slight delay to ensure database changes are reflected
+                setTimeout(async () => {
+                    await loadUserPDFs();
+                    console.log('PDF list reloaded after deletion');
+                }, 100);
+                
+                // Show success message
+                showSuccessMessage(`Successfully deleted "${filename}"`);
+                
+            } catch (error) {
+                console.error('Error deleting PDF:', error);
+                showError('Failed to delete PDF: ' + error.message);
+                
+                // Reset button state on error
+                const deleteBtn = document.querySelector(`[data-pdf-id="${fileId}"]`);
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<i data-lucide="trash-2" class="h-4 w-4"></i>';
+                    lucide.createIcons();
+                }
+            }
+        }
+        
+        function showSuccessMessage(message) {
+            // Create a temporary success notification
+            const successDiv = document.createElement('div');
+            successDiv.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+            successDiv.textContent = message;
+            document.body.appendChild(successDiv);
+            
+            // Animate in
+            setTimeout(() => successDiv.classList.add('opacity-100'), 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                successDiv.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => document.body.removeChild(successDiv), 300);
+            }, 3000);
+        }
+        
+
+        function updateProgressWithRateLimit(wordIndex) {
+            // Rate-limited progress update - only save every 5 seconds to avoid spam
+            if (!this.lastProgressUpdate || Date.now() - this.lastProgressUpdate > 5000) {
+                this.lastProgressUpdate = Date.now();
+                saveReadingProgress();
+            }
+        }
+        
+        function setupUnloadProgressSaving() {
+            function saveProgressOnUnload(event) {
+                if (!currentFileId) return;
+                
+                console.log('Page unload detected, saving progress...');
+                
+                let currentWordIndex = 0;
+                let currentPage = 1;
+                
+                // Get current position from chunk or viewing page
+                if (currentChunk) {
+                    currentWordIndex = currentChunk.startIndex;
+                    const wordInfo = wordMap[currentWordIndex];
+                    if (wordInfo) {
+                        currentPage = wordInfo.page;
+                    }
+                } else {
+                    currentPage = currentViewingPage;
+                }
+                
+                const progressData = {
+                    pdf_id: currentFileId,
+                    current_page: currentPage,
+                    current_word_index: currentWordIndex,
+                    total_words: wordMap.length
+                };
+                
+                // Try navigator.sendBeacon first (most reliable for unload)
+                if (navigator.sendBeacon) {
+                    const token = localStorage.getItem('auth_token');
+                    // Create a FormData with auth token and progress data for sendBeacon
+                    const formData = new FormData();
+                    formData.append('auth_token', token);
+                    formData.append('progress_data', JSON.stringify(progressData));
+                    
+                    const success = navigator.sendBeacon('/api/reading-progress-beacon', formData);
+                    console.log(`Beacon progress save ${success ? 'succeeded' : 'failed'}`);
+                    
+                    if (success) return;
+                }
+                
+                // Fallback to synchronous save
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/reading-progress', false); // Synchronous
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    const token = localStorage.getItem('auth_token');
+                    if (token) {
+                        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                    }
+                    xhr.send(JSON.stringify(progressData));
+                    console.log('Synchronous progress save completed');
+                } catch (error) {
+                    console.error('Failed to save progress on unload:', error);
+                }
+            }
+            
+            // Multiple event listeners for better coverage
+            window.addEventListener('beforeunload', saveProgressOnUnload);
+            window.addEventListener('pagehide', saveProgressOnUnload);
+            
+            // Save when page becomes hidden (user switches tabs, minimizes, etc.)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    saveProgressOnUnload();
+                }
+            });
+            
+            // Save when user navigates away
+            window.addEventListener('unload', saveProgressOnUnload);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
             };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+        
+        function truncateFilename(filename, maxLength) {
+            if (filename.length <= maxLength) return filename;
+            
+            // Get file extension
+            const lastDotIndex = filename.lastIndexOf('.');
+            const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+            const nameWithoutExt = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+            
+            // Calculate available space for name
+            const availableLength = maxLength - extension.length - 3; // 3 for "..."
+            
+            if (availableLength <= 0) {
+                return '...' + extension;
+            }
+            
+            return nameWithoutExt.substring(0, availableLength) + '...' + extension;
+        }
+        
+        async function processPDFFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('skip_patterns', skipPatterns.toString());
+            
+            showUploadLoading(true, 'Processing PDF...');
+            
+            try {
+                const response = await makeAuthenticatedRequest('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Upload failed');
+                }
+                
+                const data = await response.json();
+                wordMap = data.words || [];
+                
+                // Show feedback about pattern filtering if applied
+                if (data.skip_patterns_enabled && data.patterns_filtered > 0) {
+                    showSuccessMessage(`Filtered ${data.patterns_filtered} repeated words (headers/footers/page numbers) from ${data.original_word_count} total words`);
+                }
+                
+                showUploadLoading(false);
+                await displayPDF(file);
+                
+                // Set the current file ID for progress tracking
+                currentFileId = data.file_id;
+                
+                // Refresh the PDF list to show the new upload
+                await loadUserPDFs();
+                
+            } catch (error) {
+                showUploadLoading(false);
+                throw error;
+            }
+        }
+        
+        async function displayPDF(file) {
+            try {
+                showLoading('Loading PDF viewer...');
+                
+                const arrayBuffer = await file.arrayBuffer();
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                pdfDoc = await loadingTask.promise;
+                pdfTotalPages = pdfDoc.numPages;
+                
+                // Initialize current viewing page
+                currentViewingPage = 1;
+                
+                $('upload-container').classList.add('hidden');
+                $('pdf-display').classList.remove('hidden');
+                
+                await fitToWidth();
+                await renderInitialView();
+                
+                setupScrollListener();
+                updatePageIndicator();
+                
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                throw new Error('Failed to display PDF: ' + error.message);
+            }
         }
 
         async function changeZoom(amount) {
@@ -914,6 +2739,609 @@
                 if (isPlaying || isPaused) updateHighlighting();
             } finally {
                 isViewChanging = false;
+            }
+        }
+
+        function startProgressTracking() {
+            // Save progress every 30 seconds during playback
+            if (progressSaveInterval) clearInterval(progressSaveInterval);
+            progressSaveInterval = setInterval(() => {
+                if (isPlaying && currentChunk) {
+                    saveReadingProgress();
+                }
+            }, 30000);
+            
+            // Update progress display more frequently
+            if (progressUpdateInterval) clearInterval(progressUpdateInterval);
+            progressUpdateInterval = setInterval(() => {
+                if (isPlaying && currentChunk) {
+                    updateReadingProgressDisplay();
+                }
+            }, 1000);
+            
+            // Initial progress display update
+            if (currentChunk) {
+                updateReadingProgressDisplay();
+            }
+        }
+        
+        function stopProgressTracking() {
+            if (progressSaveInterval) {
+                clearInterval(progressSaveInterval);
+                progressSaveInterval = null;
+            }
+            if (progressUpdateInterval) {
+                clearInterval(progressUpdateInterval);
+                progressUpdateInterval = null;
+            }
+        }
+        
+        function scrollToWordByIndex(wordIndex) {
+            const span = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+            if (span) {
+                span.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        // --- BACKGROUND MUSIC FUNCTIONS --- //
+
+        async function loadBackgroundMusic() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/user/background-music');
+                if (response.ok) {
+                    const data = await response.json();
+                    backgroundMusicFiles = data.music_files || [];
+                    updateBackgroundMusicUI();
+                } else {
+                    console.error('Failed to load background music');
+                }
+            } catch (error) {
+                console.error('Error loading background music:', error);
+            }
+        }
+
+        function updateBackgroundMusicUI() {
+            const musicListLoading = $('music-list-loading');
+            const musicListContainer = $('music-list-container');
+            const musicListEmpty = $('music-list-empty');
+            const musicList = $('music-list');
+            const musicSelect = $('background-music-select');
+
+            // Hide loading
+            musicListLoading.classList.add('hidden');
+
+            if (backgroundMusicFiles.length === 0) {
+                musicListContainer.classList.add('hidden');
+                musicListEmpty.classList.remove('hidden');
+                musicSelect.innerHTML = '<option value="">No music available</option>';
+                return;
+            }
+
+            // Show music list
+            musicListContainer.classList.remove('hidden');
+            musicListEmpty.classList.add('hidden');
+
+            // Update music list
+            musicList.innerHTML = backgroundMusicFiles.map(music => `
+                <div class="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-slate-700/30 hover:bg-slate-700/50 hover:border-purple-500/30 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="music" class="h-4 w-4 text-purple-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium text-slate-200">${escapeHtml(truncateFilename(music.filename, 30))}</div>
+                            <div class="text-xs text-slate-400">${formatFileSize(music.file_size)} • ${music.file_type.toUpperCase()}</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteBackgroundMusic('${music.file_id}')" class="p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-all duration-200">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            // Update music select dropdown (both desktop and mobile)
+            const mobileSelect = $('mobile-background-music-select');
+            const selectOptions = '<option value="">Select Music</option>' + 
+                backgroundMusicFiles.map(music => 
+                    `<option value="${music.file_id}">${escapeHtml(truncateFilename(music.filename, 25))}</option>`
+                ).join('');
+            
+            musicSelect.innerHTML = selectOptions;
+            mobileSelect.innerHTML = selectOptions;
+
+            // Re-create icons for new elements
+            lucide.createIcons();
+        }
+
+        async function handleMusicUpload(file) {
+            const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/flac'];
+            if (!allowedTypes.includes(file.type)) {
+                showError('Please upload an audio file (MP3, WAV, M4A, AAC, OGG, FLAC)');
+                return;
+            }
+
+            if (file.size > 500 * 1024 * 1024) { // 500MB limit
+                showError('File size too large. Maximum 500MB allowed.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showLoading('Uploading background music...');
+                const response = await makeAuthenticatedRequest('/api/upload-background-music', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showSuccessMessage(`Background music "${file.name}" uploaded successfully!`);
+                    await loadBackgroundMusic(); // Refresh the list
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.error || 'Failed to upload background music');
+                }
+            } catch (error) {
+                showError('Error uploading background music: ' + error.message);
+            } finally {
+                hideLoading();
+                // Reset the file input
+                $('music-input').value = '';
+            }
+        }
+
+        async function deleteBackgroundMusic(fileId) {
+            if (!confirm('Are you sure you want to delete this background music?')) {
+                return;
+            }
+
+            try {
+                const response = await makeAuthenticatedRequest(`/api/user/background-music/${fileId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showSuccessMessage('Background music deleted successfully!');
+                    await loadBackgroundMusic(); // Refresh the list
+                    
+                    // If this was the currently selected music, reset selection
+                    if (currentBackgroundMusic === fileId) {
+                        currentBackgroundMusic = null;
+                        $('background-music-select').value = '';
+                        $('mobile-background-music-select').value = '';
+                        stopBackgroundMusic();
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.error || 'Failed to delete background music');
+                }
+            } catch (error) {
+                showError('Error deleting background music: ' + error.message);
+            }
+        }
+
+        function toggleBackgroundMusic(enabled) {
+            backgroundMusicEnabled = enabled;
+            const controls = $('background-music-controls');
+            const mobileControls = $('mobile-background-music-controls');
+            const mobileIndicator = $('mobile-music-indicator');
+            
+            // Sync both desktop and mobile toggles
+            $('background-music-toggle').checked = enabled;
+            $('mobile-background-music-toggle').checked = enabled;
+            
+            if (enabled) {
+                controls.classList.remove('hidden');
+                mobileControls.classList.remove('hidden');
+                mobileIndicator.classList.remove('hidden');
+                if (currentBackgroundMusic && isPlaying) {
+                    playBackgroundMusic();
+                }
+            } else {
+                controls.classList.add('hidden');
+                mobileControls.classList.add('hidden');
+                mobileIndicator.classList.add('hidden');
+                stopBackgroundMusic();
+            }
+            
+            // Save preferences
+            if (currentFileId) {
+                saveBookPreferences();
+            }
+        }
+
+        async function selectBackgroundMusic(fileId) {
+            if (!fileId) {
+                currentBackgroundMusic = null;
+                stopBackgroundMusic();
+                // Sync both dropdowns
+                $('background-music-select').value = '';
+                $('mobile-background-music-select').value = '';
+                
+                // Save preferences
+                if (currentFileId) {
+                    await saveBookPreferences();
+                }
+                return;
+            }
+
+            // Stop current music and clean up if playing different music
+            if (currentBackgroundMusic !== fileId) {
+                stopBackgroundMusic();
+            }
+
+            currentBackgroundMusic = fileId;
+            
+            // Sync both dropdowns
+            $('background-music-select').value = fileId;
+            $('mobile-background-music-select').value = fileId;
+            
+            // If TTS is currently playing and background music is enabled, start playing
+            if (backgroundMusicEnabled && isPlaying) {
+                await playBackgroundMusic();
+            }
+            
+            // Save preferences
+            if (currentFileId) {
+                await saveBookPreferences();
+            }
+        }
+
+        async function playBackgroundMusic() {
+            if (!currentBackgroundMusic || !backgroundMusicEnabled) return;
+
+            try {
+                const backgroundAudio = $('background-music-element');
+                
+                // Fetch the audio file with authentication and create a blob URL
+                const response = await makeAuthenticatedRequest(`/api/user/background-music/${currentBackgroundMusic}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch background music: ${response.status}`);
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Clean up any previous blob URL
+                if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(backgroundAudio.src);
+                }
+                
+                // Set the source to the blob URL
+                backgroundAudio.src = audioUrl;
+                
+                // Initialize Web Audio API for volume mixing if not already done
+                if (!backgroundAudioContext) {
+                    backgroundAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Create gain nodes for volume control
+                    backgroundGainNode = backgroundAudioContext.createGain();
+                    ttsGainNode = backgroundAudioContext.createGain();
+                    
+                    // Connect background music
+                    const backgroundSource = backgroundAudioContext.createMediaElementSource(backgroundAudio);
+                    backgroundSource.connect(backgroundGainNode).connect(backgroundAudioContext.destination);
+                    
+                    // Connect TTS audio (if using Web Audio API)
+                    const ttsAudio = $('audio-player-element');
+                    const ttsSource = backgroundAudioContext.createMediaElementSource(ttsAudio);
+                    ttsSource.connect(ttsGainNode).connect(backgroundAudioContext.destination);
+                }
+                
+                // Set initial volumes
+                updateAudioVolumes();
+                
+                // Play background music
+                await backgroundAudio.play();
+                
+                // Show mobile status indicator
+                $('mobile-bg-music-status').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error playing background music:', error);
+                showError('Failed to play background music');
+            }
+        }
+
+        function stopBackgroundMusic() {
+            const backgroundAudio = $('background-music-element');
+            backgroundAudio.pause();
+            backgroundAudio.currentTime = 0;
+            
+            // Clean up blob URL to free memory
+            if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:')) {
+                URL.revokeObjectURL(backgroundAudio.src);
+                backgroundAudio.src = '';
+            }
+            
+            // Hide mobile status indicator
+            $('mobile-bg-music-status').classList.add('hidden');
+        }
+
+        function pauseBackgroundMusic() {
+            const backgroundAudio = $('background-music-element');
+            backgroundAudio.pause();
+            
+            // Hide mobile status indicator when paused
+            $('mobile-bg-music-status').classList.add('hidden');
+        }
+
+        function resumeBackgroundMusic() {
+            if (!backgroundMusicEnabled || !currentBackgroundMusic) return;
+            
+            const backgroundAudio = $('background-music-element');
+            backgroundAudio.play().then(() => {
+                // Show mobile status indicator when resumed
+                $('mobile-bg-music-status').classList.remove('hidden');
+            }).catch(error => {
+                console.error('Error resuming background music:', error);
+            });
+        }
+
+        function setBackgroundMusicVolume(volume) {
+            backgroundMusicVolume = volume / 100; // Convert percentage to decimal
+            
+            // Sync both desktop and mobile volume controls
+            $('background-music-volume').value = volume;
+            $('mobile-background-music-volume').value = volume;
+            $('background-volume-text').textContent = `${volume}%`;
+            $('mobile-background-volume-text').textContent = `${volume}%`;
+            
+            updateAudioVolumes();
+            
+            // Save preferences
+            if (currentFileId) {
+                saveBookPreferences();
+            }
+        }
+
+        function updateAudioVolumes() {
+            if (!backgroundGainNode || !ttsGainNode) return;
+            
+            // Background music volume (user selected percentage)
+            backgroundGainNode.gain.value = backgroundMusicVolume;
+            
+            // TTS volume (remaining percentage, ensuring total doesn't exceed 100%)
+            const ttsVolume = Math.max(0, 1 - backgroundMusicVolume);
+            ttsGainNode.gain.value = ttsVolume;
+        }
+
+        // Modify existing playback functions to integrate background music
+
+        // Override the original togglePlayPause to handle background music
+        const originalTogglePlayPause = togglePlayPause;
+        togglePlayPause = async function() {
+            const wasPlaying = isPlaying;
+            await originalTogglePlayPause();
+            
+            // Handle background music based on new playback state
+            if (isPlaying && !wasPlaying) {
+                // Started playing
+                if (backgroundMusicEnabled && currentBackgroundMusic) {
+                    await playBackgroundMusic();
+                }
+            } else if (!isPlaying && wasPlaying) {
+                // Paused
+                pauseBackgroundMusic();
+            }
+        };
+
+        // Override the original stopPlayback to handle background music
+        const originalStopPlayback = stopPlayback;
+        stopPlayback = async function() {
+            await originalStopPlayback();
+            stopBackgroundMusic();
+        };
+
+        function showSuccessMessage(message) {
+            const errorSection = $('error-section');
+            const errorMessage = $('error-message');
+            
+            errorSection.className = 'fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-green-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]';
+            errorMessage.textContent = message;
+            errorSection.classList.remove('hidden');
+            
+            setTimeout(() => {
+                errorSection.classList.add('hidden');
+                errorSection.className = 'hidden fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-red-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]';
+            }, 3000);
+        }
+
+        // --- DEFAULT PREFERENCES FUNCTIONS --- //
+        let isTestingVoice = false;
+        
+        async function testVoiceAndSpeed() {
+            const testBtn = $('test-voice-btn');
+            const testBtnText = $('test-voice-btn-text');
+            const testAudio = $('test-audio-player');
+            
+            // If currently testing, stop the audio
+            if (isTestingVoice) {
+                stopTestAudio();
+                return;
+            }
+            
+            // Get selected voice and speed
+            const selectedVoice = $('default-voice-select').value;
+            const selectedSpeed = parseFloat($('default-speed-select').value);
+            
+            // Sample text for testing
+            const sampleText = "Hello! This is a preview of how your selected voice and speed will sound when reading your PDFs. You can adjust these settings anytime in your preferences.";
+            
+            try {
+                // Update button state
+                isTestingVoice = true;
+                testBtn.disabled = true;
+                testBtnText.textContent = 'Generating...';
+                testBtn.className = testBtn.className.replace('bg-green-600 hover:bg-green-700', 'bg-gray-600 hover:bg-gray-700');
+                
+                // Generate audio with selected voice
+                const response = await makeAuthenticatedRequest('/api/generate-audio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sampleText, model: selectedVoice })
+                });
+
+                if (!response.ok) {
+                    throw new Error((await response.json()).error || 'Failed to generate test audio');
+                }
+                
+                const data = await response.json();
+                const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(blob);
+                
+                // Set up audio player
+                testAudio.src = audioUrl;
+                testAudio.playbackRate = selectedSpeed;
+                
+                // Update button to show playing state (clickable to stop)
+                testBtn.disabled = false;
+                testBtnText.textContent = 'Stop Test';
+                testBtn.className = testBtn.className.replace('bg-gray-600 hover:bg-gray-700', 'bg-red-600 hover:bg-red-700');
+                
+                // Play the audio
+                await testAudio.play();
+                
+                // Reset button when audio ends naturally
+                testAudio.onended = () => {
+                    stopTestAudio();
+                };
+                
+                // Store the blob URL for cleanup
+                testAudio.blobUrl = audioUrl;
+                
+            } catch (error) {
+                console.error('Error testing voice:', error);
+                showError('Failed to test voice: ' + error.message);
+                stopTestAudio();
+            }
+        }
+        
+        function stopTestAudio() {
+            const testBtn = $('test-voice-btn');
+            const testBtnText = $('test-voice-btn-text');
+            const testAudio = $('test-audio-player');
+            
+            // Stop and reset audio
+            testAudio.pause();
+            testAudio.currentTime = 0;
+            
+            // Clean up blob URL if it exists
+            if (testAudio.blobUrl) {
+                URL.revokeObjectURL(testAudio.blobUrl);
+                testAudio.blobUrl = null;
+            }
+            
+            // Reset audio source
+            testAudio.src = '';
+            
+            // Reset button state
+            isTestingVoice = false;
+            testBtn.disabled = false;
+            testBtnText.textContent = 'Test Voice & Speed';
+            testBtn.className = testBtn.className.replace('bg-red-600 hover:bg-red-700', 'bg-green-600 hover:bg-green-700').replace('bg-gray-600 hover:bg-gray-700', 'bg-green-600 hover:bg-green-700');
+        }
+
+        async function saveDefaultPreferences() {
+            const saveBtn = $('save-default-prefs-btn');
+            const selectedVoice = $('default-voice-select').value;
+            const selectedSpeed = parseFloat($('default-speed-select').value);
+            const selectedSkipPatterns = $('default-skip-patterns').checked;
+            
+            try {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i> Saving...';
+                
+                // Update local preferences
+                selectedModel = selectedVoice;
+                currentPlaybackRate = selectedSpeed;
+                skipPatterns = selectedSkipPatterns;
+                
+                // Save to database
+                const response = await makeAuthenticatedRequest('/api/user/preferences', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        voice_model: selectedVoice,
+                        voice_speed: selectedSpeed,
+                        skip_patterns: selectedSkipPatterns
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save preferences');
+                }
+                
+                // Update UI controls to reflect saved preferences
+                selectedModel = selectedVoice;
+                currentPlaybackRate = selectedSpeed;
+                
+                // Sync with PDF player controls if they exist
+                const desktopVoiceSelect = $('sticky-voice-select');
+                const mobileVoiceSelect = $('mobile-voice-select');
+                const desktopSpeedSelect = $('sticky-speed-select');
+                const mobileSpeedSelect = $('mobile-speed-select');
+                
+                if (desktopVoiceSelect) desktopVoiceSelect.value = selectedVoice;
+                if (mobileVoiceSelect) mobileVoiceSelect.value = selectedVoice;
+                if (desktopSpeedSelect) desktopSpeedSelect.value = selectedSpeed;
+                if (mobileSpeedSelect) mobileSpeedSelect.value = selectedSpeed;
+                
+                showSuccessMessage('Default preferences saved successfully!');
+                
+            } catch (error) {
+                console.error('Error saving preferences:', error);
+                showError('Failed to save preferences: ' + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i data-lucide="save" class="h-4 w-4"></i> Save as Default';
+                lucide.createIcons(); // Refresh icons
+            }
+        }
+
+        function updateDefaultPreferencesUI() {
+            // This function can be used to provide real-time feedback 
+            // as user changes selections (future enhancement)
+        }
+
+        function applyPreferencesToDefaultUI() {
+            // Apply loaded user preferences to the default preferences UI
+            try {
+                const defaultVoiceSelect = $('default-voice-select');
+                const defaultSpeedSelect = $('default-speed-select');
+                const defaultSkipPatterns = $('default-skip-patterns');
+                
+                if (defaultVoiceSelect && selectedModel) {
+                    defaultVoiceSelect.value = selectedModel;
+                }
+                if (defaultSpeedSelect && currentPlaybackRate) {
+                    defaultSpeedSelect.value = currentPlaybackRate;
+                }
+                if (defaultSkipPatterns) {
+                    defaultSkipPatterns.checked = skipPatterns;
+                }
+            } catch (error) {
+                console.log('Default preferences UI not available (user might be in PDF view)');
+            }
+        }
+
+        // PDF Loading Indicator
+        function showUploadLoading(text) {
+            const loadingEl = $('upload-loading-text');
+            const loadingTextEl = $('upload-loading-text-inner');
+            if (loadingEl && loadingTextEl) {
+                // If text is not a valid string, show a default message
+                loadingTextEl.textContent = (typeof text === 'string' && text.length > 0) ? text : 'Loading...';
+                loadingEl.classList.remove('hidden');
+            }
+        }
+
+        function hideUploadLoading() {
+            const loadingEl = $('upload-loading-text');
+            if (loadingEl) {
+                loadingEl.classList.add('hidden');
             }
         }
     </script>

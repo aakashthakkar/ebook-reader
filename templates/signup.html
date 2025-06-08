@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - SonicRead</title>
+    <link rel="icon" href="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 75 33.51'%3e%3cg data-name='Layer 2'%3e%3cpath fill='%236D28D9' d='M75 23.6a10.5 10.5 0 0 1-10.63 9.91H38.82a2.14 2.14 0 0 1-2.12-2.13V3.87a2.34 2.34 0 0 1 1.41-2.24S40.46 0 45.41 0A16.74 16.74 0 0 1 54 2.36a17 17 0 0 1 8 11.08 9.8 9.8 0 0 1 2.71-.37A10.23 10.23 0 0 1 75 23.6ZM33.51 5.61a.83.83 0 1 0-1.65 0c-.7 9.25-1.24 17.92 0 27.14a.83.83 0 0 0 1.65 0c1.33-9.3.77-17.81 0-27.14ZM28.35 8.81a.87.87 0 0 0-1.73 0 103.7 103.7 0 0 0 0 23.95.87.87 0 0 0 1.72 0 93.2 93.2 0 0 0 .01-23.95ZM23.16 8a.84.84 0 0 0-1.67 0c-.79 8.44-1.19 16.32 0 24.74a.83.83 0 0 0 1.66 0c1.23-8.53.85-16.19.01-24.74ZM18 10.41a.86.86 0 0 0-1.72 0 87.61 87.61 0 0 0 0 22.36.85.85 0 0 0 1.69 0A81.68 81.68 0 0 0 18 10.41ZM12.79 16a.85.85 0 0 0-1.7 0c-1.23 5.76-.65 11 .05 16.83a.81.81 0 0 0 1.6 0c.77-5.91 1.36-11.03.05-16.83ZM7.62 15.12a.88.88 0 0 0-1.75 0C4.78 21 5.14 26.18 5.9 32.05c.08.89 1.59.88 1.69 0 .84-5.96 1.23-10.99.03-16.93ZM2.4 18a.88.88 0 0 0-1.75 0c-1 3.95-.69 7.22.07 11.18a.82.82 0 0 0 1.63 0c.88-4.04 1.31-7.24.05-11.18Z'/%3e%3c/g%3e%3c/svg%3e">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 224.3 76.3% 48%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="overscroll-none">
+    <div class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-900/20">
+        <div class="w-full max-w-md">
+            <!-- Logo and Header -->
+            <div class="mb-8 flex flex-col items-center text-center">
+                <div class="mb-4 p-3 bg-slate-800/50 rounded-2xl border border-slate-700/50 shadow-lg">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-500">
+                        <path d="M2.75 12C2.75 11.5858 3.08579 11.25 3.5 11.25H4.25C4.66421 11.25 5 11.5858 5 12V16C5 16.4142 4.66421 16.75 4.25 16.75H3.5C3.08579 16.75 2.75 16.4142 2.75 16V12Z" fill="currentColor" />
+                        <path d="M6.75 8C6.75 7.58579 7.08579 7.25 7.5 7.25H8.25C8.66421 7.25 9 7.58579 9 8V16C9 16.4142 8.66421 16.75 8.25 16.75H7.5C7.08579 16.75 6.75 16.4142 6.75 16V8Z" fill="currentColor" />
+                        <path d="M10.75 10C10.75 9.58579 11.0858 9.25 11.5 9.25H12.25C12.6642 9.25 13 9.58579 13 10V16C13 16.4142 12.6642 16.75 12.25 16.75H11.5C11.0858 16.75 10.75 16.4142 10.75 16V10Z" fill="currentColor" />
+                        <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
+                        <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-slate-100">Create your account</h1>
+                <p class="mt-2 text-slate-400">Start your journey with SonicRead</p>
+            </div>
+
+            <!-- Signup Form Card -->
+            <div class="bg-slate-900/50 backdrop-blur-lg rounded-2xl p-8 border border-slate-700/50 shadow-2xl shadow-blue-900/10">
+                <form id="signup-form" class="space-y-4">
+                    <div>
+                        <label for="name-input" class="mb-2 block text-sm font-medium text-slate-300">Full Name</label>
+                        <input id="name-input" type="text" required placeholder="Your full name"
+                               class="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-200 placeholder-slate-500 transition-all duration-300
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                        <label for="email-input" class="mb-2 block text-sm font-medium text-slate-300">Email</label>
+                        <input id="email-input" type="email" required placeholder="your.email@provider.com"
+                               class="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-200 placeholder-slate-500 transition-all duration-300
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <div>
+                        <label for="password-input" class="mb-2 block text-sm font-medium text-slate-300">Password</label>
+                        <input id="password-input" type="password" required minlength="6" placeholder="••••••••••••"
+                               class="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-200 placeholder-slate-500 transition-all duration-300
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                        <p class="mt-1 text-xs text-slate-500">Minimum 6 characters</p>
+                    </div>
+                    <div>
+                        <label for="confirm-password-input" class="mb-2 block text-sm font-medium text-slate-300">Confirm Password</label>
+                        <input id="confirm-password-input" type="password" required placeholder="••••••••••••"
+                               class="w-full rounded-lg border border-slate-700 bg-slate-800/50 px-4 py-3 text-slate-200 placeholder-slate-500 transition-all duration-300
+                                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    
+                    <button type="submit" id="signup-btn"
+                            class="w-full !mt-6 rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white
+                                   transition-all duration-300 ease-in-out hover:bg-blue-700 active:scale-[0.98]
+                                   disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600">
+                        <span id="signup-text">Create Account</span>
+                        <div id="signup-spinner" class="hidden w-5 h-5 mx-auto spinner border-2 border-white border-t-transparent rounded-full"></div>
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <p class="text-sm text-slate-400">
+                        Already have an account?
+                        <a href="/login" class="font-medium text-blue-400 hover:text-blue-300 hover:underline">Sign In</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Messages -->
+            <div id="error-message" class="hidden mt-4 p-4 text-sm bg-red-500/10 border border-red-500/30 rounded-lg text-red-300">
+                <p id="error-text"></p>
+            </div>
+            <div id="success-message" class="hidden mt-4 p-4 text-sm bg-green-500/10 border border-green-500/30 rounded-lg text-green-300">
+                <p id="success-text"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('name-input').value;
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            const confirmPassword = document.getElementById('confirm-password-input').value;
+            const signupBtn = document.getElementById('signup-btn');
+            const signupText = document.getElementById('signup-text');
+            const signupSpinner = document.getElementById('signup-spinner');
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+            
+            if (password !== confirmPassword) {
+                document.getElementById('error-text').textContent = 'Passwords do not match';
+                errorMessage.classList.remove('hidden');
+                successMessage.classList.add('hidden');
+                return;
+            }
+            
+            signupBtn.disabled = true;
+            signupText.classList.add('hidden');
+            signupSpinner.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('success-text').textContent = 'Account created! Check your email to verify, then sign in.';
+                    successMessage.classList.remove('hidden');
+                    document.getElementById('signup-form').reset();
+                    
+                    setTimeout(() => { window.location.href = '/login'; }, 3000);
+                } else {
+                    document.getElementById('error-text').textContent = data.error || 'Signup failed';
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Signup error:', error);
+                document.getElementById('error-text').textContent = 'Network error. Please try again.';
+                errorMessage.classList.remove('hidden');
+            } finally {
+                signupBtn.disabled = false;
+                signupText.classList.remove('hidden');
+                signupSpinner.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html> 

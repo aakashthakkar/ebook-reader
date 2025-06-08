@@ -358,6 +358,13 @@
         let isViewChanging = false;
         let hasUserInteracted = false;
         
+        // Smart Auto-Scroll State
+        let autoScrollEnabled = true;
+        let isUserBrowsing = false;
+        let browsePauseTimeout = null;
+        let lastScrollTime = 0;
+        let userScrollDetectionTimeout = null;
+        
         // Rate limiting for progress updates
         let lastProgressUpdate = 0;
         const PROGRESS_UPDATE_COOLDOWN = 12000; // 12 seconds (5 requests per minute)
@@ -564,6 +571,11 @@
             // Listen to both viewer scroll and window scroll
             const handleScroll = async () => {
                 if (isViewChanging) return;
+                
+                // Detect user browsing when they scroll during playback
+                if (!isViewChanging && (isPlaying || isPaused)) {
+                    detectUserBrowsing();
+                }
 
                 const { scrollTop, scrollHeight, clientHeight } = viewer;
                 if (scrollHeight - scrollTop - clientHeight < clientHeight * 1.5) { // Load when 1.5 screens away from bottom
@@ -576,6 +588,19 @@
             
             viewer.addEventListener('scroll', handleScroll, { passive: true });
             window.addEventListener('scroll', handleScroll, { passive: true });
+            
+            // Also detect browsing on touch/mouse events that might lead to scrolling
+            viewer.addEventListener('touchstart', () => {
+                if (isPlaying || isPaused) {
+                    detectUserBrowsing();
+                }
+            }, { passive: true });
+            
+            viewer.addEventListener('mousedown', () => {
+                if (isPlaying || isPaused) {
+                    detectUserBrowsing();
+                }
+            }, { passive: true });
             
             // Also update page on initial load
             setTimeout(() => {
@@ -643,8 +668,14 @@
             }
         }
 
-        async function scrollToWord(wordIndex) {
+        async function scrollToWord(wordIndex, forceScroll = false) {
             if (isViewChanging) return;
+            
+            // Check if auto-scroll is enabled and user is not browsing, or if forced
+            if (!forceScroll && autoScrollEnabled && isUserBrowsing) {
+                console.log('Auto-scroll paused - user is browsing');
+                return;
+            }
 
             const wordInfo = wordMap[wordIndex];
             if (!wordInfo) return;
@@ -692,7 +723,95 @@
         async function goToCurrentHighlight() {
             if (!currentChunk) return showError('Nothing is playing.');
             const firstWordIndex = currentChunk.startIndex;
-            await scrollToWord(firstWordIndex);
+            
+            // Resume auto-scroll when user manually goes to current
+            resumeAutoScroll();
+            
+            // Force scroll even if auto-scroll is paused
+            await scrollToWord(firstWordIndex, true);
+        }
+        
+        // --- SMART AUTO-SCROLL FUNCTIONS --- //
+        function detectUserBrowsing() {
+            lastScrollTime = Date.now();
+            
+            // Clear existing timeout
+            if (userScrollDetectionTimeout) {
+                clearTimeout(userScrollDetectionTimeout);
+            }
+            
+            // If auto-scroll is enabled and we're playing, mark as user browsing
+            if (autoScrollEnabled && (isPlaying || isPaused)) {
+                if (!isUserBrowsing) {
+                    isUserBrowsing = true;
+                    console.log('User browsing detected - auto-scroll paused');
+                    updateGoToCurrentButton();
+                }
+                
+                // Clear any existing resume timeout
+                if (browsePauseTimeout) {
+                    clearTimeout(browsePauseTimeout);
+                }
+                
+                // Set timeout to resume auto-scroll after 15 seconds of inactivity
+                browsePauseTimeout = setTimeout(() => {
+                    if (isUserBrowsing) {
+                        resumeAutoScroll();
+                        console.log('Auto-scroll resumed after inactivity');
+                    }
+                }, 15000); // 15 seconds
+            }
+        }
+        
+        function resumeAutoScroll() {
+            if (isUserBrowsing) {
+                isUserBrowsing = false;
+                console.log('Auto-scroll resumed manually');
+                
+                // Clear the inactivity timeout
+                if (browsePauseTimeout) {
+                    clearTimeout(browsePauseTimeout);
+                    browsePauseTimeout = null;
+                }
+                
+                updateGoToCurrentButton();
+                
+                // Immediately scroll to current position if playing
+                if (currentChunk && (isPlaying || isPaused)) {
+                    scrollToWord(currentChunk.startIndex);
+                }
+            }
+        }
+        
+        function updateGoToCurrentButton() {
+            const goToCurrentBtn = $('top-go-to-current');
+            if (!goToCurrentBtn) return;
+            
+            if (isUserBrowsing && (isPlaying || isPaused)) {
+                // Show the button when user is browsing during playback
+                goToCurrentBtn.classList.remove('hidden');
+                goToCurrentBtn.classList.add('flex');
+                
+                // Update button text to indicate auto-scroll is paused
+                const buttonText = goToCurrentBtn.querySelector('span');
+                if (buttonText) {
+                    buttonText.textContent = 'Go to Current';
+                }
+            } else if (currentChunk && (isPlaying || isPaused)) {
+                // Hide or show based on whether we're playing
+                goToCurrentBtn.classList.remove('hidden');
+                goToCurrentBtn.classList.add('flex');
+                
+                // Reset button text
+                const buttonText = goToCurrentBtn.querySelector('span');
+                if (buttonText) {
+                    buttonText.textContent = 'Go to Current';
+                }
+            } else {
+                // Hide when not playing
+                goToCurrentBtn.classList.add('hidden');
+                goToCurrentBtn.classList.remove('flex');
+            }
         }
 
         // --- AUDIO PLAYBACK & CHUNKING --- //
@@ -823,8 +942,15 @@
             
             currentChunk = chunk;
             
+            // Reset auto-scroll state when starting playback
+            isUserBrowsing = false;
+            if (browsePauseTimeout) {
+                clearTimeout(browsePauseTimeout);
+                browsePauseTimeout = null;
+            }
+            
             showPlayer();
-            await scrollToWord(wordIndex);
+            await scrollToWord(wordIndex, true); // Force scroll for initial playback
             
             try {
                 // Ensure audio player is initialized only once
@@ -936,11 +1062,17 @@
             stopProgressTracking();
             
             isPlaying = false; isPaused = false; currentChunk = null;
+            
+            // Reset auto-scroll state
+            isUserBrowsing = false;
+            if (browsePauseTimeout) {
+                clearTimeout(browsePauseTimeout);
+                browsePauseTimeout = null;
+            }
+            
             if (gaplessPlayer) gaplessPlayer.stop();
             updatePlayPauseButtons('play');
             updateHighlighting();
-            $('top-go-to-current').classList.add('hidden');
-            $('top-go-to-current').classList.remove('flex');
         }
 
         async function loadChunk(chunk, showIndicator = true) {
@@ -994,14 +1126,18 @@
         function updateHighlighting() {
             document.querySelectorAll('.text-span.word-playing-chunk').forEach(s => s.classList.remove('word-playing-chunk'));
             
-            if (!currentChunk || (!isPlaying && !isPaused)) return;
+            if (!currentChunk || (!isPlaying && !isPaused)) {
+                updateGoToCurrentButton();
+                return;
+            }
 
             for (let i = currentChunk.startIndex; i <= currentChunk.endIndex; i++) {
                 const span = document.querySelector(`.text-span[data-word-index="${i}"]`);
                 if (span) span.classList.add('word-playing-chunk');
             }
-            $('top-go-to-current').classList.remove('hidden');
-            $('top-go-to-current').classList.add('flex');
+            
+            // Update the go to current button based on browsing state
+            updateGoToCurrentButton();
         }
 
         async function handleVoiceChange(newVoice) {

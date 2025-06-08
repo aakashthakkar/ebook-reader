@@ -80,6 +80,23 @@ def detect_paragraphs_in_page(words):
     # Group words by approximate lines first
     lines = group_words_by_lines(words)
     
+    # Calculate common horizontal alignment zones for better paragraph detection
+    left_margins = [line[0]["x0"] for line in lines if line]
+    common_margins = {}
+    for margin in left_margins:
+        # Group similar margins (within 5px)
+        found_group = False
+        for existing_margin in common_margins:
+            if abs(margin - existing_margin) <= 5:
+                common_margins[existing_margin] += 1
+                found_group = True
+                break
+        if not found_group:
+            common_margins[margin] = 1
+    
+    # Find the most common alignment (main text alignment)
+    main_text_margin = max(common_margins.keys(), key=common_margins.get) if common_margins else 0
+    
     for line_idx, line_words in enumerate(lines):
         if not line_words:
             continue
@@ -102,23 +119,41 @@ def detect_paragraphs_in_page(words):
                 if is_incomplete_line(prev_line_text, current_line_text):
                     is_new_paragraph = False
                 else:
-                    # SMART WHITESPACE-BASED PARAGRAPH DETECTION
+                    # ENHANCED HORIZONTAL ALIGNMENT CHECK
+                    # If current line is aligned with main text body, consider it a continuation
+                    current_margin = line_words[0]["x0"]
+                    prev_margin = prev_line[0]["x0"]
                     
-                    # 1. Vertical spacing - balanced threshold
-                    if has_aggressive_vertical_spacing(line_words, prev_line):
-                        is_new_paragraph = True
+                    # Check if both lines are aligned with main text (likely continuation)
+                    both_main_aligned = (abs(current_margin - main_text_margin) <= 8 and 
+                                       abs(prev_margin - main_text_margin) <= 8)
                     
-                    # 2. Horizontal indentation changes - significant shifts
-                    elif has_indentation_change(line_words, prev_line):
-                        is_new_paragraph = True
-                    
-                    # 3. Line length analysis - short lines often indicate paragraph breaks
-                    elif is_short_line_break(prev_line, line_words):
-                        is_new_paragraph = True
-                    
-                    # 4. Font size or formatting changes (if available)
-                    elif has_formatting_change(line_words, prev_line):
-                        is_new_paragraph = True
+                    if both_main_aligned:
+                        # Both lines are main text aligned - be more conservative about splitting
+                        # Only split if there are very strong spatial indicators
+                        if (has_aggressive_vertical_spacing(line_words, prev_line) and
+                            has_significant_indentation_change(line_words, prev_line, main_text_margin)):
+                            is_new_paragraph = True
+                        elif is_clear_paragraph_break(prev_line, line_words):
+                            is_new_paragraph = True
+                    else:
+                        # SMART WHITESPACE-BASED PARAGRAPH DETECTION (original logic for non-aligned text)
+                        
+                        # 1. Vertical spacing - balanced threshold
+                        if has_aggressive_vertical_spacing(line_words, prev_line):
+                            is_new_paragraph = True
+                        
+                        # 2. Horizontal indentation changes - significant shifts
+                        elif has_indentation_change(line_words, prev_line):
+                            is_new_paragraph = True
+                        
+                        # 3. Line length analysis - short lines often indicate paragraph breaks
+                        elif is_short_line_break(prev_line, line_words):
+                            is_new_paragraph = True
+                        
+                        # 4. Font size or formatting changes (if available)
+                        elif has_formatting_change(line_words, prev_line):
+                            is_new_paragraph = True
         
         if is_new_paragraph and current_paragraph:
             # Mark the end of the previous paragraph
@@ -150,65 +185,47 @@ def detect_paragraphs_in_page(words):
     return paragraphs
 
 def is_incomplete_line(prev_line_text, current_line_text):
-    """Detect if the previous line is incomplete and continues to the current line."""
+    """Detect if the previous line is incomplete and continues to the current line - GENERIC for any PDF type."""
     if not prev_line_text or not current_line_text:
         return False
     
-    # Strong indicators that previous line is incomplete
-    incomplete_endings = [
-        # Punctuation that indicates continuation
+    # CONSERVATIVE APPROACH: Only split when there are STRONG indicators
+    # Don't split based on punctuation alone - rely primarily on spatial analysis
+    
+    # Very strong indicators that previous line is incomplete
+    strong_incomplete_endings = [
+        # Punctuation that clearly indicates continuation
         ',', ';', ':', '(', '"', "'", '-', '—', '–',
-        # Common words that indicate continuation
-        'and', 'or', 'but', 'the', 'of', 'in', 'to', 'for', 'with', 'by', 'at', 'on', 'from', 'as', 'is', 'are', 'was', 'were',
-        # Articles and prepositions
-        'a', 'an', 'that', 'this', 'these', 'those', 'which', 'who', 'what', 'where', 'when', 'how', 'why',
-        # Incomplete phrases
-        'would', 'could', 'should', 'will', 'can', 'may', 'might', 'must', 'shall',
-        # Conjunctions
-        'if', 'because', 'since', 'while', 'although', 'though', 'unless', 'until', 'before', 'after'
+        # Words that clearly indicate incomplete thoughts
+        'and', 'or', 'but', 'the', 'of', 'in', 'to', 'for', 'with', 'by', 'at', 'on', 'from',
+        # Conjunctions and transitions that need continuation
+        'if', 'because', 'since', 'while', 'although', 'though', 'unless', 'until', 'before', 'after', 'when', 'where', 'how', 'why'
     ]
     
-    # Check if previous line ends with incomplete indicators
-    prev_ends_incomplete = any(prev_line_text.lower().endswith(' ' + ending) or prev_line_text.endswith(ending) 
-                              for ending in incomplete_endings)
+    # Check if previous line ends with clear incomplete indicators
+    prev_clearly_incomplete = any(prev_line_text.lower().endswith(' ' + ending) or prev_line_text.endswith(ending) 
+                                 for ending in strong_incomplete_endings)
     
-    # Strong indicators that current line is a continuation
-    continuation_starts = [
-        # Punctuation continuations
-        ')', '"', "'", '.', ',', ';', '!', '?',
-        # Lowercase start (likely continuation)
-        # Common continuation words
-        'and', 'or', 'but', 'so', 'yet', 'then', 'thus', 'therefore', 'however', 'moreover', 'furthermore',
-        'of', 'in', 'to', 'for', 'with', 'by', 'at', 'on', 'from', 'as',
-        # Verbs that often continue sentences
-        'be', 'have', 'do', 'will', 'would', 'could', 'should', 'can', 'may', 'might', 'must'
+    # Very strong indicators that current line is a continuation  
+    strong_continuation_starts = [
+        # Punctuation that clearly continues previous line
+        ')', '"', "'", '.', ',', ';',
+        # Words that clearly continue previous thought
+        'and', 'or', 'but', 'so', 'yet', 'then', 'however', 'therefore', 'moreover', 'furthermore'
     ]
     
-    # Check if current line starts with continuation indicators
-    current_starts_continuation = any(current_line_text.lower().startswith(start + ' ') or current_line_text.startswith(start)
-                                     for start in continuation_starts)
+    # Check if current line clearly starts a continuation
+    current_clearly_continues = any(current_line_text.lower().startswith(start + ' ') or current_line_text.startswith(start)
+                                   for start in strong_continuation_starts)
     
-    # Check if current line starts with lowercase (strong continuation indicator)
+    # Strong indicator: current line starts with lowercase (very likely continuation)
     current_starts_lowercase = current_line_text and current_line_text[0].islower()
     
-    # Check if previous line doesn't end with sentence-ending punctuation
-    prev_no_sentence_end = not any(prev_line_text.endswith(punct) for punct in ['.', '!', '?', '"', "'"])
-    
-    # Additional check: if previous line seems to end mid-sentence (no proper punctuation and doesn't end with complete word patterns)
-    incomplete_patterns = [
-        # Lines ending with incomplete thoughts
-        'that', 'which', 'who', 'what', 'where', 'when', 'how', 'why', 'there',
-        # Lines ending without proper sentence closure
-        'no', 'not', 'never', 'always', 'still', 'just', 'only', 'even', 'also'
-    ]
-    
-    prev_ends_mid_thought = any(prev_line_text.lower().endswith(' ' + pattern) for pattern in incomplete_patterns)
-    
-    # Return True if this looks like a continuation
-    return (prev_ends_incomplete or 
-            current_starts_continuation or 
-            current_starts_lowercase or
-            (prev_no_sentence_end and prev_ends_mid_thought))
+    # Return True only for CLEAR continuation indicators
+    # This makes the algorithm rely more on spatial analysis rather than text patterns
+    return (prev_clearly_incomplete or 
+            current_clearly_continues or 
+            current_starts_lowercase)
 
 def has_aggressive_vertical_spacing(line_words, prev_line):
     """Detect vertical spacing between lines - very aggressive for shorter chunks."""
@@ -368,6 +385,59 @@ def generate_audio_edge_tts_sync(text, voice_id):
     except Exception as e:
         logger.error(f"Error in Edge TTS sync wrapper: {e}")
         raise
+
+def has_significant_indentation_change(line_words, prev_line, main_text_margin):
+    """Detect significant indentation changes relative to main text alignment."""
+    if not prev_line or not line_words:
+        return False
+    
+    current_indent = line_words[0]["x0"]
+    prev_indent = prev_line[0]["x0"]
+    
+    # Check for significant deviation from main text margin
+    current_deviation = abs(current_indent - main_text_margin)
+    prev_deviation = abs(prev_indent - main_text_margin)
+    
+    # Significant indentation change: either line deviates significantly from main text
+    # OR there's a substantial change between the two lines
+    significant_deviation = current_deviation > 15 or prev_deviation > 15
+    substantial_change = abs(current_indent - prev_indent) > 20
+    
+    return significant_deviation or substantial_change
+
+def is_clear_paragraph_break(prev_line, current_line):
+    """Detect clear paragraph breaks for main-text-aligned lines."""
+    if not prev_line or not current_line:
+        return False
+    
+    prev_line_text = ' '.join(word["text"] for word in prev_line).strip()
+    current_line_text = ' '.join(word["text"] for word in current_line).strip()
+    
+    # Very strong paragraph ending indicators
+    strong_endings = ['.', '!', '?', ';"', '."', '!"', '?"']
+    ends_with_strong = any(prev_line_text.endswith(ending) for ending in strong_endings)
+    
+    # Strong paragraph starting indicators
+    strong_starts = ['Chapter', 'Section', 'Part', 'Book', 'Volume']
+    starts_with_strong = any(current_line_text.startswith(start) for start in strong_starts)
+    
+    # Check if current line starts with capital letter (potential new sentence/paragraph)
+    starts_with_capital = current_line_text and current_line_text[0].isupper()
+    
+    # Calculate line widths for additional context
+    page_width = max(max(word["x1"] for word in prev_line), max(word["x1"] for word in current_line))
+    prev_line_width = max(word["x1"] for word in prev_line) - min(word["x0"] for word in prev_line)
+    
+    # Previous line is quite short (likely end of paragraph)
+    prev_line_short = prev_line_width < page_width * 0.50
+    
+    # Clear paragraph break indicators:
+    # 1. Previous line ends with strong punctuation AND current starts with capital
+    # 2. Previous line is short AND current starts with capital
+    # 3. Current line starts with structural elements
+    return ((ends_with_strong and starts_with_capital) or
+            (prev_line_short and starts_with_capital and ends_with_strong) or
+            starts_with_strong)
 
 # Authentication Routes
 @app.route('/')

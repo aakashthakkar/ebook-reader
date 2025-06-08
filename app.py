@@ -70,13 +70,12 @@ def extract_words_from_pdf_bytes(file_bytes):
     return all_words
 
 def detect_paragraphs_in_page(words):
-    """Detect paragraph boundaries within a page using line spacing and positioning."""
+    """Detect paragraph boundaries using smart whitespace analysis - works for any PDF type."""
     if not words:
         return []
     
     paragraphs = []
     current_paragraph = []
-    previous_word = None
     
     # Group words by approximate lines first
     lines = group_words_by_lines(words)
@@ -93,22 +92,33 @@ def detect_paragraphs_in_page(words):
             is_new_paragraph = True
         else:
             prev_line = lines[line_idx - 1] if line_idx > 0 else []
+            
             if prev_line:
-                # Calculate vertical spacing between lines
-                prev_line_bottom = max(word["bottom"] for word in prev_line)
-                current_line_top = min(word["top"] for word in line_words)
-                line_spacing = current_line_top - prev_line_bottom
+                # Check if previous line appears incomplete (likely continues to this line)
+                prev_line_text = ' '.join(word["text"] for word in prev_line).strip()
+                current_line_text = ' '.join(word["text"] for word in line_words).strip()
                 
-                # Calculate average line height for context
-                current_line_height = max(word["bottom"] for word in line_words) - min(word["top"] for word in line_words)
-                
-                # Detect paragraph break based on:
-                # 1. Large vertical spacing (> 1.5x line height)
-                # 2. Significant left margin change (indentation)
-                # 3. Line starts much further right (indented paragraph)
-                if (line_spacing > current_line_height * 1.5 or
-                    (line_words[0]["x0"] > 50 and abs(line_words[0]["x0"] - prev_line[0]["x0"]) > 20)):
-                    is_new_paragraph = True
+                # If previous line seems incomplete, don't break here
+                if is_incomplete_line(prev_line_text, current_line_text):
+                    is_new_paragraph = False
+                else:
+                    # SMART WHITESPACE-BASED PARAGRAPH DETECTION
+                    
+                    # 1. Vertical spacing - balanced threshold
+                    if has_aggressive_vertical_spacing(line_words, prev_line):
+                        is_new_paragraph = True
+                    
+                    # 2. Horizontal indentation changes - significant shifts
+                    elif has_indentation_change(line_words, prev_line):
+                        is_new_paragraph = True
+                    
+                    # 3. Line length analysis - short lines often indicate paragraph breaks
+                    elif is_short_line_break(prev_line, line_words):
+                        is_new_paragraph = True
+                    
+                    # 4. Font size or formatting changes (if available)
+                    elif has_formatting_change(line_words, prev_line):
+                        is_new_paragraph = True
         
         if is_new_paragraph and current_paragraph:
             # Mark the end of the previous paragraph
@@ -138,6 +148,155 @@ def detect_paragraphs_in_page(words):
         })
     
     return paragraphs
+
+def is_incomplete_line(prev_line_text, current_line_text):
+    """Detect if the previous line is incomplete and continues to the current line."""
+    if not prev_line_text or not current_line_text:
+        return False
+    
+    # Strong indicators that previous line is incomplete
+    incomplete_endings = [
+        # Punctuation that indicates continuation
+        ',', ';', ':', '(', '"', "'", '-', '—', '–',
+        # Common words that indicate continuation
+        'and', 'or', 'but', 'the', 'of', 'in', 'to', 'for', 'with', 'by', 'at', 'on', 'from', 'as', 'is', 'are', 'was', 'were',
+        # Articles and prepositions
+        'a', 'an', 'that', 'this', 'these', 'those', 'which', 'who', 'what', 'where', 'when', 'how', 'why',
+        # Incomplete phrases
+        'would', 'could', 'should', 'will', 'can', 'may', 'might', 'must', 'shall',
+        # Conjunctions
+        'if', 'because', 'since', 'while', 'although', 'though', 'unless', 'until', 'before', 'after'
+    ]
+    
+    # Check if previous line ends with incomplete indicators
+    prev_ends_incomplete = any(prev_line_text.lower().endswith(' ' + ending) or prev_line_text.endswith(ending) 
+                              for ending in incomplete_endings)
+    
+    # Strong indicators that current line is a continuation
+    continuation_starts = [
+        # Punctuation continuations
+        ')', '"', "'", '.', ',', ';', '!', '?',
+        # Lowercase start (likely continuation)
+        # Common continuation words
+        'and', 'or', 'but', 'so', 'yet', 'then', 'thus', 'therefore', 'however', 'moreover', 'furthermore',
+        'of', 'in', 'to', 'for', 'with', 'by', 'at', 'on', 'from', 'as',
+        # Verbs that often continue sentences
+        'be', 'have', 'do', 'will', 'would', 'could', 'should', 'can', 'may', 'might', 'must'
+    ]
+    
+    # Check if current line starts with continuation indicators
+    current_starts_continuation = any(current_line_text.lower().startswith(start + ' ') or current_line_text.startswith(start)
+                                     for start in continuation_starts)
+    
+    # Check if current line starts with lowercase (strong continuation indicator)
+    current_starts_lowercase = current_line_text and current_line_text[0].islower()
+    
+    # Check if previous line doesn't end with sentence-ending punctuation
+    prev_no_sentence_end = not any(prev_line_text.endswith(punct) for punct in ['.', '!', '?', '"', "'"])
+    
+    # Additional check: if previous line seems to end mid-sentence (no proper punctuation and doesn't end with complete word patterns)
+    incomplete_patterns = [
+        # Lines ending with incomplete thoughts
+        'that', 'which', 'who', 'what', 'where', 'when', 'how', 'why', 'there',
+        # Lines ending without proper sentence closure
+        'no', 'not', 'never', 'always', 'still', 'just', 'only', 'even', 'also'
+    ]
+    
+    prev_ends_mid_thought = any(prev_line_text.lower().endswith(' ' + pattern) for pattern in incomplete_patterns)
+    
+    # Return True if this looks like a continuation
+    return (prev_ends_incomplete or 
+            current_starts_continuation or 
+            current_starts_lowercase or
+            (prev_no_sentence_end and prev_ends_mid_thought))
+
+def has_aggressive_vertical_spacing(line_words, prev_line):
+    """Detect vertical spacing between lines - very aggressive for shorter chunks."""
+    if not prev_line or not line_words:
+        return False
+    
+    # Calculate vertical spacing between lines
+    prev_line_bottom = max(word["bottom"] for word in prev_line)
+    current_line_top = min(word["top"] for word in line_words)
+    line_spacing = current_line_top - prev_line_bottom
+    
+    # Calculate average line height for context
+    current_line_height = max(word["bottom"] for word in line_words) - min(word["top"] for word in line_words)
+    prev_line_height = max(word["bottom"] for word in prev_line) - min(word["top"] for word in prev_line)
+    avg_line_height = (current_line_height + prev_line_height) / 2
+    
+    # BALANCED threshold: > 1.0x line height
+    # This will catch meaningful spacing increases while avoiding over-splitting
+    return line_spacing > avg_line_height * 1.0
+
+def has_indentation_change(line_words, prev_line):
+    """Detect horizontal indentation changes - very aggressive for shorter chunks."""
+    if not prev_line or not line_words:
+        return False
+    
+    current_indent = line_words[0]["x0"]
+    prev_indent = prev_line[0]["x0"]
+    
+    # BALANCED threshold - meaningful indentation changes > 10 pixels
+    # This will catch significant indentation while avoiding minor variations
+    return abs(current_indent - prev_indent) > 10
+
+def is_short_line_break(prev_line, current_line):
+    """Detect paragraph breaks based on line length patterns - very aggressive for shorter chunks."""
+    if not prev_line or not current_line:
+        return False
+    
+    # Calculate line widths
+    prev_line_width = max(word["x1"] for word in prev_line) - min(word["x0"] for word in prev_line)
+    current_line_width = max(word["x1"] for word in current_line) - min(word["x0"] for word in current_line)
+    
+    # Get page width context (approximate)
+    page_width = max(max(word["x1"] for word in prev_line), max(word["x1"] for word in current_line))
+    
+    # Check if this looks like logical continuation vs paragraph break
+    prev_line_text = ' '.join(word["text"] for word in prev_line).strip()
+    current_line_text = ' '.join(word["text"] for word in current_line).strip()
+    
+    # Minimal continuation checking - only the most obvious cases
+    continuation_endings = [',', ';', ':', '(', '"', "'", '-']
+    logical_continuation = any(prev_line_text.endswith(ending) for ending in continuation_endings)
+    
+    # Minimal continuation starts - only obvious punctuation
+    continuation_starts = [')', '"', "'", '.', ',', ';']
+    starts_continuation = any(current_line_text.startswith(start) for start in continuation_starts)
+    
+    # Don't split only for very obvious continuations
+    if logical_continuation or starts_continuation:
+        return False
+    
+    # BALANCED line width thresholds for reasonable chunks
+    # Break if previous line is quite short (< 60% of page width) OR
+    # there's a significant width difference (> 30%)
+    if (prev_line_width < page_width * 0.60 or 
+        abs(prev_line_width - current_line_width) > page_width * 0.30):
+        return True
+    
+    return False
+
+def has_formatting_change(line_words, prev_line):
+    """Detect formatting changes like font size differences - very aggressive for shorter chunks."""
+    if not prev_line or not line_words:
+        return False
+    
+    # Check if word height differs significantly (indicating font size change)
+    current_heights = [word["bottom"] - word["top"] for word in line_words]
+    prev_heights = [word["bottom"] - word["top"] for word in prev_line]
+    
+    if current_heights and prev_heights:
+        avg_current_height = sum(current_heights) / len(current_heights)
+        avg_prev_height = sum(prev_heights) / len(prev_heights)
+        
+        # BALANCED threshold: > 15% height difference
+        # This will catch meaningful font changes while avoiding minor variations
+        height_diff_ratio = abs(avg_current_height - avg_prev_height) / max(avg_current_height, avg_prev_height)
+        return height_diff_ratio > 0.15
+    
+    return False
 
 def group_words_by_lines(words, y_tolerance=3):
     """Group words into lines based on their vertical position."""

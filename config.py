@@ -26,7 +26,7 @@ class Config:
     
     # File upload settings
     UPLOAD_FOLDER = tempfile.gettempdir()  # Use system temp directory
-    MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB max file size
+    MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB max file size
     
     # Text processing settings
     MAX_TEXT_LENGTH = 2_000_000  # 2 million characters (for books)

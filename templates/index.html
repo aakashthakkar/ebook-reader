@@ -99,38 +99,135 @@
                     </div>
                 </div>
             </header>
-            <div class="min-h-screen flex items-center justify-center p-4">
+            <div class="min-h-screen flex items-center justify-center p-4 pt-32 sm:pt-24">
                 <div class="text-center w-full max-w-2xl">
                     <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">Listen to your PDFs, hands-free.</h2>
                     <p class="text-lg md:text-xl text-slate-400 mb-8 max-w-xl mx-auto">Upload any PDF and have it read out to you with perfectly synced text highlighting.</p>
 
                     <!-- User's PDF Files Section -->
-                    <div id="user-pdfs-section" class="mb-8">
-                        <div id="user-pdfs-loading" class="text-center py-4">
+                    <div id="user-pdfs-section" class="mb-12">
+                        <div id="user-pdfs-loading" class="text-center py-8">
                             <div class="w-6 h-6 mx-auto spinner border-2 border-blue-400 border-t-transparent rounded-full"></div>
-                            <p class="text-sm text-slate-400 mt-2">Loading your PDFs...</p>
+                            <p class="text-sm text-slate-400 mt-3">Loading your PDFs...</p>
                         </div>
                         
                         <div id="user-pdfs-list" class="hidden">
-                            <h3 class="text-xl font-semibold text-slate-200 mb-4">Your PDF Library</h3>
-                            <div id="pdfs-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                            <div class="flex items-center justify-between mb-8">
+                                <h3 class="text-2xl font-bold text-slate-100">Your PDF Library</h3>
+                                <span class="text-sm text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full" id="pdf-count">0 documents</span>
+                            </div>
+                            <div id="pdfs-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                 <!-- PDF items will be inserted here -->
                             </div>
                         </div>
                         
-                        <div id="user-pdfs-empty" class="hidden text-center py-4">
-                            <p class="text-slate-400">No PDFs uploaded yet. Upload your first PDF below!</p>
+                        <div id="user-pdfs-empty" class="hidden text-center py-12">
+                            <div class="bg-slate-800/30 rounded-2xl p-8 max-w-md mx-auto">
+                                <i data-lucide="book-open" class="h-12 w-12 text-slate-500 mx-auto mb-4"></i>
+                                <h4 class="text-lg font-semibold text-slate-200 mb-2">No PDFs yet</h4>
+                                <p class="text-slate-400 text-sm">Upload your first PDF to start listening!</p>
+                            </div>
                         </div>
                     </div>
 
-                    <div id="upload-area" class="upload-area bg-slate-900/50 border-2 border-dashed border-slate-700 rounded-2xl p-8 md:p-12 text-center cursor-pointer group transition-all duration-300 hover:border-blue-500 hover:bg-slate-800/60">
-                        <div class="flex flex-col items-center space-y-4">
-                            <i data-lucide="upload-cloud" class="h-16 w-16 text-slate-500 group-hover:text-blue-500 transition-colors"></i>
-                            <h4 class="text-2xl font-semibold text-slate-200">Drop your PDF here</h4>
-                            <p class="text-lg text-slate-400">or <span class="text-blue-400 font-medium">click to browse</span></p>
+                    <!-- Upload Sections Container -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <!-- PDF Upload Card -->
+                        <div class="group relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-blue-500/5 to-cyan-600/10 rounded-2xl"></div>
+                            <div class="relative bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 h-full transition-all duration-300 hover:border-blue-500/50 hover:bg-slate-800/60">
+                                <div class="flex items-center gap-3 mb-6">
+                                    <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                                        <i data-lucide="file-text" class="h-5 w-5 text-blue-400"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-slate-100">Upload PDF</h3>
+                                        <p class="text-sm text-slate-400">Add documents to your library</p>
+                                    </div>
+                                </div>
+                                
+                                <div id="upload-area" class="upload-area border-2 border-dashed border-slate-600/60 rounded-xl p-8 text-center cursor-pointer group-hover:border-blue-500/60 transition-all duration-300">
+                                    <div class="flex flex-col items-center space-y-4">
+                                        <div class="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center group-hover:bg-blue-500/20 transition-all duration-300">
+                                            <i data-lucide="upload-cloud" class="h-8 w-8 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-lg font-medium text-slate-200 mb-1">Drop your PDF here</h4>
+                                            <p class="text-sm text-slate-400">or <span class="text-blue-400 font-medium hover:text-blue-300 transition-colors">click to browse</span></p>
+                                        </div>
+                                        <p class="text-xs text-slate-500">Supports PDF files up to 500MB</p>
+                                    </div>
+                                    <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                                </div>
+                            </div>
                         </div>
-                        <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+
+                        <!-- Background Music Upload Card -->
+                        <div class="group relative overflow-hidden">
+                            <div class="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-purple-500/5 to-pink-600/10 rounded-2xl"></div>
+                            <div class="relative bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 h-full transition-all duration-300 hover:border-purple-500/50 hover:bg-slate-800/60">
+                                <div class="flex items-center justify-between mb-6">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                            <i data-lucide="music" class="h-5 w-5 text-purple-400"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-slate-100">Background Music</h3>
+                                            <p class="text-sm text-slate-400">Enhance your reading experience</p>
+                                        </div>
+                                    </div>
+                                    <button id="upload-music-btn" class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-xl transition-all duration-200 hover:scale-105">
+                                        <i data-lucide="upload" class="h-4 w-4"></i>
+                                        Upload
+                                    </button>
+                                </div>
+                                
+                                <!-- YouTube Download Instructions -->
+                                <div class="mb-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-xl">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                            <i data-lucide="info" class="h-4 w-4 text-blue-400"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-sm font-semibold text-blue-200 mb-2">Get music from YouTube</h4>
+                                            <p class="text-xs text-blue-300/90 mb-2">
+                                                Download MP3 audio from YouTube videos at: 
+                                                <a href="https://ytmp3.cc/mZ9P" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline font-medium transition-colors">
+                                                    ytmp3.cc/mZ9P
+                                                </a>
+                                            </p>
+                                            <p class="text-xs text-blue-300/75">
+                                                Convert any YouTube URL to MP3, then upload here for ambient background music.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="music-list-loading" class="text-center py-6">
+                                    <div class="w-5 h-5 mx-auto spinner border-2 border-purple-400 border-t-transparent rounded-full"></div>
+                                    <p class="text-sm text-slate-400 mt-3">Loading music...</p>
+                                </div>
+                                
+                                <div id="music-list-container" class="hidden">
+                                    <div class="mb-3">
+                                        <h4 class="text-sm font-medium text-slate-300">Uploaded Music</h4>
+                                    </div>
+                                    <div id="music-list" class="space-y-3 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50">
+                                        <!-- Music items will be inserted here -->
+                                    </div>
+                                </div>
+                                
+                                <div id="music-list-empty" class="hidden text-center py-6">
+                                    <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <i data-lucide="music" class="h-6 w-6 text-purple-400"></i>
+                                    </div>
+                                    <p class="text-sm text-slate-400">No background music yet</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+
                     
                     <div id="upload-loading" class="hidden mt-8">
                         <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
@@ -142,44 +239,47 @@
 
         <div id="pdf-display" class="hidden">
             <div class="bg-slate-900/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b border-slate-700">
-                <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-                    <div class="flex items-center justify-between h-16">
-                        <div class="flex items-center space-x-1 sm:space-x-2">
-                             <button id="pdf-start-reading" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white shadow-sm shadow-black/5 hover:bg-blue-700 h-9 px-4 py-2 gap-2">
-                                <i data-lucide="play-circle" class="h-5 w-5"></i>
-                                <span class="hidden md:inline">Start Reading</span>
+                <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+                    <div class="flex items-center h-16 gap-1 sm:gap-2">
+                        <!-- Left section - more compact -->
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                             <button id="pdf-start-reading" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-9 sm:w-auto sm:px-4 sm:py-2 sm:gap-2">
+                                <i data-lucide="play-circle" class="h-4 w-4"></i>
+                                <span class="hidden sm:inline">Start</span>
                              </button>
-                             <button id="top-go-to-current" class="hidden inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 border border-slate-600 bg-slate-800 shadow-sm shadow-black/5 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-4 py-2 gap-2">
-                                <i data-lucide="crosshair" class="h-5 w-5"></i>
-                                <span class="hidden md:inline">Go to Current</span>
+                             <button id="top-go-to-current" class="hidden md:inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-600 bg-slate-800 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-3 py-2 gap-2">
+                                <i data-lucide="crosshair" class="h-4 w-4"></i>
+                                <span class="hidden lg:inline">Go to Current</span>
                              </button>
                         </div>
-                        <div class="flex items-center space-x-3 text-slate-300">
-                             <button id="pdf-zoom-out" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9">
-                                <i data-lucide="zoom-out" class="h-4 w-4"></i>
+                        
+                        <!-- Center section - very compact on mobile -->
+                        <div class="flex items-center space-x-1 text-slate-300 flex-1 justify-center min-w-0">
+                             <button id="pdf-zoom-out" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-8 w-8">
+                                <i data-lucide="zoom-out" class="h-3 w-3"></i>
                              </button>
-                             <div class="flex items-center space-x-2">
-                                <span id="pdf-zoom-level" class="text-sm font-medium w-14 sm:w-16 text-center">100%</span>
-                                <!-- Reading Progress Indicator -->
-                                <div class="flex items-center space-x-2">
-                                    <div class="relative w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                                        <div id="reading-progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
-                                    </div>
-                                    <span id="reading-progress-text" class="text-xs font-medium text-slate-400 w-8 text-center">0%</span>
+                             <span id="pdf-zoom-level" class="text-xs font-medium w-8 sm:w-12 text-center">100%</span>
+                             <button id="pdf-zoom-in" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-8 w-8">
+                                <i data-lucide="zoom-in" class="h-3 w-3"></i>
+                             </button>
+                             <!-- Progress indicator - hidden on mobile -->
+                             <div class="hidden lg:flex items-center space-x-2 ml-2">
+                                <div class="relative w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="reading-progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
                                 </div>
+                                <span id="reading-progress-text" class="text-xs font-medium text-slate-400 w-8 text-center">0%</span>
                              </div>
-                             <button id="pdf-zoom-in" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9">
-                                <i data-lucide="zoom-in" class="h-4 w-4"></i>
-                             </button>
                         </div>
-                        <div class="flex items-center space-x-1 sm:space-x-2">
-                             <span id="pdf-page-indicator" class="text-sm font-medium text-slate-400 w-20 sm:w-24 text-center">Page 1 / 1</span>
-                             <button id="pdf-fit-width" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9 hidden sm:block">
+                        
+                        <!-- Right section - compact -->
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                             <span id="pdf-page-indicator" class="hidden sm:block text-xs font-medium text-slate-400 w-12 sm:w-16 text-center">1/1</span>
+                             <button id="pdf-fit-width" class="hidden xl:inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9">
                                 <i data-lucide="move-horizontal" class="h-4 w-4"></i>
                              </button>
-                             <button id="top-read-another-pdf-btn" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 bg-purple-600 text-white shadow-sm shadow-black/5 hover:bg-purple-700 h-9 px-4 py-2 gap-2">
-                                <i data-lucide="x" class="h-5 w-5"></i>
-                                <span class="hidden md:inline">Exit PDF</span>
+                             <button id="top-read-another-pdf-btn" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-purple-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-9 sm:w-auto sm:px-4 sm:py-2 sm:gap-2">
+                                <i data-lucide="x" class="h-4 w-4"></i>
+                                <span class="hidden sm:inline">Exit</span>
                              </button>
                         </div>
                     </div>
@@ -204,31 +304,57 @@
 
     <div id="sticky-audio-player" class="fixed bottom-0 left-0 right-0 z-[9999] bg-slate-900/80 backdrop-blur-xl border-t border-slate-700 transform translate-y-full transition-transform duration-300 ease-in-out">
         <!-- This is the player for larger screens -->
-        <div class="hidden sm:flex items-center justify-between p-4 max-w-5xl mx-auto">
-             <div class="flex items-center gap-4">
-                <button id="sticky-play-pause-btn" class="p-2.5 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all"><i data-lucide="pause" class="h-6 w-6"></i></button>
-                <div class="flex items-center gap-3">
-                    <div class="text-sm text-slate-400">Voice:</div>
-                    <select id="sticky-voice-select" class="bg-slate-800 text-white text-sm rounded-md px-3 py-1.5 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
-                        {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
-                    </select>
+        <div class="hidden sm:block p-3 max-w-6xl mx-auto">
+            <!-- Main controls row -->
+            <div class="flex items-center justify-between gap-2 mb-3">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <button id="sticky-play-pause-btn" class="p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all flex-shrink-0">
+                        <i data-lucide="pause" class="h-5 w-5"></i>
+                    </button>
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="text-xs text-slate-400 hidden lg:block">Voice:</div>
+                        <select id="sticky-voice-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none min-w-0 flex-shrink">
+                            {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-xs text-slate-400 hidden md:block">Speed:</div>
+                        <select id="sticky-speed-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                            <option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
+                        </select>
+                    </div>
+                    <div class="hidden xl:flex items-center gap-2">
+                        <div class="text-xs text-slate-400">Skip Headers:</div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="sticky-skip-patterns" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
                 </div>
-                <div class="flex items-center gap-3">
-                     <div class="text-sm text-slate-400">Speed:</div>
-                     <select id="sticky-speed-select" class="bg-slate-800 text-white text-sm rounded-md px-3 py-1.5 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
-                        <option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
-                     </select>
-                </div>
-                <div class="flex items-center gap-3">
-                    <div class="text-sm text-slate-400">Skip Headers/Footers:</div>
+                <button id="sticky-stop-btn" class="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all flex-shrink-0">
+                    <i data-lucide="x" class="h-5 w-5"></i>
+                </button>
+            </div>
+            
+            <!-- Background Music Controls Row -->
+            <div class="flex items-center gap-2 border-t border-slate-700/50 pt-3">
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <div class="text-xs text-slate-400">🎵 Background:</div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="sticky-skip-patterns" class="sr-only peer">
-                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <input type="checkbox" id="background-music-toggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
                     </label>
                 </div>
-            </div>
-            <div class="flex items-center gap-4">
-                <button id="sticky-stop-btn" class="p-2.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all"><i data-lucide="x" class="h-6 w-6"></i></button>
+                <div id="background-music-controls" class="hidden flex items-center gap-2 flex-1 min-w-0">
+                    <select id="background-music-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-purple-500 focus:ring-0 outline-none appearance-none min-w-0 flex-1 max-w-[200px]">
+                        <option value="">Select Music</option>
+                    </select>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        <div class="text-xs text-slate-400">Vol:</div>
+                        <input type="range" id="background-music-volume" min="0" max="50" value="10" class="w-16 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
+                        <span id="background-volume-text" class="text-xs text-slate-400 w-6 text-center">10%</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -243,7 +369,10 @@
                         <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
                         <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
                     </svg>
-                    <div class="text-sm font-medium">Now Playing</div>
+                                         <div class="flex items-center gap-2">
+                        <div class="text-sm font-medium">Now Playing</div>
+                        <div id="mobile-bg-music-status" class="hidden text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">🎵 BG</div>
+                    </div>
                 </div>
                  <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
             </div>
@@ -265,7 +394,10 @@
                      <button id="mobile-play-pause-btn" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-500/30"><i data-lucide="pause" class="h-8 w-8"></i></button>
                      <button id="mobile-forward-btn" class="p-3 text-slate-300"><i data-lucide="fast-forward" class="h-6 w-6"></i></button>
                 </div>
-                <button id="mobile-options-btn" class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800"><i data-lucide="more-horizontal" class="h-6 w-6"></i></button>
+                <button id="mobile-options-btn" class="relative w-12 h-12 flex items-center justify-center rounded-full bg-slate-800">
+                    <i data-lucide="more-horizontal" class="h-6 w-6"></i>
+                    <div id="mobile-music-indicator" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-purple-500 rounded-full border border-slate-900"></div>
+                </button>
             </div>
              <!-- Mobile options panel -->
             <div id="mobile-options-panel" class="hidden bg-slate-800 rounded-lg p-4">
@@ -283,12 +415,42 @@
                             <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                     </div>
+                    <!-- Background Music Controls for Mobile -->
+                    <div class="border-t border-slate-700 pt-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <label for="mobile-background-music-toggle" class="text-sm text-slate-400">Background Music</label>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="mobile-background-music-toggle" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        <div id="mobile-background-music-controls" class="hidden space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label for="mobile-background-music-select" class="text-sm text-slate-400">Music</label>
+                                <select id="mobile-background-music-select" class="bg-slate-700 text-white text-sm rounded-md px-3 py-1.5 border border-slate-600 focus:border-purple-500 focus:ring-0 outline-none appearance-none">
+                                    <option value="">Select Music</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <label for="mobile-background-music-volume" class="text-sm text-slate-400">Volume</label>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="mobile-background-music-volume" min="0" max="50" value="10" class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
+                                    <span id="mobile-background-volume-text" class="text-xs text-slate-400 w-8">10%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- Hidden file inputs -->
+    <input type="file" id="music-input" accept=".mp3,.wav,.m4a,.aac,.ogg,.flac" class="hidden">
+    
+    <!-- Audio elements -->
     <audio id="audio-player-element" style="display:none;"></audio>
+    <audio id="background-music-element" style="display:none;" loop></audio>
 
     <script>
         // --- AUTHENTICATION CHECK --- //
@@ -340,6 +502,7 @@
             setupEventListeners();
             initializeWebAudioPlayer();
             loadUserPDFs();
+            loadBackgroundMusic();
             
             // Enhanced progress saving on page unload with multiple event listeners
             setupUnloadProgressSaving();
@@ -383,6 +546,15 @@
         // Rate limiting for progress updates
         let lastProgressUpdate = 0;
         const PROGRESS_UPDATE_COOLDOWN = 12000; // 12 seconds (5 requests per minute)
+
+        // Background Music State
+        let backgroundMusicFiles = [];
+        let backgroundMusicEnabled = false;
+        let currentBackgroundMusic = null;
+        let backgroundMusicVolume = 0.1; // Default 10%
+        let backgroundAudioContext = null;
+        let backgroundGainNode = null;
+        let ttsGainNode = null;
 
         const $ = (id) => document.getElementById(id);
 
@@ -438,6 +610,18 @@
             $('mobile-options-btn').addEventListener('click', () => $('mobile-options-panel').classList.toggle('hidden'));
             $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
             $('mobile-forward-btn').addEventListener('click', () => seek(10));
+
+            // Background music controls
+            $('upload-music-btn').addEventListener('click', () => $('music-input').click());
+            $('music-input').addEventListener('change', (e) => { if (e.target.files.length) handleMusicUpload(e.target.files[0]); });
+            $('background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
+            $('background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
+            $('background-music-volume').addEventListener('input', (e) => setBackgroundMusicVolume(e.target.value));
+            
+            // Mobile background music controls
+            $('mobile-background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
+            $('mobile-background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
+            $('mobile-background-music-volume').addEventListener('input', (e) => setBackgroundMusicVolume(e.target.value));
 
             document.addEventListener('keydown', (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -1698,6 +1882,11 @@
             $('user-pdfs-list').classList.add('hidden');
             $('user-pdfs-empty').classList.add('hidden');
             
+            // Update PDF count
+            const countElement = $('pdf-count');
+            const count = pdfs.length;
+            countElement.textContent = `${count} document${count !== 1 ? 's' : ''}`;
+            
             if (pdfs.length === 0) {
                 $('user-pdfs-empty').classList.remove('hidden');
                 console.log('No PDFs to display - showing empty state');
@@ -1739,13 +1928,13 @@
         
         async function createPDFCard(pdf) {
             const card = document.createElement('div');
-            card.className = 'bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-700/50 transition-all cursor-pointer group';
+            card.className = 'pdf-item group relative overflow-hidden bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 hover:border-blue-500/50 hover:bg-slate-800/70 transition-all duration-300 cursor-pointer h-[300px]';
             
             const createdDate = new Date(pdf.created_at).toLocaleDateString();
             const fileSize = formatFileSize(pdf.file_size || 0);
             
-            // Truncate filename if too long
-            const truncatedFilename = truncateFilename(pdf.filename, 25);
+            // Truncate filename if too long (very conservative to prevent overlapping)
+            const truncatedFilename = truncateFilename(pdf.filename, 15);
             
             // Get reading progress for this PDF
             let progressPercentage = 0;
@@ -1776,56 +1965,55 @@
             const progressDisplay = progressPercentage > 0 ? `${progressPercentage}% complete` : 'Not started';
             
             card.innerHTML = `
-                <div class="flex items-start justify-between mb-3">
-                    <div class="flex items-center space-x-3 min-w-0 flex-1">
-                        <div class="relative w-16 h-20 bg-slate-700 rounded overflow-hidden flex items-center justify-center flex-shrink-0">
+                <!-- Gradient overlay -->
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <!-- New Badge -->
+                ${progressPercentage === 0 ? '<div class="absolute top-4 right-4 z-10"><span class="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full font-medium">New</span></div>' : ''}
+                
+                <div class="relative h-full flex flex-col">
+                    <!-- Thumbnail Section -->
+                    <div class="text-center mb-4">
+                        <div class="relative w-20 h-28 bg-blue-500/20 rounded-xl overflow-hidden flex items-center justify-center mx-auto mb-3">
                             ${thumbnailElement}
                             ${progressPercentage > 0 ? `
-                                <!-- Circular Progress Indicator -->
-                                <div class="absolute -top-1 -right-1 w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center">
-                                    <svg class="w-5 h-5 transform -rotate-90" viewBox="0 0 24 24">
-                                        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" 
-                                                stroke-width="2" class="text-slate-600" />
-                                        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" 
-                                                stroke-width="2" class="text-blue-400" 
-                                                stroke-dasharray="${50.27}" 
-                                                stroke-dashoffset="${50.27 * (1 - progressPercentage / 100)}"
-                                                stroke-linecap="round" />
-                                    </svg>
-                                    <div class="absolute inset-0 flex items-center justify-center">
-                                        <span class="text-[7px] font-bold text-blue-400">${progressPercentage}%</span>
-                                    </div>
+                                <div class="absolute -top-1 -right-1 w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
+                                    <span class="text-[8px] font-bold text-blue-400">${Math.round(progressPercentage)}%</span>
                                 </div>
                             ` : ''}
                         </div>
-                        <div class="min-w-0 flex-1">
-                            <h4 class="font-medium text-slate-200 truncate" title="${escapeHtml(pdf.filename)}">${escapeHtml(truncatedFilename)}</h4>
-                            <div class="text-xs text-slate-400 mt-1 space-y-1">
-                                <div>Uploaded: ${createdDate}</div>
-                                <div>Size: ${fileSize}</div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-slate-300">${progressDisplay}</span>
-                                </div>
-                                ${progressPercentage > 0 ? `
-                                    <!-- Linear Progress Bar -->
-                                    <div class="w-full bg-slate-600 rounded-full h-1.5 mt-1">
-                                        <div class="${progressColor} h-1.5 rounded-full transition-all duration-300" 
-                                             style="width: ${progressPercentage}%"></div>
-                                    </div>
-                                ` : ''}
-                            </div>
+                    </div>
+                    
+                    <!-- Title Section -->
+                    <div class="text-center mb-3 flex-shrink-0">
+                        <h4 class="text-sm font-semibold text-slate-100 mb-1 leading-tight" title="${escapeHtml(pdf.filename)}">${escapeHtml(truncatedFilename)}</h4>
+                        <p class="text-xs text-slate-400">${createdDate}</p>
+                    </div>
+                    
+                    <!-- Progress Section -->
+                    <div class="mb-3 flex-1 min-h-0">
+                        <div class="text-center mb-2">
+                            <span class="text-xs font-medium text-slate-300">${progressDisplay}</span>
+                        </div>
+                        <div class="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500" 
+                                 style="width: ${progressPercentage}%"></div>
                         </div>
                     </div>
-                    <button class="delete-pdf-btn opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-red-500/20 text-red-400 h-8 w-8" 
-                            data-pdf-id="${pdf.file_id}" title="Delete PDF">
-                        <i data-lucide="trash-2" class="h-4 w-4"></i>
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <button class="load-pdf-btn w-full inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white shadow-sm shadow-black/5 hover:bg-blue-700 h-9 px-4 py-2" 
-                            data-pdf-id="${pdf.file_id}">
-                        ${progressPercentage > 0 ? 'Continue Reading' : 'Open PDF'}
-                    </button>
+                    
+                    <!-- Actions Section - always at bottom -->
+                    <div class="mt-auto flex-shrink-0">
+                        <button class="load-pdf-btn w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 mb-2" 
+                                data-pdf-id="${pdf.file_id}">
+                            <i data-lucide="play" class="h-3 w-3"></i>
+                            ${progressPercentage > 0 ? 'Continue' : 'Start Reading'}
+                        </button>
+                        <button class="delete-pdf-btn w-full text-slate-400 hover:text-red-400 py-1 text-xs hover:bg-red-500/10 rounded transition-all duration-200 opacity-0 group-hover:opacity-100" 
+                                data-pdf-id="${pdf.file_id}" title="Delete PDF">
+                            <i data-lucide="trash-2" class="h-3 w-3 inline mr-1"></i>
+                            Delete
+                        </button>
+                    </div>
                 </div>
             `;
             
@@ -1863,8 +2051,8 @@
                 // Get the first page
                 const page = await pdf.getPage(1);
                 
-                // Set up canvas for thumbnail (small size)
-                const viewport = page.getViewport({ scale: 0.3 });
+                // Set up canvas for thumbnail (high quality for large display)
+                const viewport = page.getViewport({ scale: 1.0 });
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 
@@ -2327,6 +2515,352 @@
             if (span) {
                 span.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+        }
+
+        // --- BACKGROUND MUSIC FUNCTIONS --- //
+
+        async function loadBackgroundMusic() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/user/background-music');
+                if (response.ok) {
+                    const data = await response.json();
+                    backgroundMusicFiles = data.music_files || [];
+                    updateBackgroundMusicUI();
+                } else {
+                    console.error('Failed to load background music');
+                }
+            } catch (error) {
+                console.error('Error loading background music:', error);
+            }
+        }
+
+        function updateBackgroundMusicUI() {
+            const musicListLoading = $('music-list-loading');
+            const musicListContainer = $('music-list-container');
+            const musicListEmpty = $('music-list-empty');
+            const musicList = $('music-list');
+            const musicSelect = $('background-music-select');
+
+            // Hide loading
+            musicListLoading.classList.add('hidden');
+
+            if (backgroundMusicFiles.length === 0) {
+                musicListContainer.classList.add('hidden');
+                musicListEmpty.classList.remove('hidden');
+                musicSelect.innerHTML = '<option value="">No music available</option>';
+                return;
+            }
+
+            // Show music list
+            musicListContainer.classList.remove('hidden');
+            musicListEmpty.classList.add('hidden');
+
+            // Update music list
+            musicList.innerHTML = backgroundMusicFiles.map(music => `
+                <div class="flex items-center justify-between p-3 bg-slate-800/40 rounded-xl border border-slate-700/30 hover:bg-slate-700/50 hover:border-purple-500/30 transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="music" class="h-4 w-4 text-purple-400"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-medium text-slate-200">${escapeHtml(truncateFilename(music.filename, 30))}</div>
+                            <div class="text-xs text-slate-400">${formatFileSize(music.file_size)} • ${music.file_type.toUpperCase()}</div>
+                        </div>
+                    </div>
+                    <button onclick="deleteBackgroundMusic('${music.file_id}')" class="p-2 text-slate-400 hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-all duration-200">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </div>
+            `).join('');
+
+            // Update music select dropdown (both desktop and mobile)
+            const mobileSelect = $('mobile-background-music-select');
+            const selectOptions = '<option value="">Select Music</option>' + 
+                backgroundMusicFiles.map(music => 
+                    `<option value="${music.file_id}">${escapeHtml(truncateFilename(music.filename, 25))}</option>`
+                ).join('');
+            
+            musicSelect.innerHTML = selectOptions;
+            mobileSelect.innerHTML = selectOptions;
+
+            // Re-create icons for new elements
+            lucide.createIcons();
+        }
+
+        async function handleMusicUpload(file) {
+            const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/flac'];
+            if (!allowedTypes.includes(file.type)) {
+                showError('Please upload an audio file (MP3, WAV, M4A, AAC, OGG, FLAC)');
+                return;
+            }
+
+            if (file.size > 500 * 1024 * 1024) { // 500MB limit
+                showError('File size too large. Maximum 500MB allowed.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                showLoading('Uploading background music...');
+                const response = await makeAuthenticatedRequest('/api/upload-background-music', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showSuccessMessage(`Background music "${file.name}" uploaded successfully!`);
+                    await loadBackgroundMusic(); // Refresh the list
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.error || 'Failed to upload background music');
+                }
+            } catch (error) {
+                showError('Error uploading background music: ' + error.message);
+            } finally {
+                hideLoading();
+                // Reset the file input
+                $('music-input').value = '';
+            }
+        }
+
+        async function deleteBackgroundMusic(fileId) {
+            if (!confirm('Are you sure you want to delete this background music?')) {
+                return;
+            }
+
+            try {
+                const response = await makeAuthenticatedRequest(`/api/user/background-music/${fileId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showSuccessMessage('Background music deleted successfully!');
+                    await loadBackgroundMusic(); // Refresh the list
+                    
+                    // If this was the currently selected music, reset selection
+                    if (currentBackgroundMusic === fileId) {
+                        currentBackgroundMusic = null;
+                        $('background-music-select').value = '';
+                        $('mobile-background-music-select').value = '';
+                        stopBackgroundMusic();
+                    }
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.error || 'Failed to delete background music');
+                }
+            } catch (error) {
+                showError('Error deleting background music: ' + error.message);
+            }
+        }
+
+        function toggleBackgroundMusic(enabled) {
+            backgroundMusicEnabled = enabled;
+            const controls = $('background-music-controls');
+            const mobileControls = $('mobile-background-music-controls');
+            const mobileIndicator = $('mobile-music-indicator');
+            
+            // Sync both desktop and mobile toggles
+            $('background-music-toggle').checked = enabled;
+            $('mobile-background-music-toggle').checked = enabled;
+            
+            if (enabled) {
+                controls.classList.remove('hidden');
+                mobileControls.classList.remove('hidden');
+                mobileIndicator.classList.remove('hidden');
+                if (currentBackgroundMusic && isPlaying) {
+                    playBackgroundMusic();
+                }
+            } else {
+                controls.classList.add('hidden');
+                mobileControls.classList.add('hidden');
+                mobileIndicator.classList.add('hidden');
+                stopBackgroundMusic();
+            }
+        }
+
+        async function selectBackgroundMusic(fileId) {
+            if (!fileId) {
+                currentBackgroundMusic = null;
+                stopBackgroundMusic();
+                // Sync both dropdowns
+                $('background-music-select').value = '';
+                $('mobile-background-music-select').value = '';
+                return;
+            }
+
+            // Stop current music and clean up if playing different music
+            if (currentBackgroundMusic !== fileId) {
+                stopBackgroundMusic();
+            }
+
+            currentBackgroundMusic = fileId;
+            
+            // Sync both dropdowns
+            $('background-music-select').value = fileId;
+            $('mobile-background-music-select').value = fileId;
+            
+            // If TTS is currently playing and background music is enabled, start playing
+            if (backgroundMusicEnabled && isPlaying) {
+                await playBackgroundMusic();
+            }
+        }
+
+        async function playBackgroundMusic() {
+            if (!currentBackgroundMusic || !backgroundMusicEnabled) return;
+
+            try {
+                const backgroundAudio = $('background-music-element');
+                
+                // Fetch the audio file with authentication and create a blob URL
+                const response = await makeAuthenticatedRequest(`/api/user/background-music/${currentBackgroundMusic}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch background music: ${response.status}`);
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Clean up any previous blob URL
+                if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:')) {
+                    URL.revokeObjectURL(backgroundAudio.src);
+                }
+                
+                // Set the source to the blob URL
+                backgroundAudio.src = audioUrl;
+                
+                // Initialize Web Audio API for volume mixing if not already done
+                if (!backgroundAudioContext) {
+                    backgroundAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Create gain nodes for volume control
+                    backgroundGainNode = backgroundAudioContext.createGain();
+                    ttsGainNode = backgroundAudioContext.createGain();
+                    
+                    // Connect background music
+                    const backgroundSource = backgroundAudioContext.createMediaElementSource(backgroundAudio);
+                    backgroundSource.connect(backgroundGainNode).connect(backgroundAudioContext.destination);
+                    
+                    // Connect TTS audio (if using Web Audio API)
+                    const ttsAudio = $('audio-player-element');
+                    const ttsSource = backgroundAudioContext.createMediaElementSource(ttsAudio);
+                    ttsSource.connect(ttsGainNode).connect(backgroundAudioContext.destination);
+                }
+                
+                // Set initial volumes
+                updateAudioVolumes();
+                
+                // Play background music
+                await backgroundAudio.play();
+                
+                // Show mobile status indicator
+                $('mobile-bg-music-status').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error playing background music:', error);
+                showError('Failed to play background music');
+            }
+        }
+
+        function stopBackgroundMusic() {
+            const backgroundAudio = $('background-music-element');
+            backgroundAudio.pause();
+            backgroundAudio.currentTime = 0;
+            
+            // Clean up blob URL to free memory
+            if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:')) {
+                URL.revokeObjectURL(backgroundAudio.src);
+                backgroundAudio.src = '';
+            }
+            
+            // Hide mobile status indicator
+            $('mobile-bg-music-status').classList.add('hidden');
+        }
+
+        function pauseBackgroundMusic() {
+            const backgroundAudio = $('background-music-element');
+            backgroundAudio.pause();
+            
+            // Hide mobile status indicator when paused
+            $('mobile-bg-music-status').classList.add('hidden');
+        }
+
+        function resumeBackgroundMusic() {
+            if (!backgroundMusicEnabled || !currentBackgroundMusic) return;
+            
+            const backgroundAudio = $('background-music-element');
+            backgroundAudio.play().then(() => {
+                // Show mobile status indicator when resumed
+                $('mobile-bg-music-status').classList.remove('hidden');
+            }).catch(error => {
+                console.error('Error resuming background music:', error);
+            });
+        }
+
+        function setBackgroundMusicVolume(volume) {
+            backgroundMusicVolume = volume / 100; // Convert percentage to decimal
+            
+            // Sync both desktop and mobile volume controls
+            $('background-music-volume').value = volume;
+            $('mobile-background-music-volume').value = volume;
+            $('background-volume-text').textContent = `${volume}%`;
+            $('mobile-background-volume-text').textContent = `${volume}%`;
+            
+            updateAudioVolumes();
+        }
+
+        function updateAudioVolumes() {
+            if (!backgroundGainNode || !ttsGainNode) return;
+            
+            // Background music volume (user selected percentage)
+            backgroundGainNode.gain.value = backgroundMusicVolume;
+            
+            // TTS volume (remaining percentage, ensuring total doesn't exceed 100%)
+            const ttsVolume = Math.max(0, 1 - backgroundMusicVolume);
+            ttsGainNode.gain.value = ttsVolume;
+        }
+
+        // Modify existing playback functions to integrate background music
+
+        // Override the original togglePlayPause to handle background music
+        const originalTogglePlayPause = togglePlayPause;
+        togglePlayPause = async function() {
+            const wasPlaying = isPlaying;
+            await originalTogglePlayPause();
+            
+            // Handle background music based on new playback state
+            if (isPlaying && !wasPlaying) {
+                // Started playing
+                if (backgroundMusicEnabled && currentBackgroundMusic) {
+                    await playBackgroundMusic();
+                }
+            } else if (!isPlaying && wasPlaying) {
+                // Paused
+                pauseBackgroundMusic();
+            }
+        };
+
+        // Override the original stopPlayback to handle background music
+        const originalStopPlayback = stopPlayback;
+        stopPlayback = async function() {
+            await originalStopPlayback();
+            stopBackgroundMusic();
+        };
+
+        function showSuccessMessage(message) {
+            const errorSection = $('error-section');
+            const errorMessage = $('error-message');
+            
+            errorSection.className = 'fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-green-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]';
+            errorMessage.textContent = message;
+            errorSection.classList.remove('hidden');
+            
+            setTimeout(() => {
+                errorSection.classList.add('hidden');
+                errorSection.className = 'hidden fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-red-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]';
+            }, 3000);
         }
     </script>
 </body>

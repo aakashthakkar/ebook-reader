@@ -18,6 +18,10 @@ class AuthService:
         self.local_storage_path = os.environ.get('PDF_STORAGE_PATH', './pdf_storage')
         os.makedirs(self.local_storage_path, exist_ok=True)
         
+        # Set up background music storage directory
+        self.music_storage_path = os.environ.get('MUSIC_STORAGE_PATH', './music_storage')
+        os.makedirs(self.music_storage_path, exist_ok=True)
+        
         if Config.SUPABASE_URL and Config.SUPABASE_ANON_KEY and Config.SUPABASE_URL != '' and Config.SUPABASE_ANON_KEY != '':
             try:
                 # Use anon key for auth operations
@@ -42,6 +46,12 @@ class AuthService:
         user_path = os.path.join(self.local_storage_path, user_id)
         os.makedirs(user_path, exist_ok=True)
         return user_path
+
+    def _get_user_music_storage_path(self, user_id: str):
+        """Get the local music storage path for a specific user"""
+        user_music_path = os.path.join(self.music_storage_path, user_id)
+        os.makedirs(user_music_path, exist_ok=True)
+        return user_music_path
 
     def _get_cache_file_path(self, user_id: str, file_id: str):
         """Get the cache file path for PDF word data"""
@@ -495,6 +505,194 @@ class AuthService:
             return {'success': True, 'progress': response.data[0]}
         except Exception as e:
             logger.error(f"Error updating reading progress: {e}")
+            return {'error': str(e)}, 500
+
+    # --- BACKGROUND MUSIC METHODS --- #
+
+    def _save_background_music_to_local_storage(self, user_id: str, filename: str, file_data: bytes):
+        """Save background music file to local storage"""
+        try:
+            user_music_storage_path = self._get_user_music_storage_path(user_id)
+            
+            # Generate unique filename to avoid conflicts
+            file_id = str(uuid.uuid4())
+            file_extension = os.path.splitext(filename)[1]
+            local_filename = f"{file_id}{file_extension}"
+            file_path = os.path.join(user_music_storage_path, local_filename)
+            
+            # Write file to disk
+            with open(file_path, 'wb') as f:
+                f.write(file_data)
+            
+            return {
+                'file_id': file_id,
+                'local_filename': local_filename,
+                'file_path': file_path
+            }
+        except Exception as e:
+            logger.error(f"Error saving background music to local storage: {e}")
+            raise
+
+    def _get_background_music_from_local_storage(self, user_id: str, file_id: str, filename: str):
+        """Get background music file from local storage"""
+        try:
+            user_music_storage_path = self._get_user_music_storage_path(user_id)
+            file_path = os.path.join(user_music_storage_path, filename)
+            
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as f:
+                    return f.read()
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"Error getting background music from local storage: {e}")
+            return None
+
+    def _delete_background_music_from_local_storage(self, user_id: str, filename: str):
+        """Delete background music file from local storage"""
+        try:
+            user_music_storage_path = self._get_user_music_storage_path(user_id)
+            file_path = os.path.join(user_music_storage_path, filename)
+            
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting background music from local storage: {e}")
+            return False
+
+    def get_user_background_music(self, user_id: str):
+        """Get list of user's background music files"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get background music files from database
+            music_records = self.supabase_admin.table('user_background_music').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
+            
+            return {
+                'success': True,
+                'music_files': music_records.data
+            }
+        except Exception as e:
+            logger.error(f"Error getting user background music: {e}")
+            return {'error': str(e)}, 500
+
+    def save_background_music(self, user_id: str, filename: str, file_data: bytes):
+        """Save background music file and metadata"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Save file to local storage
+            storage_result = self._save_background_music_to_local_storage(user_id, filename, file_data)
+            
+            # Get file type from extension
+            file_extension = os.path.splitext(filename)[1].lower()
+            file_type = file_extension[1:] if file_extension else 'unknown'
+            
+            # Insert metadata into database
+            music_metadata = {
+                'user_id': user_id,
+                'filename': filename,
+                'file_id': storage_result['file_id'],
+                'local_filename': storage_result['local_filename'],
+                'file_size': len(file_data),
+                'file_type': file_type
+            }
+            
+            result = self.supabase_admin.table('user_background_music').insert(music_metadata).execute()
+            
+            return {
+                'success': True,
+                'file_id': storage_result['file_id'],
+                'filename': filename,
+                'file_size': len(file_data)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error saving background music: {e}")
+            return {'error': str(e)}, 500
+
+    def get_background_music_file(self, user_id: str, file_id: str):
+        """Get background music file content from local storage"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get music metadata from database
+            music_record = self.supabase_admin.table('user_background_music').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
+            
+            if not music_record.data:
+                return {'error': 'Background music not found'}, 404
+            
+            music_metadata = music_record.data[0]
+            
+            # Get file content from local storage
+            file_data = self._get_background_music_from_local_storage(user_id, file_id, music_metadata['local_filename'])
+            
+            if file_data is None:
+                return {'error': 'Background music file not found in storage'}, 404
+            
+            return {
+                'success': True,
+                'file_data': file_data,
+                'metadata': music_metadata
+            }
+        except Exception as e:
+            logger.error(f"Error getting background music file: {e}")
+            return {'error': str(e)}, 500
+
+    def delete_background_music(self, user_id: str, file_id: str):
+        """Delete background music file and metadata"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get music metadata
+            music_record = self.supabase_admin.table('user_background_music').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
+            
+            if not music_record.data:
+                return {'error': 'Background music not found'}, 404
+            
+            music_metadata = music_record.data[0]
+            logger.info(f"Starting deletion of background music: {music_metadata['filename']} (ID: {file_id}) for user {user_id}")
+            
+            # Delete from local storage first
+            try:
+                if self._delete_background_music_from_local_storage(user_id, music_metadata['local_filename']):
+                    logger.info(f"✓ Deleted local music file: {music_metadata['local_filename']}")
+                else:
+                    logger.warning(f"⚠ Local music file not found: {music_metadata['local_filename']}")
+            except Exception as storage_error:
+                logger.warning(f"⚠ Failed to delete local music file: {storage_error}")
+                # Continue with database cleanup even if file deletion fails
+            
+            # Delete metadata from database
+            try:
+                delete_result = self.supabase_admin.table('user_background_music').delete().eq('user_id', user_id).eq('file_id', file_id).execute()
+                music_records_deleted = len(delete_result.data) if delete_result.data else 0
+                
+                if music_records_deleted > 0:
+                    logger.info(f"✓ Deleted {music_records_deleted} background music metadata record(s)")
+                else:
+                    logger.warning(f"⚠ No background music metadata records were deleted for file_id: {file_id}")
+                    return {'error': 'No records were deleted'}, 404
+                    
+            except Exception as db_error:
+                logger.error(f"✗ Failed to delete background music metadata: {db_error}")
+                return {'error': f'Database deletion failed: {str(db_error)}'}, 500
+            
+            logger.info(f"✓ Successfully deleted background music {file_id} for user {user_id}")
+            
+            return {
+                'success': True, 
+                'deleted_file': music_metadata['filename']
+            }
+            
+        except Exception as e:
+            logger.error(f"Error deleting background music: {e}")
             return {'error': str(e)}, 500
 
 # Global auth service instance

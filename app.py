@@ -1182,5 +1182,119 @@ def extract_words_only():
         logger.error(f"Extract words error: {e}")
         return jsonify({'error': 'An unexpected error occurred during processing.'}), 500
 
+# --- BACKGROUND MUSIC ENDPOINTS --- #
+
+@app.route('/api/user/background-music', methods=['GET'])
+@token_required
+def get_user_background_music():
+    """Get list of user's background music files"""
+    try:
+        user_id = request.current_user['id']
+        result = auth_service.get_user_background_music(user_id)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting background music: {e}")
+        return jsonify({'error': 'Failed to get background music'}), 500
+
+@app.route('/api/upload-background-music', methods=['POST'])
+@token_required
+def upload_background_music():
+    """Upload background music file for the current user"""
+    try:
+        user_id = request.current_user['id']
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        # Check if it's an audio file
+        allowed_extensions = {'.mp3', '.wav', '.m4a', '.aac', '.ogg', '.flac'}
+        file_ext = os.path.splitext(file.filename)[1].lower()
+        if file_ext not in allowed_extensions:
+            return jsonify({'error': 'Please upload an audio file (mp3, wav, m4a, aac, ogg, flac)'}), 400
+        
+        # Check file size (limit to 500MB)
+        file_bytes = file.read()
+        if len(file_bytes) > 500 * 1024 * 1024:  # 500MB
+            return jsonify({'error': 'File size too large. Maximum 500MB allowed.'}), 400
+        
+        result = auth_service.save_background_music(user_id, file.filename, file_bytes)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        logger.info(f"Background music uploaded: {result['file_id']} by user {user_id}")
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Background music upload error: {e}")
+        return jsonify({'error': 'An unexpected error occurred during upload.'}), 500
+
+@app.route('/api/user/background-music/<file_id>', methods=['GET'])
+@token_required
+def get_background_music_file(file_id):
+    """Get background music file content for the current user"""
+    try:
+        user_id = request.current_user['id']
+        result = auth_service.get_background_music_file(user_id, file_id)
+        
+        if 'error' in result:
+            return jsonify(result), 404
+        
+        file_data = result['file_data']
+        metadata = result['metadata']
+        
+        # Determine content type based on file extension
+        file_ext = os.path.splitext(metadata['filename'])[1].lower()
+        content_type_map = {
+            '.mp3': 'audio/mpeg',
+            '.wav': 'audio/wav',
+            '.m4a': 'audio/mp4',
+            '.aac': 'audio/aac',
+            '.ogg': 'audio/ogg',
+            '.flac': 'audio/flac'
+        }
+        content_type = content_type_map.get(file_ext, 'audio/mpeg')
+        
+        response = make_response(file_data)
+        response.headers['Content-Type'] = content_type
+        response.headers['Content-Disposition'] = f'inline; filename="{metadata["filename"]}"'
+        response.headers['Content-Length'] = len(file_data)
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error getting background music file: {e}")
+        return jsonify({'error': 'Failed to get background music file'}), 500
+
+@app.route('/api/user/background-music/<file_id>', methods=['DELETE'])
+@token_required
+def delete_background_music_file(file_id):
+    """Delete background music file for the current user"""
+    try:
+        user_id = request.current_user['id']
+        logger.info(f"DELETE request for background music {file_id} by user {user_id}")
+        
+        result = auth_service.delete_background_music(user_id, file_id)
+        
+        if 'error' in result:
+            logger.warning(f"Delete failed for background music {file_id}: {result['error']}")
+            return jsonify(result), 404
+        
+        logger.info(f"Background music deleted: {file_id} by user {user_id}")
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error deleting background music file {file_id}: {e}")
+        return jsonify({'error': 'Failed to delete background music file'}), 500
+
 if __name__ == '__main__':
     app.run(debug=Config.DEBUG, host=Config.HOST, port=Config.PORT) 

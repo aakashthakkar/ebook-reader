@@ -25,6 +25,20 @@ CREATE TABLE IF NOT EXISTS user_pdfs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- User Background Music table (metadata only - files stored locally in music_storage)
+CREATE TABLE IF NOT EXISTS user_background_music (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    filename VARCHAR(255) NOT NULL, -- original filename as uploaded by user
+    file_id VARCHAR(255) UNIQUE NOT NULL, -- UUID for the local file
+    local_filename VARCHAR(255) NOT NULL, -- actual filename in local storage (music_storage)
+    file_size INTEGER, -- file size in bytes
+    file_type VARCHAR(50), -- audio file type (mp3, wav, m4a, etc.)
+    duration DECIMAL(10,2), -- duration in seconds (if available)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Reading progress tracking
 CREATE TABLE IF NOT EXISTS reading_progress (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -47,6 +61,8 @@ CREATE TABLE IF NOT EXISTS reading_progress (
 -- Indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_user_pdfs_user_id ON user_pdfs(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_pdfs_file_id ON user_pdfs(file_id);
+CREATE INDEX IF NOT EXISTS idx_user_background_music_user_id ON user_background_music(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_background_music_file_id ON user_background_music(file_id);
 CREATE INDEX IF NOT EXISTS idx_reading_progress_user_id ON reading_progress(user_id);
 CREATE INDEX IF NOT EXISTS idx_reading_progress_pdf_id ON reading_progress(pdf_id);
 CREATE INDEX IF NOT EXISTS idx_reading_progress_updated_at ON reading_progress(updated_at DESC);
@@ -54,6 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_reading_progress_updated_at ON reading_progress(u
 -- Row Level Security (RLS) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_pdfs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_background_music ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reading_progress ENABLE ROW LEVEL SECURITY;
 
 -- Users can only access their own data
@@ -74,6 +91,19 @@ CREATE POLICY "Users can update own PDFs" ON user_pdfs
     FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete own PDFs" ON user_pdfs
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Users can only access their own background music
+CREATE POLICY "Users can view own background music" ON user_background_music
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own background music" ON user_background_music
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own background music" ON user_background_music
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own background music" ON user_background_music
     FOR DELETE USING (auth.uid() = user_id);
 
 -- Users can only access their own reading progress
@@ -105,6 +135,10 @@ CREATE TRIGGER update_users_updated_at
 
 CREATE TRIGGER update_user_pdfs_updated_at 
     BEFORE UPDATE ON user_pdfs 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_background_music_updated_at 
+    BEFORE UPDATE ON user_background_music 
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_reading_progress_updated_at 
@@ -174,6 +208,7 @@ $$ LANGUAGE plpgsql;
 -- Comments for documentation
 COMMENT ON TABLE users IS 'User profiles extending Supabase auth.users';
 COMMENT ON TABLE user_pdfs IS 'PDF file metadata - actual files stored locally';
+COMMENT ON TABLE user_background_music IS 'Background music metadata - actual files stored locally in music_storage';
 COMMENT ON TABLE reading_progress IS 'Reading progress tracking for each user-PDF combination';
 
 COMMENT ON COLUMN reading_progress.progress_percentage IS 'Automatically calculated progress percentage based on current_word_index and total_words';

@@ -7,14 +7,22 @@ services:
     container_name: ebook-reader-dev
     ports:
       - "8000:8000"
+    volumes:
+      - ${PDF_STORAGE_HOST_PATH:-./pdf_storage}:/app/pdf_storage
     environment:
       - HOST=0.0.0.0
       - PORT=8000
       - DEBUG=true
+      - PDF_STORAGE_PATH=/app/pdf_storage
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-change-me}
+      - JWT_ACCESS_TOKEN_EXPIRES=${JWT_ACCESS_TOKEN_EXPIRES:-3600}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/login"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,14 +42,22 @@ services:
     container_name: ebook-reader-prod
     ports:
       - "8000:8000"
+    volumes:
+      - ${PDF_STORAGE_HOST_PATH:-/var/lib/ebook-reader/pdfs}:/app/pdf_storage
     environment:
       - HOST=0.0.0.0
       - PORT=8000
       - DEBUG=false
+      - PDF_STORAGE_PATH=/app/pdf_storage
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-me}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-jwt-secret-change-me}
+      - JWT_ACCESS_TOKEN_EXPIRES=${JWT_ACCESS_TOKEN_EXPIRES:-3600}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/login"]
       interval: 30s
       timeout: 10s
       retries: 3

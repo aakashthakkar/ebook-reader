@@ -1,0 +1,388 @@
+import os
+import jwt
+import bcrypt
+import uuid
+from datetime import datetime, timedelta
+from supabase import create_client, Client
+from functools import wraps
+from flask import request, jsonify, current_app
+from config import Config
+import logging
+
+logger = logging.getLogger(__name__)
+
+class AuthService:
+    def __init__(self):
+        # Set up local storage directory
+        self.local_storage_path = os.environ.get('PDF_STORAGE_PATH', './pdf_storage')
+        os.makedirs(self.local_storage_path, exist_ok=True)
+        
+        if Config.SUPABASE_URL and Config.SUPABASE_ANON_KEY and Config.SUPABASE_URL != '' and Config.SUPABASE_ANON_KEY != '':
+            try:
+                # Use anon key for auth operations
+                self.supabase: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_ANON_KEY)
+                # Use service role key for database operations (bypasses RLS)
+                if Config.SUPABASE_SERVICE_ROLE_KEY:
+                    self.supabase_admin: Client = create_client(Config.SUPABASE_URL, Config.SUPABASE_SERVICE_ROLE_KEY)
+                else:
+                    self.supabase_admin = self.supabase
+                logger.info("Supabase client initialized successfully")
+            except Exception as e:
+                logger.warning(f"Failed to initialize Supabase client: {e}")
+                self.supabase = None
+                self.supabase_admin = None
+        else:
+            logger.warning("Supabase credentials not configured - running in development mode")
+            self.supabase = None
+            self.supabase_admin = None
+
+    def _get_user_storage_path(self, user_id: str):
+        """Get the local storage path for a specific user"""
+        user_path = os.path.join(self.local_storage_path, user_id)
+        os.makedirs(user_path, exist_ok=True)
+        return user_path
+
+    def _save_pdf_to_local_storage(self, user_id: str, filename: str, file_data: bytes):
+        """Save PDF file to local storage"""
+        try:
+            user_storage_path = self._get_user_storage_path(user_id)
+            
+            # Generate unique filename to avoid conflicts
+            file_id = str(uuid.uuid4())
+            file_extension = os.path.splitext(filename)[1]
+            local_filename = f"{file_id}{file_extension}"
+            file_path = os.path.join(user_storage_path, local_filename)
+            
+            # Write file to disk
+            with open(file_path, 'wb') as f:
+                f.write(file_data)
+            
+            return {
+                'file_id': file_id,
+                'local_filename': local_filename,
+                'file_path': file_path
+            }
+        except Exception as e:
+            logger.error(f"Error saving PDF to local storage: {e}")
+            raise
+
+    def _get_pdf_from_local_storage(self, user_id: str, file_id: str, filename: str):
+        """Get PDF file from local storage"""
+        try:
+            user_storage_path = self._get_user_storage_path(user_id)
+            file_path = os.path.join(user_storage_path, filename)
+            
+            if os.path.exists(file_path):
+                with open(file_path, 'rb') as f:
+                    return f.read()
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"Error getting PDF from local storage: {e}")
+            return None
+
+    def _delete_pdf_from_local_storage(self, user_id: str, filename: str):
+        """Delete PDF file from local storage"""
+        try:
+            user_storage_path = self._get_user_storage_path(user_id)
+            file_path = os.path.join(user_storage_path, filename)
+            
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting PDF from local storage: {e}")
+            return False
+
+    def create_user(self, email: str, password: str, name: str = None):
+        """Create a new user account"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Sign up user with Supabase Auth
+            response = self.supabase.auth.sign_up({
+                "email": email,
+                "password": password,
+                "options": {
+                    "data": {"name": name} if name else {}
+                }
+            })
+            
+            if response.user:
+                # Create user profile in our users table
+                user_data = {
+                    'id': response.user.id,
+                    'email': email,
+                    'name': name or email.split('@')[0],
+                    'created_at': datetime.utcnow().isoformat()
+                }
+                
+                self.supabase_admin.table('users').insert(user_data).execute()
+                
+                return {
+                    'success': True,
+                    'user': {
+                        'id': response.user.id,
+                        'email': email,
+                        'name': name or email.split('@')[0]
+                    }
+                }
+            else:
+                return {'error': 'Failed to create user'}, 400
+                
+        except Exception as e:
+            logger.error(f"Error creating user: {e}")
+            return {'error': str(e)}, 500
+
+    def authenticate_user(self, email: str, password: str):
+        """Authenticate user and return JWT token"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Sign in with Supabase
+            response = self.supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+            
+            if response.user and response.session:
+                # Get user profile
+                user_profile = self.supabase_admin.table('users').select('*').eq('id', response.user.id).execute()
+                
+                if user_profile.data:
+                    user_data = user_profile.data[0]
+                    
+                    # Create custom JWT token
+                    token_payload = {
+                        'user_id': response.user.id,
+                        'email': response.user.email,
+                        'exp': datetime.utcnow() + timedelta(seconds=Config.JWT_ACCESS_TOKEN_EXPIRES)
+                    }
+                    
+                    token = jwt.encode(token_payload, Config.JWT_SECRET_KEY, algorithm='HS256')
+                    
+                    return {
+                        'success': True,
+                        'token': token,
+                        'user': {
+                            'id': user_data['id'],
+                            'email': user_data['email'],
+                            'name': user_data['name']
+                        }
+                    }
+                else:
+                    return {'error': 'User profile not found'}, 404
+            else:
+                return {'error': 'Invalid credentials'}, 401
+                
+        except Exception as e:
+            logger.error(f"Error authenticating user: {e}")
+            return {'error': 'Authentication failed'}, 401
+
+    def verify_token(self, token: str):
+        """Verify JWT token and return user data"""
+        try:
+            payload = jwt.decode(token, Config.JWT_SECRET_KEY, algorithms=['HS256'])
+            user_id = payload.get('user_id')
+            
+            if user_id:
+                # Get user profile
+                user_profile = self.supabase_admin.table('users').select('*').eq('id', user_id).execute()
+                
+                if user_profile.data:
+                    return {
+                        'success': True,
+                        'user': user_profile.data[0]
+                    }
+            
+            return {'error': 'Invalid token'}, 401
+            
+        except jwt.ExpiredSignatureError:
+            return {'error': 'Token expired'}, 401
+        except jwt.InvalidTokenError:
+            return {'error': 'Invalid token'}, 401
+
+    def get_user_pdfs(self, user_id: str):
+        """Get all PDFs for a specific user"""
+        try:
+            pdfs = self.supabase_admin.table('user_pdfs').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
+            return {'success': True, 'pdfs': pdfs.data}
+        except Exception as e:
+            logger.error(f"Error getting user PDFs: {e}")
+            return {'error': str(e)}, 500
+
+    def save_user_pdf(self, user_id: str, filename: str, file_data: bytes):
+        """Save PDF file locally and metadata in database"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Save file to local storage
+            storage_result = self._save_pdf_to_local_storage(user_id, filename, file_data)
+            
+            # Save PDF metadata to database (without file content)
+            pdf_data = {
+                'user_id': user_id,
+                'filename': filename,
+                'file_id': storage_result['file_id'],
+                'local_filename': storage_result['local_filename'],
+                'file_size': len(file_data),
+                'created_at': datetime.utcnow().isoformat()
+            }
+            
+            db_response = self.supabase_admin.table('user_pdfs').insert(pdf_data).execute()
+            return {'success': True, 'pdf': db_response.data[0]}
+                
+        except Exception as e:
+            logger.error(f"Error saving user PDF: {e}")
+            return {'error': str(e)}, 500
+
+    def get_user_pdf_file(self, user_id: str, file_id: str):
+        """Get PDF file content from local storage"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get PDF metadata from database
+            pdf_record = self.supabase_admin.table('user_pdfs').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
+            
+            if not pdf_record.data:
+                return {'error': 'PDF not found'}, 404
+            
+            pdf_metadata = pdf_record.data[0]
+            
+            # Get file content from local storage
+            file_data = self._get_pdf_from_local_storage(user_id, file_id, pdf_metadata['local_filename'])
+            
+            if file_data is None:
+                return {'error': 'PDF file not found in storage'}, 404
+            
+            return {
+                'success': True,
+                'file_data': file_data,
+                'metadata': pdf_metadata
+            }
+        except Exception as e:
+            logger.error(f"Error getting user PDF file: {e}")
+            return {'error': str(e)}, 500
+
+    def delete_user_pdf(self, user_id: str, file_id: str):
+        """Delete PDF file and all associated metadata"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get PDF metadata
+            pdf_record = self.supabase_admin.table('user_pdfs').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
+            
+            if not pdf_record.data:
+                return {'error': 'PDF not found'}, 404
+            
+            pdf_metadata = pdf_record.data[0]
+            logger.info(f"Deleting PDF: {pdf_metadata['filename']} for user {user_id}")
+            
+            # Delete from local storage first
+            try:
+                self._delete_pdf_from_local_storage(user_id, pdf_metadata['local_filename'])
+                logger.info(f"Deleted local file: {pdf_metadata['local_filename']}")
+            except Exception as storage_error:
+                logger.warning(f"Failed to delete local file: {storage_error}")
+                # Continue with database cleanup even if file deletion fails
+            
+            # Delete associated reading progress first (to avoid foreign key constraints)
+            try:
+                progress_result = self.supabase_admin.table('reading_progress').delete().eq('user_id', user_id).eq('pdf_id', file_id).execute()
+                logger.info(f"Deleted reading progress records: {len(progress_result.data) if progress_result.data else 0}")
+            except Exception as progress_error:
+                logger.warning(f"Failed to delete reading progress: {progress_error}")
+            
+            # Delete metadata from database
+            try:
+                delete_result = self.supabase_admin.table('user_pdfs').delete().eq('user_id', user_id).eq('file_id', file_id).execute()
+                logger.info(f"Deleted PDF records: {len(delete_result.data) if delete_result.data else 0}")
+                
+                if not delete_result.data:
+                    logger.warning(f"No records were deleted for file_id: {file_id}")
+                    return {'error': 'No records were deleted'}, 404
+                    
+            except Exception as db_error:
+                logger.error(f"Failed to delete PDF metadata: {db_error}")
+                return {'error': f'Database deletion failed: {str(db_error)}'}, 500
+            
+            # Verify deletion by checking if record still exists
+            verification = self.supabase_admin.table('user_pdfs').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
+            if verification.data:
+                logger.error(f"PDF still exists after deletion attempt: {file_id}")
+                return {'error': 'PDF deletion failed - record still exists'}, 500
+            
+            logger.info(f"Successfully deleted PDF {file_id} for user {user_id}")
+            return {'success': True, 'deleted_file': pdf_metadata['filename']}
+            
+        except Exception as e:
+            logger.error(f"Error deleting user PDF: {e}")
+            return {'error': str(e)}, 500
+
+    def get_reading_progress(self, user_id: str, pdf_id: str):
+        """Get reading progress for a specific PDF"""
+        try:
+            progress = self.supabase_admin.table('reading_progress').select('*').eq('user_id', user_id).eq('pdf_id', pdf_id).execute()
+            return {'success': True, 'progress': progress.data[0] if progress.data else None}
+        except Exception as e:
+            logger.error(f"Error getting reading progress: {e}")
+            return {'error': str(e)}, 500
+
+    def update_reading_progress(self, user_id: str, pdf_id: str, current_page: int, current_word_index: int, total_words: int):
+        """Update reading progress for a PDF"""
+        try:
+            progress_data = {
+                'user_id': user_id,
+                'pdf_id': pdf_id,
+                'current_page': current_page,
+                'current_word_index': current_word_index,
+                'total_words': total_words,
+                'updated_at': datetime.utcnow().isoformat()
+            }
+            
+            # Use upsert with on_conflict to handle duplicates
+            response = self.supabase_admin.table('reading_progress').upsert(
+                progress_data, 
+                on_conflict='user_id,pdf_id'
+            ).execute()
+            return {'success': True, 'progress': response.data[0]}
+        except Exception as e:
+            logger.error(f"Error updating reading progress: {e}")
+            return {'error': str(e)}, 500
+
+# Global auth service instance
+auth_service = AuthService()
+
+def token_required(f):
+    """Decorator to require authentication for routes"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        
+        # Get token from Authorization header
+        auth_header = request.headers.get('Authorization')
+        if auth_header:
+            try:
+                token = auth_header.split(' ')[1]  # Bearer <token>
+            except IndexError:
+                return jsonify({'error': 'Invalid token format'}), 401
+        
+        if not token:
+            return jsonify({'error': 'Token is missing'}), 401
+        
+        # Verify token
+        result = auth_service.verify_token(token)
+        if 'error' in result:
+            return jsonify(result), 401
+        
+        # Add user to request context
+        request.current_user = result['user']
+        return f(*args, **kwargs)
+    
+    return decorated 

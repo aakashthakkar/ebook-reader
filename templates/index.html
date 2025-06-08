@@ -59,7 +59,7 @@
             background-color: transparent;
         }
         .text-span:hover { background-color: hsla(var(--primary), 0.3) !important; }
-        .text-span.word-playing-chunk { background-color: hsla(142, 71%, 41%, 0.2) !important; }
+        .text-span.word-playing-chunk { background-color: hsla(217, 91%, 60%, 0.3) !important; }
         .text-span.word-next-chunk { background-color: hsla(var(--primary), 0.15) !important; }
         .text-span.word-current {
             background-color: hsla(142, 71%, 41%, 0.6) !important;
@@ -79,7 +79,7 @@
     <main id="app-container" class="transition-all duration-300">
         <div id="upload-container">
             <header class="absolute top-0 left-0 right-0 p-4">
-                <div class="flex items-center justify-center max-w-5xl mx-auto">
+                <div class="flex items-center justify-between max-w-5xl mx-auto">
                      <div class="flex items-center space-x-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-500">
                             <path d="M2.75 12C2.75 11.5858 3.08579 11.25 3.5 11.25H4.25C4.66421 11.25 5 11.5858 5 12V16C5 16.4142 4.66421 16.75 4.25 16.75H3.5C3.08579 16.75 2.75 16.4142 2.75 16V12Z" fill="currentColor" />
@@ -90,12 +90,38 @@
                         </svg>
                         <h1 class="text-xl font-bold">SonicRead</h1>
                     </div>
+                    <div class="flex items-center space-x-3">
+                        <span id="user-welcome" class="text-sm text-slate-400"></span>
+                        <button id="logout-btn" class="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-all">
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                            <span>Logout</span>
+                        </button>
+                    </div>
                 </div>
             </header>
             <div class="min-h-screen flex items-center justify-center p-4">
                 <div class="text-center w-full max-w-2xl">
                     <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">Listen to your PDFs, hands-free.</h2>
                     <p class="text-lg md:text-xl text-slate-400 mb-8 max-w-xl mx-auto">Upload any PDF and have it read out to you with perfectly synced text highlighting.</p>
+
+                    <!-- User's PDF Files Section -->
+                    <div id="user-pdfs-section" class="mb-8">
+                        <div id="user-pdfs-loading" class="text-center py-4">
+                            <div class="w-6 h-6 mx-auto spinner border-2 border-blue-400 border-t-transparent rounded-full"></div>
+                            <p class="text-sm text-slate-400 mt-2">Loading your PDFs...</p>
+                        </div>
+                        
+                        <div id="user-pdfs-list" class="hidden">
+                            <h3 class="text-xl font-semibold text-slate-200 mb-4">Your PDF Library</h3>
+                            <div id="pdfs-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                                <!-- PDF items will be inserted here -->
+                            </div>
+                        </div>
+                        
+                        <div id="user-pdfs-empty" class="hidden text-center py-4">
+                            <p class="text-slate-400">No PDFs uploaded yet. Upload your first PDF below!</p>
+                        </div>
+                    </div>
 
                     <div id="upload-area" class="upload-area bg-slate-900/50 border-2 border-dashed border-slate-700 rounded-2xl p-8 md:p-12 text-center cursor-pointer group transition-all duration-300 hover:border-blue-500 hover:bg-slate-800/60">
                         <div class="flex flex-col items-center space-y-4">
@@ -110,32 +136,51 @@
                         <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
                         <p class="text-lg font-medium text-blue-300 mt-4" id="upload-loading-text">Processing PDF...</p>
                     </div>
-
-                    <div id="file-info" class="hidden mt-6 p-4 bg-green-500/10 rounded-xl border border-green-500/30 text-left w-full max-w-md mx-auto">
-                        <div class="font-semibold text-green-300" id="file-name"></div>
-                        <div class="text-sm text-green-200"><span id="word-count"></span> words • <span id="chunk-count"></span> audio segments</div>
-                    </div>
                 </div>
             </div>
         </div>
 
         <div id="pdf-display" class="hidden">
-            <div id="pdf-top-bar" class="fixed top-0 left-0 right-0 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-slate-700 shadow-md">
+            <div class="bg-slate-900/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b border-slate-700">
                 <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
                     <div class="flex items-center justify-between h-16">
                         <div class="flex items-center space-x-1 sm:space-x-2">
-                             <button id="pdf-start-reading" class="flex items-center gap-2 px-2 md:px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all"><i data-lucide="play-circle" class="h-5 w-5"></i><span class="hidden md:inline">Start Reading</span></button>
-                             <button id="top-go-to-current" class="hidden items-center gap-2 px-2 md:px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-all"><i data-lucide="crosshair" class="h-5 w-5"></i><span class="hidden md:inline">Go to Current</span></button>
+                             <button id="pdf-start-reading" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white shadow-sm shadow-black/5 hover:bg-blue-700 h-9 px-4 py-2 gap-2">
+                                <i data-lucide="play-circle" class="h-5 w-5"></i>
+                                <span class="hidden md:inline">Start Reading</span>
+                             </button>
+                             <button id="top-go-to-current" class="hidden inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 border border-slate-600 bg-slate-800 shadow-sm shadow-black/5 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-4 py-2 gap-2">
+                                <i data-lucide="crosshair" class="h-5 w-5"></i>
+                                <span class="hidden md:inline">Go to Current</span>
+                             </button>
                         </div>
-                        <div class="flex items-center space-x-1 text-slate-300">
-                             <button id="pdf-zoom-out" class="p-2 rounded-md hover:bg-slate-700 transition-colors"><i data-lucide="zoom-out" class="h-5 w-5"></i></button>
-                             <span id="pdf-zoom-level" class="text-sm font-medium w-14 sm:w-16 text-center">100%</span>
-                             <button id="pdf-zoom-in" class="p-2 rounded-md hover:bg-slate-700 transition-colors"><i data-lucide="zoom-in" class="h-5 w-5"></i></button>
+                        <div class="flex items-center space-x-3 text-slate-300">
+                             <button id="pdf-zoom-out" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9">
+                                <i data-lucide="zoom-out" class="h-4 w-4"></i>
+                             </button>
+                             <div class="flex items-center space-x-2">
+                                <span id="pdf-zoom-level" class="text-sm font-medium w-14 sm:w-16 text-center">100%</span>
+                                <!-- Reading Progress Indicator -->
+                                <div class="flex items-center space-x-2">
+                                    <div class="relative w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                        <div id="reading-progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                    </div>
+                                    <span id="reading-progress-text" class="text-xs font-medium text-slate-400 w-8 text-center">0%</span>
+                                </div>
+                             </div>
+                             <button id="pdf-zoom-in" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9">
+                                <i data-lucide="zoom-in" class="h-4 w-4"></i>
+                             </button>
                         </div>
                         <div class="flex items-center space-x-1 sm:space-x-2">
                              <span id="pdf-page-indicator" class="text-sm font-medium text-slate-400 w-20 sm:w-24 text-center">Page 1 / 1</span>
-                             <button id="pdf-fit-width" class="p-2 rounded-md hover:bg-slate-700 transition-colors hidden sm:block"><i data-lucide="move-horizontal" class="h-5 w-5"></i></button>
-                             <button id="top-read-another-pdf-btn" class="flex items-center gap-2 px-2 md:px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all"><i data-lucide="file-plus-2" class="h-5 w-5"></i><span class="hidden md:inline">New PDF</span></button>
+                             <button id="pdf-fit-width" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 w-9 hidden sm:block">
+                                <i data-lucide="move-horizontal" class="h-4 w-4"></i>
+                             </button>
+                             <button id="top-read-another-pdf-btn" class="inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 bg-purple-600 text-white shadow-sm shadow-black/5 hover:bg-purple-700 h-9 px-4 py-2 gap-2">
+                                <i data-lucide="x" class="h-5 w-5"></i>
+                                <span class="hidden md:inline">Exit PDF</span>
+                             </button>
                         </div>
                     </div>
                 </div>
@@ -196,7 +241,18 @@
                  <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
             </div>
             <div class="flex items-center justify-between">
-                <button id="mobile-speed-btn" class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-800 text-sm font-bold">1.0x</button>
+                <div class="relative">
+                    <select id="mobile-speed-select" class="w-16 h-12 bg-slate-800 text-white text-sm font-bold rounded-full border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none text-center">
+                        <option value="0.75">0.75x</option>
+                        <option value="1.0" selected>1.0x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-1 flex items-center pointer-events-none">
+                        <i data-lucide="chevron-down" class="h-3 w-3 text-slate-400"></i>
+                    </div>
+                </div>
                 <div class="flex items-center gap-4">
                      <button id="mobile-rewind-btn" class="p-3 text-slate-300"><i data-lucide="rewind" class="h-6 w-6"></i></button>
                      <button id="mobile-play-pause-btn" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-500/30"><i data-lucide="pause" class="h-8 w-8"></i></button>
@@ -221,26 +277,114 @@
     <audio id="audio-player-element" style="display:none;"></audio>
 
     <script>
-        lucide.createIcons();
+        // --- AUTHENTICATION CHECK --- //
+        document.addEventListener('DOMContentLoaded', async () => {
+            await checkAuthentication();
+        });
+
+        async function checkAuthentication() {
+            const token = localStorage.getItem('auth_token');
+            
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    localStorage.removeItem('auth_token');
+                    localStorage.removeItem('user_data');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    // Store user data and initialize the app
+                    localStorage.setItem('user_data', JSON.stringify(data.user));
+                    displayUserInfo(data.user);
+                    initializeApp();
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Authentication check failed:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        function initializeApp() {
+            lucide.createIcons();
+            loadUserPreferences();
+            applyPreferencesToUI();
+            setupEventListeners();
+            initializeWebAudioPlayer();
+            loadUserPDFs();
+            
+            // Enhanced progress saving on page unload with multiple event listeners
+            setupUnloadProgressSaving();
+        }
+
+        // Add authorization header to all API requests
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('auth_token');
+            const headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+            
+            return fetch(url, {
+                ...options,
+                headers
+            });
+        }
         
         // --- GLOBAL STATE --- //
         let wordMap = [];
         let pdfDoc = null, pdfTotalPages = 0, pdfScale = 1.0;
-        let audioCache = new Map(), gaplessPlayer = null, isPlaying = false, isPaused = false, currentChunk = null;
-        let currentPlaybackRate = 1.0, selectedModel = 'edge-tts-andrew';
+        let currentChunk = null;
+        let isPlaying = false;
+        let currentFileId = null;
+        let progressSaveInterval = null;
+        let progressUpdateInterval = null;
+        let audioCache = new Map(), gaplessPlayer = null, isPaused = false, currentPlaybackRate = 1.0, selectedModel = 'edge-tts-andrew';
         let currentViewingPage = 1;
         let isViewChanging = false;
+        let hasUserInteracted = false;
+        
+        // Rate limiting for progress updates
+        let lastProgressUpdate = 0;
+        const PROGRESS_UPDATE_COOLDOWN = 12000; // 12 seconds (5 requests per minute)
 
         const $ = (id) => document.getElementById(id);
-        
-        // --- INITIALIZATION --- //
-        document.addEventListener('DOMContentLoaded', () => {
-            loadUserPreferences();
-            applyPreferencesToUI();
-            setupEventListeners();
-        });
+
+        function displayUserInfo(user) {
+            const welcomeEl = $('user-welcome');
+            welcomeEl.textContent = `Welcome, ${user.name || user.email}`;
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            window.location.href = '/login';
+        }
 
         function setupEventListeners() {
+            // Track user interactions for autoplay policy
+            const markUserInteracted = () => { hasUserInteracted = true; };
+            document.addEventListener('click', markUserInteracted, { once: true });
+            document.addEventListener('keydown', markUserInteracted, { once: true });
+            document.addEventListener('touchstart', markUserInteracted, { once: true });
+            
+            // Logout button
+            $('logout-btn').addEventListener('click', logout);
+            
             const uploadArea = $('upload-area');
             uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
             uploadArea.addEventListener('dragleave', (e) => uploadArea.classList.remove('dragover'));
@@ -265,7 +409,7 @@
             // Mobile player controls
             $('mobile-play-pause-btn').addEventListener('click', togglePlayPause);
             $('mobile-sticky-stop-btn').addEventListener('click', closePlayer);
-            $('mobile-speed-btn').addEventListener('click', cyclePlaybackSpeed);
+            $('mobile-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
             $('mobile-options-btn').addEventListener('click', () => $('mobile-options-panel').classList.toggle('hidden'));
             $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
@@ -283,44 +427,15 @@
         // --- PDF PROCESSING & RENDERING --- //
         async function handleFile(file) {
             if (!file.type.includes('pdf')) return showError('Please select a PDF file.');
-            showUploadLoading(true, 'Uploading and processing PDF...');
             await stopPlayback();
             resetPdfState();
 
-            const formData = new FormData();
-            formData.append('file', file);
-
             try {
-                const response = await fetch('/api/upload', { method: 'POST', body: formData });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Server error during PDF processing');
-                }
-
-                const data = await response.json();
-                wordMap = data.words;
-
-                const arrayBuffer = await file.arrayBuffer();
-                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-                pdfDoc = await loadingTask.promise;
-                pdfTotalPages = pdfDoc.numPages;
-
-                updateFileInfo(data.filename, data.word_count);
-                $('upload-container').classList.add('hidden');
-                $('pdf-display').classList.remove('hidden');
-                
-                await fitToWidth();
-                await renderInitialView();
-                setupScrollListener();
-                updatePageIndicator();
-
+                await processPDFFile(file);
             } catch (error) {
                 showError('Failed to process PDF: ' + error.message);
                 console.error(error);
                 resetToUpload();
-            } finally {
-                showUploadLoading(false);
             }
         }
         
@@ -355,17 +470,33 @@
         async function renderSinglePage(pageNum, viewer) {
              try {
                 const page = await pdfDoc.getPage(pageNum);
-                const viewport = page.getViewport({ scale: pdfScale });
+                // Ensure we always use the current pdfScale value and log it for debugging
+                const currentScale = pdfScale; // Capture scale at render time
+                console.log(`Rendering page ${pageNum} with scale: ${currentScale}`);
+                const viewport = page.getViewport({ scale: currentScale });
 
                 const pageDiv = document.createElement('div');
                 pageDiv.className = 'pdf-page';
                 pageDiv.dataset.pageNum = pageNum;
+                pageDiv.dataset.renderScale = currentScale; // Store scale used for this page
                 pageDiv.style.width = `${viewport.width}px`;
                 pageDiv.style.height = `${viewport.height}px`;
 
                 const canvas = document.createElement('canvas');
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+                // Store the pixel ratio for crisp rendering
+                const context = canvas.getContext('2d');
+                const devicePixelRatio = window.devicePixelRatio || 1;
+                const displayWidth = viewport.width;
+                const displayHeight = viewport.height;
+                
+                canvas.width = displayWidth * devicePixelRatio;
+                canvas.height = displayHeight * devicePixelRatio;
+                canvas.style.width = displayWidth + 'px';
+                canvas.style.height = displayHeight + 'px';
+                
+                context.scale(devicePixelRatio, devicePixelRatio);
                 pageDiv.appendChild(canvas);
 
                 const textLayer = document.createElement('div');
@@ -374,7 +505,7 @@
                 
                 viewer.appendChild(pageDiv);
 
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                await page.render({ canvasContext: context, viewport }).promise;
 
                 const wordsOnPage = wordMap.filter(w => w.page === pageNum);
                 if (wordsOnPage.length > 0) {
@@ -393,10 +524,15 @@
                         style.width = `${word.width * scaleX}px`;
                         style.height = `${word.height * scaleY}px`;
 
-                        span.addEventListener('click', () => playFromWord(word.index));
+                        span.addEventListener('click', () => {
+                            playFromWord(word.index);
+                            updateProgressWithRateLimit(word.index);
+                        });
                         textLayer.appendChild(span);
                     }
                 }
+                
+                console.log(`Successfully rendered page ${pageNum} with scale ${currentScale}`);
             } catch(e) {
                 console.error(`Failed to render page ${pageNum}`, e);
                 showError(`Error rendering page ${pageNum}.`);
@@ -407,7 +543,17 @@
             if (!pdfDoc) return;
             const page = await pdfDoc.getPage(1);
             const containerWidth = $('pdf-container').clientWidth;
-            pdfScale = containerWidth / page.getViewport({ scale: 1 }).width;
+            const pageViewport = page.getViewport({ scale: 1 });
+            
+            // Calculate scale but limit it to reasonable bounds
+            let calculatedScale = containerWidth / pageViewport.width;
+            
+            // Prevent excessive zoom - limit to max 150% for better readability
+            calculatedScale = Math.min(calculatedScale, 1.5);
+            // Also ensure minimum zoom of 50%
+            calculatedScale = Math.max(calculatedScale, 0.5);
+            
+            pdfScale = calculatedScale;
             updateZoomLevel();
         }
 
@@ -415,7 +561,8 @@
             const viewer = $('pdf-viewer');
             let scrollTimeout;
             
-            viewer.addEventListener('scroll', async () => {
+            // Listen to both viewer scroll and window scroll
+            const handleScroll = async () => {
                 if (isViewChanging) return;
 
                 const { scrollTop, scrollHeight, clientHeight } = viewer;
@@ -424,8 +571,16 @@
                     await maintainSlidingWindow();
                     isViewChanging = false;
                 }
-                 updateCurrentViewingPage();
-            }, { passive: true });
+                updateCurrentViewingPage();
+            };
+            
+            viewer.addEventListener('scroll', handleScroll, { passive: true });
+            window.addEventListener('scroll', handleScroll, { passive: true });
+            
+            // Also update page on initial load
+            setTimeout(() => {
+                updateCurrentViewingPage();
+            }, 500);
         }
 
         function updateCurrentViewingPage() {
@@ -447,6 +602,7 @@
         function updatePageIndicator() {
             if (pdfDoc) {
                 $('pdf-page-indicator').textContent = `Page ${currentViewingPage} / ${pdfTotalPages}`;
+                // Progress is now tracked via audio chunks, not page changes
             }
         }
 
@@ -459,21 +615,31 @@
 
                 if (lastRenderedPage >= pdfTotalPages) return;
 
-                const nextPatoLoad = lastRenderedPage + 1;
+                const nextPageToLoad = lastRenderedPage + 1;
                 const endPageToLoad = Math.min(lastRenderedPage + 3, pdfTotalPages); // Load 3 more pages
 
-                if (nextPatoLoad > endPageToLoad) return;
+                if (nextPageToLoad > endPageToLoad) return;
 
-                showLoading(`Loading pages ${nextPatoLoad}-${endPageToLoad}...`);
+                showLoading(`Loading pages ${nextPageToLoad}-${endPageToLoad}...`);
                 const viewer = $('pdf-viewer');
-                for (let pageNum = nextPatoLoad; pageNum <= endPageToLoad; pageNum++) {
+                
+                // Use document fragment for batch DOM updates
+                const fragment = document.createDocumentFragment();
+                for (let pageNum = nextPageToLoad; pageNum <= endPageToLoad; pageNum++) {
                     if (!document.querySelector(`[data-page-num="${pageNum}"]`)) {
-                        await renderSinglePage(pageNum, viewer);
+                        await renderSinglePage(pageNum, fragment);
                     }
                 }
+                
+                // Append all new pages at once
+                if (fragment.children.length > 0) {
+                    viewer.appendChild(fragment);
+                }
+                
                 hideLoading();
             } catch(e) {
                 console.error("Error in maintainSlidingWindow: ", e);
+                hideLoading();
             }
         }
 
@@ -497,6 +663,7 @@
                     const startPage = Math.max(1, targetPageNum - 2);
                     const endPage = Math.min(pdfTotalPages, targetPageNum + 2);
 
+                    // Use a document fragment to build all pages before adding to DOM
                     const fragment = document.createDocumentFragment();
                     for (let i = startPage; i <= endPage; i++) {
                         await renderSinglePage(i, fragment);
@@ -511,12 +678,15 @@
                 }
             }
             
-            const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
-            if (wordSpan) {
-                wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                currentViewingPage = targetPageNum;
-                updatePageIndicator();
-            }
+            // Wait a tick to ensure DOM is updated before scrolling
+            setTimeout(() => {
+                const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+                if (wordSpan) {
+                    wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    currentViewingPage = targetPageNum;
+                    updatePageIndicator();
+                }
+            }, 50);
         }
 
         async function goToCurrentHighlight() {
@@ -527,26 +697,62 @@
 
         // --- AUDIO PLAYBACK & CHUNKING --- //
         function getChunkForWord(wordIndex) {
-            if (wordIndex >= wordMap.length) return null;
+            console.log(`getChunkForWord called with wordIndex: ${wordIndex}, wordMap.length: ${wordMap.length}`);
+            if (wordIndex >= wordMap.length) {
+                console.log('wordIndex >= wordMap.length, returning null');
+                return null;
+            }
 
             let startIndex = wordIndex;
             let endIndex = startIndex;
             let sentenceCount = 0;
             const targetSentenceCount = 3;
+            const maxCharacters = 9500; // Leave some buffer below the 10,000 limit
+            const maxWordsPerChunk = 250; // Maximum words per chunk to prevent overly long chunks
 
             for (let i = startIndex; i < wordMap.length; i++) {
                 endIndex = i;
                 const wordText = wordMap[i].text;
+                
+                // Check word count limit (prevents Table of Contents type issues)
+                const currentWordCount = endIndex - startIndex + 1;
+                if (currentWordCount >= maxWordsPerChunk) {
+                    console.log(`Word limit reached at ${currentWordCount} words, stopping at word ${endIndex}`);
+                    break;
+                }
+                
+                // Check character limit before adding more words
+                const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+                const text = wordsInChunk.map(w => w.text).join(' ');
+                
+                if (text.length > maxCharacters) {
+                    // If we exceed the character limit, step back to previous word
+                    endIndex = Math.max(startIndex, i - 1);
+                    console.log(`Character limit reached at ${text.length} chars, stopping at word ${endIndex}`);
+                    break;
+                }
+                
+                // Check for sentence endings after verifying limits
                 if (wordText.match(/[.?!]\s*$/)) {
                     sentenceCount++;
                     if (sentenceCount >= targetSentenceCount) {
+                        console.log(`Reached target sentence count (${targetSentenceCount}) at word ${endIndex}`);
                         break;
                     }
+                }
+                
+                // Additional breaking points for better chunking:
+                // Break on new lines in lists or table of contents
+                if (wordText.match(/\n/) && currentWordCount > 50) {
+                    console.log(`Natural break point found at word ${endIndex} (newline)`);
+                    break;
                 }
             }
             
             const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
             const text = wordsInChunk.map(w => w.text).join(' ');
+            
+            console.log(`Generated chunk from ${startIndex} to ${endIndex}: "${text.substring(0, 100)}..." (${text.length} characters, ${sentenceCount} sentences, ${wordsInChunk.length} words)`);
             
             return {
                 startIndex: startIndex,
@@ -557,9 +763,16 @@
         }
 
         async function playFromWord(wordIndex) {
-            if (isPlaying) await stopPlayback();
+            console.log(`playFromWord called with wordIndex: ${wordIndex}`);
+            // Ensure complete stop before starting new playback
+            if (isPlaying || isPaused) {
+                await stopPlayback();
+                // Wait a bit to ensure the stop is complete
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
             
             const chunk = getChunkForWord(wordIndex);
+            console.log('Chunk returned from getChunkForWord:', chunk);
             if (!chunk) return showError('Audio chunk not found for this word.');
             
             currentChunk = chunk;
@@ -567,16 +780,26 @@
             showPlayer();
             await scrollToWord(wordIndex);
             
-            isPlaying = true;
-            isPaused = false;
-            
-            updatePlayPauseButtons('pause');
-            updateHighlighting();
-            
             try {
+                // Ensure audio player is initialized only once
+                if (!gaplessPlayer) {
+                    initializeWebAudioPlayer();
+                }
+                
                 const audioUrl = await loadChunk(chunk);
-                if (!gaplessPlayer) initializeWebAudioPlayer();
+                
+                // Only set playing state after audio starts successfully
                 await gaplessPlayer.play(audioUrl, chunk.id);
+                
+                // Now that audio is playing, update state
+                isPlaying = true;
+                isPaused = false;
+                
+                updatePlayPauseButtons('pause');
+                updateHighlighting();
+                
+                // Start progress tracking only after successful start
+                startProgressTracking();
                 
                 const nextChunkStartIndex = chunk.endIndex + 1;
                 if (nextChunkStartIndex < wordMap.length) {
@@ -584,7 +807,7 @@
                 }
             } catch (error) { 
                 showError('Playback failed: ' + error.message); 
-                stopPlayback(); 
+                await stopPlayback(); 
             }
         }
 
@@ -620,21 +843,52 @@
             }
         }
 
-        function togglePlayPause() {
+        async function togglePlayPause() {
             if (!currentChunk) return;
             if (isPlaying && !isPaused) {
-                if (gaplessPlayer) { isPaused = true; isPlaying = false; gaplessPlayer.pause(); updatePlayPauseButtons('play'); }
+                if (gaplessPlayer) { 
+                    isPaused = true; 
+                    isPlaying = false; 
+                    gaplessPlayer.pause(); 
+                    updatePlayPauseButtons('play'); 
+                    // Save progress when pausing
+                    saveReadingProgress();
+                    stopProgressTracking();
+                }
             } else if (isPaused) {
-                if (gaplessPlayer) { isPaused = false; isPlaying = true; gaplessPlayer.resume(); updatePlayPauseButtons('pause'); }
+                if (gaplessPlayer) { 
+                    try {
+                        await gaplessPlayer.resume(); 
+                        isPaused = false; 
+                        isPlaying = true; 
+                        updatePlayPauseButtons('pause');
+                        // Resume progress tracking
+                        startProgressTracking();
+                    } catch (error) {
+                        showError('Failed to resume playback: ' + error.message);
+                        await stopPlayback();
+                    }
+                }
             }
         }
         
         function closePlayer() {
+            // Save progress before closing player
+            if (currentChunk) {
+                saveReadingProgress();
+            }
+            stopProgressTracking();
             hidePlayer();
             stopPlayback();
         }
 
         async function stopPlayback() {
+            // Save progress before stopping
+            if (currentChunk) {
+                saveReadingProgress();
+            }
+            stopProgressTracking();
+            
             isPlaying = false; isPaused = false; currentChunk = null;
             if (gaplessPlayer) gaplessPlayer.stop();
             updatePlayPauseButtons('play');
@@ -649,7 +903,7 @@
             if (showIndicator) showLoading('Generating audio...');
             
             try {
-                const response = await fetch('/api/generate-audio', {
+                const response = await makeAuthenticatedRequest('/api/generate-audio', {
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ text: chunk.text, model: selectedModel })
@@ -735,7 +989,13 @@
             changePlaybackRate(speeds[nextIndex]);
         }
         
-        function resetToUpload() {
+        async function resetToUpload() {
+            // Save progress before exiting PDF (only if audio was played)
+            if (currentFileId && wordMap.length > 0 && currentChunk) {
+                await saveReadingProgress();
+            }
+            stopProgressTracking();
+            
             closePlayer();
             $('pdf-display').classList.add('hidden');
             $('upload-container').classList.remove('hidden');
@@ -743,6 +1003,13 @@
             $('app-container').style.paddingBottom = '0px';
             resetPdfState();
             $('pdf-input').value = '';
+            
+            // Reload the PDF library to show updated progress
+            await loadUserPDFs();
+            
+            // Clear current file ID and saved progress when exiting
+            currentFileId = null;
+            savedProgress = null;
         }
         
         function resetPdfState() {
@@ -779,15 +1046,10 @@
                 speedValue = currentPlaybackRate.toFixed(1);
             }
             $('sticky-speed-select').value = speedValue;
-            $('mobile-speed-btn').textContent = `${speedValue}x`;
+            $('mobile-speed-select').value = speedValue;
         }
 
-        function updateFileInfo(name, wordCount) {
-            $('file-name').textContent = name;
-            $('word-count').textContent = `${wordCount}`;
-            $('chunk-count').textContent = `${Math.ceil(wordCount / 100)}`;
-            $('file-info').classList.remove('hidden');
-        }
+
 
         function showUploadLoading(show, text = '') {
             $('upload-loading').classList.toggle('hidden', !show);
@@ -837,26 +1099,76 @@
         function initializeWebAudioPlayer() {
             const audioEl = $('audio-player-element');
             
+            // Clear all existing event listeners to prevent conflicts
+            audioEl.onplaying = null;
+            audioEl.onerror = null;
+            audioEl.onended = null;
+            audioEl.onpause = null;
+            
             gaplessPlayer = {
                 play: (url, chunkId) => {
                     return new Promise((resolve, reject) => {
+                        // Stop any existing playback first
+                        if (!audioEl.paused) {
+                            audioEl.pause();
+                        }
+                        
+                        // Clear event listeners
+                        audioEl.onplaying = null;
+                        audioEl.onerror = null;
+                        
+                        // Set source and playback rate
                         audioEl.src = url;
                         audioEl.playbackRate = currentPlaybackRate;
-                        audioEl.play().catch(e => {
-                            showError("Playback was interrupted.");
-                            reject(e);
-                        });
                         
-                        audioEl.onplaying = () => {
+                        // Create a one-time playing event handler
+                        const onPlayingHandler = () => {
+                            audioEl.removeEventListener('playing', onPlayingHandler);
+                            audioEl.removeEventListener('error', onErrorHandler);
                             resolve();
                         };
+                        
+                        const onErrorHandler = (e) => {
+                            audioEl.removeEventListener('playing', onPlayingHandler);
+                            audioEl.removeEventListener('error', onErrorHandler);
+                            reject(new Error("Audio playback error: " + e.message));
+                        };
+                        
+                        // Add event listeners
+                        audioEl.addEventListener('playing', onPlayingHandler, { once: true });
+                        audioEl.addEventListener('error', onErrorHandler, { once: true });
+                        
+                        // Start playback with user gesture check
+                        const playPromise = audioEl.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(e => {
+                                audioEl.removeEventListener('playing', onPlayingHandler);
+                                audioEl.removeEventListener('error', onErrorHandler);
+                                console.error("Play promise failed:", e);
+                                
+                                // Check if it's an autoplay policy issue
+                                if (e.name === 'NotAllowedError') {
+                                    reject(new Error("Autoplay is not allowed. Please interact with the page first."));
+                                } else {
+                                    reject(e);
+                                }
+                            });
+                        }
                     });
                 },
                 pause: () => { 
-                    audioEl.pause();
+                    if (!audioEl.paused) {
+                        audioEl.pause();
+                    }
                 },
                 resume: () => { 
-                    audioEl.play();
+                    return audioEl.play().catch(e => {
+                        console.error("Resume failed:", e);
+                        if (e.name === 'NotAllowedError') {
+                            throw new Error("Autoplay is not allowed. Please interact with the page first.");
+                        }
+                        throw e;
+                    });
                 },
                 stop: () => { 
                     if (!audioEl.paused) {
@@ -872,11 +1184,731 @@
                 }
             };
 
-            audioEl.onended = () => {
+            // Set up the ended event listener only once
+            audioEl.addEventListener('ended', () => {
                 if (isPlaying && !isPaused) {
                     playNextChunk();
                 }
+            }, { once: false });
+        }
+
+        // --- READING PROGRESS FUNCTIONS --- //
+        function updateReadingProgressDisplay() {
+            if (!wordMap.length) return;
+            
+            let progressPercentage = 0;
+            
+            if (currentChunk) {
+                // Calculate progress based on current audio chunk position
+                const currentWordIndex = currentChunk.startIndex;
+                progressPercentage = Math.round((currentWordIndex / wordMap.length) * 100);
+            }
+            // If no currentChunk, progress stays at 0% or shows last saved progress
+            
+            // Update header progress bar
+            const progressBar = $('reading-progress-bar');
+            const progressText = $('reading-progress-text');
+            
+            if (progressBar && progressText) {
+                progressBar.style.width = `${progressPercentage}%`;
+                progressText.textContent = `${progressPercentage}%`;
+            }
+        }
+        
+        function updateHeaderButtonForResume(hasProgress = false) {
+            const startButton = $('pdf-start-reading');
+            console.log('updateHeaderButtonForResume called with hasProgress:', hasProgress, 'savedProgress:', savedProgress);
+            if (startButton && hasProgress) {
+                startButton.innerHTML = `
+                    <i data-lucide="play-circle" class="h-5 w-5"></i>
+                    <span class="hidden md:inline">Resume</span>
+                `;
+                // Remove all existing event listeners by cloning the button
+                const buttonContainer = startButton.parentElement;
+                const newButton = startButton.cloneNode(true);
+                startButton.parentNode.replaceChild(newButton, startButton);
+                // Set the new event handler
+                newButton.onclick = () => resumeFromSavedPosition();
+                
+                // Add start over button next to it
+                if (!$('pdf-start-over')) {
+                    const startOverButton = document.createElement('button');
+                    startOverButton.id = 'pdf-start-over';
+                    startOverButton.className = 'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 border border-slate-600 bg-slate-800 shadow-sm shadow-black/5 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-4 py-2 gap-2';
+                    startOverButton.innerHTML = `
+                        <i data-lucide="rotate-ccw" class="h-5 w-5"></i>
+                        <span class="hidden md:inline">Start Over</span>
+                    `;
+                    startOverButton.onclick = () => playFromWord(0);
+                    buttonContainer.insertBefore(startOverButton, newButton.nextSibling);
+                    
+                    // Reinitialize icons
+                    lucide.createIcons();
+                }
+            }
+        }
+        
+        function updateHeaderButtonForStart() {
+            const startButton = $('pdf-start-reading');
+            if (startButton) {
+                startButton.innerHTML = `
+                    <i data-lucide="play-circle" class="h-5 w-5"></i>
+                    <span class="hidden md:inline">Start Reading</span>
+                `;
+                // Remove all existing event listeners by cloning the button
+                const newButton = startButton.cloneNode(true);
+                startButton.parentNode.replaceChild(newButton, startButton);
+                // Set the new event handler
+                newButton.onclick = () => playFromWord(0);
+                
+                // Remove start over button if it exists
+                const startOverButton = $('pdf-start-over');
+                if (startOverButton) {
+                    startOverButton.remove();
+                }
+                
+                // Reinitialize icons
+                lucide.createIcons();
+            }
+        }
+        
+        let savedProgress = null; // Store saved progress globally
+        
+        async function loadReadingProgress(fileId) {
+            try {
+                currentFileId = fileId;
+                console.log('loadReadingProgress called for fileId:', fileId);
+                const response = await makeAuthenticatedRequest(`/api/reading-progress?pdf_id=${fileId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Progress data received:', data);
+                    if (data.progress && data.progress.current_word_index > 0) {
+                        savedProgress = data.progress; // Store saved progress
+                        console.log('Saved progress set to:', savedProgress);
+                        
+                        // Update header to show resume button
+                        updateHeaderButtonForResume(true);
+                        
+                        // Show saved progress in header
+                        displaySavedProgress();
+                        
+                        // Auto-scroll to saved position
+                        const savedWordIndex = data.progress.current_word_index;
+                        console.log(`Will scroll to word index: ${savedWordIndex}`);
+                        
+                        setTimeout(() => {
+                            scrollToWordByIndex(savedWordIndex);
+                        }, 1000);
+                    } else {
+                        console.log('No progress found or progress is 0');
+                        savedProgress = null;
+                        updateHeaderButtonForStart();
+                        displaySavedProgress(); // Show 0% progress
+                    }
+                } else {
+                    console.log('Failed to load progress, response not ok');
+                    savedProgress = null;
+                    updateHeaderButtonForStart();
+                    displaySavedProgress(); // Show 0% progress
+                }
+            } catch (error) {
+                console.error('Error loading reading progress:', error);
+                savedProgress = null;
+                updateHeaderButtonForStart();
+                displaySavedProgress(); // Show 0% progress
+            }
+        }
+        
+        function displaySavedProgress() {
+            const progressBar = $('reading-progress-bar');
+            const progressText = $('reading-progress-text');
+            
+            if (progressBar && progressText) {
+                if (savedProgress && savedProgress.total_words > 0) {
+                    const progressPercentage = Math.round((savedProgress.current_word_index / savedProgress.total_words) * 100);
+                    progressBar.style.width = `${progressPercentage}%`;
+                    progressText.textContent = `${progressPercentage}%`;
+                } else {
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '0%';
+                }
+            }
+        }
+        
+        function resumeFromSavedPosition() {
+            console.log('resumeFromSavedPosition called, savedProgress:', savedProgress);
+            if (savedProgress && savedProgress.current_word_index > 0) {
+                console.log(`Attempting to resume from word index: ${savedProgress.current_word_index}`);
+                playFromWord(savedProgress.current_word_index);
+            } else {
+                console.log('No saved progress found, starting from beginning');
+                playFromWord(0);
+            }
+        }
+        
+        async function saveReadingProgress() {
+            if (!currentFileId || !wordMap.length || !currentChunk) return;
+            
+            try {
+                // Use current audio chunk position for progress
+                const currentWordIndex = currentChunk.startIndex;
+                const progressPercentage = Math.round((currentWordIndex / wordMap.length) * 100);
+                
+                // Get current page from word data
+                const currentWordData = wordMap[currentWordIndex];
+                const currentPage = currentWordData ? currentWordData.page : 1;
+                
+                const response = await makeAuthenticatedRequest('/api/reading-progress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pdf_id: currentFileId,
+                        current_word_index: currentWordIndex,
+                        total_words: wordMap.length,
+                        progress_percentage: progressPercentage,
+                        current_page: currentPage
+                    })
+                });
+                
+                if (response.ok) {
+                    console.log(`Progress saved: ${progressPercentage}% (word ${currentWordIndex}/${wordMap.length}) on page ${currentPage}`);
+                    // Update the progress display
+                    updateReadingProgressDisplay();
+                } else {
+                    console.error('Failed to save reading progress');
+                }
+            } catch (error) {
+                console.error('Error saving reading progress:', error);
+            }
+        }
+
+        // --- USER PDF LIBRARY FUNCTIONS --- //
+        async function loadUserPDFs() {
+            try {
+                const response = await makeAuthenticatedRequest('/api/user/pdfs');
+                if (!response.ok) {
+                    throw new Error('Failed to load user PDFs');
+                }
+                
+                const data = await response.json();
+                await displayUserPDFs(data.pdfs || []);
+            } catch (error) {
+                console.error('Error loading user PDFs:', error);
+                $('user-pdfs-loading').classList.add('hidden');
+                $('user-pdfs-empty').classList.remove('hidden');
+            }
+        }
+        
+        async function displayUserPDFs(pdfs) {
+            $('user-pdfs-loading').classList.add('hidden');
+            
+            // Always hide the list first to ensure proper state management
+            $('user-pdfs-list').classList.add('hidden');
+            $('user-pdfs-empty').classList.add('hidden');
+            
+            if (pdfs.length === 0) {
+                $('user-pdfs-empty').classList.remove('hidden');
+                console.log('No PDFs to display - showing empty state');
+                return;
+            }
+            
+            const grid = $('pdfs-grid');
+            // Force clear the grid
+            grid.innerHTML = '';
+            
+            console.log(`Displaying ${pdfs.length} PDFs`);
+            
+            // Show loading placeholder for cards
+            grid.innerHTML = '<div class="col-span-full text-center text-slate-400">Loading progress data...</div>';
+            
+            // Create all PDF cards asynchronously
+            const cardPromises = pdfs.map(async (pdf, index) => {
+                console.log(`Creating card for PDF ${index + 1}: ${pdf.filename}`);
+                return await createPDFCard(pdf);
+            });
+            
+            // Wait for all cards to be created
+            const pdfCards = await Promise.all(cardPromises);
+            
+            // Clear loading and add all cards
+            grid.innerHTML = '';
+            pdfCards.forEach(card => {
+                grid.appendChild(card);
+            });
+            
+            $('user-pdfs-list').classList.remove('hidden');
+            
+            // Reinitialize Lucide icons after DOM updates
+            setTimeout(() => {
+                lucide.createIcons();
+                console.log('Lucide icons reinitialized');
+            }, 50);
+        }
+        
+        async function createPDFCard(pdf) {
+            const card = document.createElement('div');
+            card.className = 'bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-700/50 transition-all cursor-pointer group';
+            
+            const createdDate = new Date(pdf.created_at).toLocaleDateString();
+            const fileSize = formatFileSize(pdf.file_size || 0);
+            
+            // Truncate filename if too long
+            const truncatedFilename = truncateFilename(pdf.filename, 25);
+            
+            // Get reading progress for this PDF
+            let progressPercentage = 0;
+            try {
+                const progressResponse = await makeAuthenticatedRequest(`/api/reading-progress?pdf_id=${pdf.file_id}`);
+                if (progressResponse.ok) {
+                    const progressData = await progressResponse.json();
+                    if (progressData.progress && progressData.progress.total_words > 0) {
+                        progressPercentage = Math.round((progressData.progress.current_word_index / progressData.progress.total_words) * 100);
+                    }
+                }
+            } catch (error) {
+                console.log('Could not fetch progress for PDF:', pdf.filename);
+            }
+            
+            // Generate PDF thumbnail
+            let thumbnailElement = `<i data-lucide="file-text" class="h-8 w-8 text-blue-400"></i>`;
+            try {
+                const thumbnailDataUrl = await generatePDFThumbnail(pdf.file_id);
+                if (thumbnailDataUrl) {
+                    thumbnailElement = `<img src="${thumbnailDataUrl}" alt="PDF thumbnail" class="w-full h-full object-cover rounded">`;
+                }
+            } catch (error) {
+                console.log('Could not generate thumbnail for PDF:', pdf.filename);
+            }
+            
+            const progressColor = progressPercentage > 90 ? 'bg-green-500' : progressPercentage > 50 ? 'bg-blue-500' : 'bg-gray-500';
+            const progressDisplay = progressPercentage > 0 ? `${progressPercentage}% complete` : 'Not started';
+            
+            card.innerHTML = `
+                <div class="flex items-start justify-between mb-3">
+                    <div class="flex items-center space-x-3 min-w-0 flex-1">
+                        <div class="relative w-16 h-20 bg-slate-700 rounded overflow-hidden flex items-center justify-center flex-shrink-0">
+                            ${thumbnailElement}
+                            ${progressPercentage > 0 ? `
+                                <!-- Circular Progress Indicator -->
+                                <div class="absolute -top-1 -right-1 w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 transform -rotate-90" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" 
+                                                stroke-width="2" class="text-slate-600" />
+                                        <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" 
+                                                stroke-width="2" class="text-blue-400" 
+                                                stroke-dasharray="${50.27}" 
+                                                stroke-dashoffset="${50.27 * (1 - progressPercentage / 100)}"
+                                                stroke-linecap="round" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-[7px] font-bold text-blue-400">${progressPercentage}%</span>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h4 class="font-medium text-slate-200 truncate" title="${escapeHtml(pdf.filename)}">${escapeHtml(truncatedFilename)}</h4>
+                            <div class="text-xs text-slate-400 mt-1 space-y-1">
+                                <div>Uploaded: ${createdDate}</div>
+                                <div>Size: ${fileSize}</div>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-slate-300">${progressDisplay}</span>
+                                </div>
+                                ${progressPercentage > 0 ? `
+                                    <!-- Linear Progress Bar -->
+                                    <div class="w-full bg-slate-600 rounded-full h-1.5 mt-1">
+                                        <div class="${progressColor} h-1.5 rounded-full transition-all duration-300" 
+                                             style="width: ${progressPercentage}%"></div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <button class="delete-pdf-btn opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 hover:bg-red-500/20 text-red-400 h-8 w-8" 
+                            data-pdf-id="${pdf.file_id}" title="Delete PDF">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <button class="load-pdf-btn w-full inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white shadow-sm shadow-black/5 hover:bg-blue-700 h-9 px-4 py-2" 
+                            data-pdf-id="${pdf.file_id}">
+                        ${progressPercentage > 0 ? 'Continue Reading' : 'Open PDF'}
+                    </button>
+                </div>
+            `;
+            
+            // Add event listeners
+            const loadBtn = card.querySelector('.load-pdf-btn');
+            const deleteBtn = card.querySelector('.delete-pdf-btn');
+            
+            loadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadExistingPDF(pdf.file_id, pdf.filename);
+            });
+            
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deletePDF(pdf.file_id, pdf.filename);
+            });
+            
+            return card;
+        }
+        
+        async function generatePDFThumbnail(fileId) {
+            try {
+                // Get the PDF file
+                const response = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`);
+                if (!response.ok) return null;
+                
+                const pdfBlob = await response.blob();
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                
+                // Load PDF with PDF.js
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                const pdf = await loadingTask.promise;
+                
+                // Get the first page
+                const page = await pdf.getPage(1);
+                
+                // Set up canvas for thumbnail (small size)
+                const viewport = page.getViewport({ scale: 0.3 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                
+                // Render the page
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+                
+                // Convert to data URL
+                return canvas.toDataURL('image/jpeg', 0.8);
+                
+            } catch (error) {
+                console.error('Error generating thumbnail:', error);
+                return null;
+            }
+        }
+        
+        async function loadExistingPDF(fileId, filename) {
+            try {
+                showUploadLoading(true, 'Loading PDF...');
+                
+                // Get PDF file data
+                const response = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load PDF file');
+                }
+                
+                const pdfBlob = await response.blob();
+                const file = new File([pdfBlob], filename, { type: 'application/pdf' });
+                
+                // Load the PDF without uploading it again
+                await loadExistingPDFData(file, fileId);
+                
+            } catch (error) {
+                console.error('Error loading existing PDF:', error);
+                showError('Failed to load PDF: ' + error.message);
+                showUploadLoading(false);
+            }
+        }
+        
+        async function loadExistingPDFData(file, fileId) {
+            try {
+                // For now, we need to reprocess the PDF to get word data
+                // since we don't cache words yet. This will be optimized later.
+                console.log('Reprocessing PDF to extract words...');
+                
+                // Extract words from the PDF file
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Call a special endpoint that only extracts words without saving
+                const response = await makeAuthenticatedRequest('/api/extract-words', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    wordMap = data.words || [];
+                } else {
+                    throw new Error('Failed to extract words from PDF');
+                }
+                
+                showUploadLoading(false);
+                await displayPDF(file);
+                
+                // Set the current file ID for progress tracking
+                currentFileId = fileId;
+                
+                // Load reading progress and resume from last position
+                await loadReadingProgress(fileId);
+                
+            } catch (error) {
+                console.error('Error loading existing PDF data:', error);
+                showUploadLoading(false);
+                showError('Failed to load PDF: ' + error.message);
+            }
+        }
+        
+        async function deletePDF(fileId, filename) {
+            if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                // Show loading state
+                const deleteBtn = document.querySelector(`[data-pdf-id="${fileId}"]`);
+                if (deleteBtn) {
+                    deleteBtn.disabled = true;
+                    deleteBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i>';
+                    lucide.createIcons();
+                }
+                
+                const response = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to delete PDF');
+                }
+                
+                const result = await response.json();
+                console.log('Delete response:', result);
+                
+                // If this is the currently open file, reset to upload view
+                if (currentFileId === fileId) {
+                    resetToUpload();
+                }
+                
+                // Force UI refresh with a slight delay to ensure database changes are reflected
+                setTimeout(async () => {
+                    await loadUserPDFs();
+                    console.log('PDF list reloaded after deletion');
+                }, 100);
+                
+                // Show success message
+                showSuccessMessage(`Successfully deleted "${filename}"`);
+                
+            } catch (error) {
+                console.error('Error deleting PDF:', error);
+                showError('Failed to delete PDF: ' + error.message);
+                
+                // Reset button state on error
+                const deleteBtn = document.querySelector(`[data-pdf-id="${fileId}"]`);
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<i data-lucide="trash-2" class="h-4 w-4"></i>';
+                    lucide.createIcons();
+                }
+            }
+        }
+        
+        function showSuccessMessage(message) {
+            // Create a temporary success notification
+            const successDiv = document.createElement('div');
+            successDiv.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300';
+            successDiv.textContent = message;
+            document.body.appendChild(successDiv);
+            
+            // Animate in
+            setTimeout(() => successDiv.classList.add('opacity-100'), 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                successDiv.classList.add('opacity-0', 'translate-x-full');
+                setTimeout(() => document.body.removeChild(successDiv), 300);
+            }, 3000);
+        }
+        
+
+        function updateProgressWithRateLimit(wordIndex) {
+            // Rate-limited progress update - only save every 5 seconds to avoid spam
+            if (!this.lastProgressUpdate || Date.now() - this.lastProgressUpdate > 5000) {
+                this.lastProgressUpdate = Date.now();
+                saveReadingProgress();
+            }
+        }
+        
+        function setupUnloadProgressSaving() {
+            function saveProgressOnUnload(event) {
+                if (!currentFileId) return;
+                
+                console.log('Page unload detected, saving progress...');
+                
+                let currentWordIndex = 0;
+                let currentPage = 1;
+                
+                // Get current position from chunk or viewing page
+                if (currentChunk) {
+                    currentWordIndex = currentChunk.startIndex;
+                    const wordInfo = wordMap[currentWordIndex];
+                    if (wordInfo) {
+                        currentPage = wordInfo.page;
+                    }
+                } else {
+                    currentPage = currentViewingPage;
+                }
+                
+                const progressData = {
+                    pdf_id: currentFileId,
+                    current_page: currentPage,
+                    current_word_index: currentWordIndex,
+                    total_words: wordMap.length
+                };
+                
+                // Try navigator.sendBeacon first (most reliable for unload)
+                if (navigator.sendBeacon) {
+                    const token = localStorage.getItem('auth_token');
+                    // Create a FormData with auth token and progress data for sendBeacon
+                    const formData = new FormData();
+                    formData.append('auth_token', token);
+                    formData.append('progress_data', JSON.stringify(progressData));
+                    
+                    const success = navigator.sendBeacon('/api/reading-progress-beacon', formData);
+                    console.log(`Beacon progress save ${success ? 'succeeded' : 'failed'}`);
+                    
+                    if (success) return;
+                }
+                
+                // Fallback to synchronous save
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/reading-progress', false); // Synchronous
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    const token = localStorage.getItem('auth_token');
+                    if (token) {
+                        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                    }
+                    xhr.send(JSON.stringify(progressData));
+                    console.log('Synchronous progress save completed');
+                } catch (error) {
+                    console.error('Failed to save progress on unload:', error);
+                }
+            }
+            
+            // Multiple event listeners for better coverage
+            window.addEventListener('beforeunload', saveProgressOnUnload);
+            window.addEventListener('pagehide', saveProgressOnUnload);
+            
+            // Save when page becomes hidden (user switches tabs, minimizes, etc.)
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') {
+                    saveProgressOnUnload();
+                }
+            });
+            
+            // Save when user navigates away
+            window.addEventListener('unload', saveProgressOnUnload);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
             };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+        
+        function truncateFilename(filename, maxLength) {
+            if (filename.length <= maxLength) return filename;
+            
+            // Get file extension
+            const lastDotIndex = filename.lastIndexOf('.');
+            const extension = lastDotIndex > 0 ? filename.substring(lastDotIndex) : '';
+            const nameWithoutExt = lastDotIndex > 0 ? filename.substring(0, lastDotIndex) : filename;
+            
+            // Calculate available space for name
+            const availableLength = maxLength - extension.length - 3; // 3 for "..."
+            
+            if (availableLength <= 0) {
+                return '...' + extension;
+            }
+            
+            return nameWithoutExt.substring(0, availableLength) + '...' + extension;
+        }
+        
+        async function processPDFFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showUploadLoading(true, 'Processing PDF...');
+            
+            try {
+                const response = await makeAuthenticatedRequest('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Upload failed');
+                }
+                
+                const data = await response.json();
+                wordMap = data.words || [];
+                
+                showUploadLoading(false);
+                await displayPDF(file);
+                
+                // Set the current file ID for progress tracking
+                currentFileId = data.file_id;
+                
+                // Refresh the PDF list to show the new upload
+                await loadUserPDFs();
+                
+            } catch (error) {
+                showUploadLoading(false);
+                throw error;
+            }
+        }
+        
+        async function displayPDF(file) {
+            try {
+                showLoading('Loading PDF viewer...');
+                
+                const arrayBuffer = await file.arrayBuffer();
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+                pdfDoc = await loadingTask.promise;
+                pdfTotalPages = pdfDoc.numPages;
+                
+                // Initialize current viewing page
+                currentViewingPage = 1;
+                
+                $('upload-container').classList.add('hidden');
+                $('pdf-display').classList.remove('hidden');
+                
+                await fitToWidth();
+                await renderInitialView();
+                
+                setupScrollListener();
+                updatePageIndicator();
+                
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                throw new Error('Failed to display PDF: ' + error.message);
+            }
         }
 
         async function changeZoom(amount) {
@@ -914,6 +1946,47 @@
                 if (isPlaying || isPaused) updateHighlighting();
             } finally {
                 isViewChanging = false;
+            }
+        }
+
+        function startProgressTracking() {
+            // Save progress every 30 seconds during playback
+            if (progressSaveInterval) clearInterval(progressSaveInterval);
+            progressSaveInterval = setInterval(() => {
+                if (isPlaying && currentChunk) {
+                    saveReadingProgress();
+                }
+            }, 30000);
+            
+            // Update progress display more frequently
+            if (progressUpdateInterval) clearInterval(progressUpdateInterval);
+            progressUpdateInterval = setInterval(() => {
+                if (isPlaying && currentChunk) {
+                    updateReadingProgressDisplay();
+                }
+            }, 1000);
+            
+            // Initial progress display update
+            if (currentChunk) {
+                updateReadingProgressDisplay();
+            }
+        }
+        
+        function stopProgressTracking() {
+            if (progressSaveInterval) {
+                clearInterval(progressSaveInterval);
+                progressSaveInterval = null;
+            }
+            if (progressUpdateInterval) {
+                clearInterval(progressUpdateInterval);
+                progressUpdateInterval = null;
+            }
+        }
+        
+        function scrollToWordByIndex(wordIndex) {
+            const span = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+            if (span) {
+                span.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     </script>

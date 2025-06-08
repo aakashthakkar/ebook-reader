@@ -703,63 +703,109 @@
                 return null;
             }
 
+            const startWord = wordMap[wordIndex];
             let startIndex = wordIndex;
             let endIndex = startIndex;
-            let sentenceCount = 0;
-            const targetSentenceCount = 3;
+            
+            // Limits for safety
             const maxCharacters = 9500; // Leave some buffer below the 10,000 limit
-            const maxWordsPerChunk = 250; // Maximum words per chunk to prevent overly long chunks
-
-            for (let i = startIndex; i < wordMap.length; i++) {
-                endIndex = i;
-                const wordText = wordMap[i].text;
-                
-                // Check word count limit (prevents Table of Contents type issues)
-                const currentWordCount = endIndex - startIndex + 1;
-                if (currentWordCount >= maxWordsPerChunk) {
-                    console.log(`Word limit reached at ${currentWordCount} words, stopping at word ${endIndex}`);
-                    break;
-                }
-                
-                // Check character limit before adding more words
-                const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
-                const text = wordsInChunk.map(w => w.text).join(' ');
-                
-                if (text.length > maxCharacters) {
-                    // If we exceed the character limit, step back to previous word
-                    endIndex = Math.max(startIndex, i - 1);
-                    console.log(`Character limit reached at ${text.length} chars, stopping at word ${endIndex}`);
-                    break;
-                }
-                
-                // Check for sentence endings after verifying limits
-                if (wordText.match(/[.?!]\s*$/)) {
-                    sentenceCount++;
-                    if (sentenceCount >= targetSentenceCount) {
-                        console.log(`Reached target sentence count (${targetSentenceCount}) at word ${endIndex}`);
-                        break;
-                    }
-                }
-                
-                // Additional breaking points for better chunking:
-                // Break on new lines in lists or table of contents
-                if (wordText.match(/\n/) && currentWordCount > 50) {
-                    console.log(`Natural break point found at word ${endIndex} (newline)`);
-                    break;
-                }
+            const maxWordsPerChunk = 400; // Maximum words per chunk (increased for paragraphs)
+            
+            // Try paragraph-based chunking first
+            if (startWord.paragraph_id !== undefined) {
+                endIndex = getEndOfParagraph(startIndex);
+                console.log(`Using paragraph-based chunking: paragraph ${startWord.paragraph_id}`);
+            } else {
+                // Fallback to sentence-based chunking if no paragraph data
+                console.log('No paragraph data available, falling back to sentence-based chunking');
+                endIndex = getSentenceBasedEnd(startIndex);
             }
             
+            // Apply safety limits
             const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
             const text = wordsInChunk.map(w => w.text).join(' ');
             
-            console.log(`Generated chunk from ${startIndex} to ${endIndex}: "${text.substring(0, 100)}..." (${text.length} characters, ${sentenceCount} sentences, ${wordsInChunk.length} words)`);
+            // Check if chunk exceeds limits
+            if (text.length > maxCharacters || wordsInChunk.length > maxWordsPerChunk) {
+                console.log(`Chunk too large (${text.length} chars, ${wordsInChunk.length} words), applying limits`);
+                endIndex = applySafetyLimits(startIndex, maxCharacters, maxWordsPerChunk);
+            }
+            
+            const finalWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+            const finalText = finalWordsInChunk.map(w => w.text).join(' ');
+            
+            console.log(`Generated chunk from ${startIndex} to ${endIndex}: "${finalText.substring(0, 100)}..." (${finalText.length} characters, ${finalWordsInChunk.length} words, paragraph: ${startWord.paragraph_id || 'N/A'})`);
             
             return {
                 startIndex: startIndex,
                 endIndex: endIndex,
-                text: text,
-                id: `chunk-${startIndex}`
+                text: finalText,
+                id: `chunk-${startIndex}`,
+                paragraphId: startWord.paragraph_id
             };
+        }
+        
+        function getEndOfParagraph(startIndex) {
+            const startWord = wordMap[startIndex];
+            const targetParagraphId = startWord.paragraph_id;
+            
+            // Find the end of the current paragraph
+            for (let i = startIndex; i < wordMap.length; i++) {
+                const word = wordMap[i];
+                
+                // If we've moved to a different paragraph, stop at previous word
+                if (word.paragraph_id !== targetParagraphId) {
+                    return i - 1;
+                }
+                
+                // If this word is marked as paragraph end, include it and stop
+                if (word.paragraph_end) {
+                    return i;
+                }
+            }
+            
+            // If we reach the end of the document, return the last word
+            return wordMap.length - 1;
+        }
+        
+        function getSentenceBasedEnd(startIndex) {
+            // Fallback to the old sentence-based logic
+            let endIndex = startIndex;
+            let sentenceCount = 0;
+            const targetSentenceCount = 3;
+            
+            for (let i = startIndex; i < wordMap.length; i++) {
+                endIndex = i;
+                const wordText = wordMap[i].text;
+                
+                // Check for sentence endings
+                if (wordText.match(/[.?!]\s*$/)) {
+                    sentenceCount++;
+                    if (sentenceCount >= targetSentenceCount) {
+                        break;
+                    }
+                }
+            }
+            
+            return endIndex;
+        }
+        
+        function applySafetyLimits(startIndex, maxCharacters, maxWordsPerChunk) {
+            let endIndex = startIndex;
+            
+            for (let i = startIndex; i < wordMap.length; i++) {
+                const wordsInChunk = wordMap.slice(startIndex, i + 1);
+                const text = wordsInChunk.map(w => w.text).join(' ');
+                
+                // If adding this word would exceed limits, stop at previous word
+                if (text.length > maxCharacters || wordsInChunk.length > maxWordsPerChunk) {
+                    break;
+                }
+                
+                endIndex = i;
+            }
+            
+            return endIndex;
         }
 
         async function playFromWord(wordIndex) {

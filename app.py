@@ -28,32 +28,151 @@ app.config.from_object(Config)
 Config.init_app(app)
 
 def extract_words_from_pdf_bytes(file_bytes):
-    """Extract words and their coordinates from PDF bytes using pdfplumber."""
+    """Extract words and their coordinates from PDF bytes using pdfplumber with paragraph detection."""
     all_words = []
     global_word_index = 0
+    global_paragraph_id = 0
+    
     try:
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
             for page_num, page in enumerate(pdf.pages):
-                # Use extract_words to get precise coordinate data for each word.
+                # Extract words with precise coordinate data
                 words = page.extract_words(x_tolerance=2, use_text_flow=True)
                 
-                for word in words:
-                    all_words.append({
-                        "text": word["text"],
-                        "page": page_num + 1,
-                        "index": global_word_index,
-                        "x": float(word["x0"]),
-                        "y": float(word["top"]),
-                        "width": float(word["x1"] - word["x0"]),
-                        "height": float(word["bottom"] - word["top"]),
-                        "page_width": float(page.width),
-                        "page_height": float(page.height)
-                    })
-                    global_word_index += 1
+                if not words:
+                    continue
+                
+                # Detect paragraph boundaries using line spacing and positioning
+                paragraphs = detect_paragraphs_in_page(words)
+                
+                for paragraph in paragraphs:
+                    for word in paragraph['words']:
+                        all_words.append({
+                            "text": word["text"],
+                            "page": page_num + 1,
+                            "index": global_word_index,
+                            "paragraph_id": global_paragraph_id,
+                            "paragraph_start": word.get("paragraph_start", False),
+                            "paragraph_end": word.get("paragraph_end", False),
+                            "x": float(word["x0"]),
+                            "y": float(word["top"]),
+                            "width": float(word["x1"] - word["x0"]),
+                            "height": float(word["bottom"] - word["top"]),
+                            "page_width": float(page.width),
+                            "page_height": float(page.height)
+                        })
+                        global_word_index += 1
+                    global_paragraph_id += 1
+                    
     except Exception as e:
         logger.error(f"pdfplumber failed to extract words: {e}")
         return None
     return all_words
+
+def detect_paragraphs_in_page(words):
+    """Detect paragraph boundaries within a page using line spacing and positioning."""
+    if not words:
+        return []
+    
+    paragraphs = []
+    current_paragraph = []
+    previous_word = None
+    
+    # Group words by approximate lines first
+    lines = group_words_by_lines(words)
+    
+    for line_idx, line_words in enumerate(lines):
+        if not line_words:
+            continue
+            
+        # Check if this line starts a new paragraph
+        is_new_paragraph = False
+        
+        if line_idx == 0:
+            # First line is always start of a paragraph
+            is_new_paragraph = True
+        else:
+            prev_line = lines[line_idx - 1] if line_idx > 0 else []
+            if prev_line:
+                # Calculate vertical spacing between lines
+                prev_line_bottom = max(word["bottom"] for word in prev_line)
+                current_line_top = min(word["top"] for word in line_words)
+                line_spacing = current_line_top - prev_line_bottom
+                
+                # Calculate average line height for context
+                current_line_height = max(word["bottom"] for word in line_words) - min(word["top"] for word in line_words)
+                
+                # Detect paragraph break based on:
+                # 1. Large vertical spacing (> 1.5x line height)
+                # 2. Significant left margin change (indentation)
+                # 3. Line starts much further right (indented paragraph)
+                if (line_spacing > current_line_height * 1.5 or
+                    (line_words[0]["x0"] > 50 and abs(line_words[0]["x0"] - prev_line[0]["x0"]) > 20)):
+                    is_new_paragraph = True
+        
+        if is_new_paragraph and current_paragraph:
+            # Mark the end of the previous paragraph
+            if current_paragraph:
+                current_paragraph[-1]["paragraph_end"] = True
+            
+            # Save the previous paragraph
+            paragraphs.append({
+                'words': current_paragraph,
+                'paragraph_id': len(paragraphs)
+            })
+            current_paragraph = []
+        
+        # Mark paragraph start
+        if is_new_paragraph and line_words:
+            line_words[0]["paragraph_start"] = True
+        
+        # Add all words from this line to current paragraph
+        current_paragraph.extend(line_words)
+    
+    # Don't forget the last paragraph
+    if current_paragraph:
+        current_paragraph[-1]["paragraph_end"] = True
+        paragraphs.append({
+            'words': current_paragraph,
+            'paragraph_id': len(paragraphs)
+        })
+    
+    return paragraphs
+
+def group_words_by_lines(words, y_tolerance=3):
+    """Group words into lines based on their vertical position."""
+    if not words:
+        return []
+    
+    # Sort words by vertical position first, then horizontal
+    sorted_words = sorted(words, key=lambda w: (w["top"], w["x0"]))
+    
+    lines = []
+    current_line = []
+    current_y = None
+    
+    for word in sorted_words:
+        word_y = word["top"]
+        
+        if current_y is None or abs(word_y - current_y) <= y_tolerance:
+            # Same line
+            current_line.append(word)
+            current_y = word_y if current_y is None else current_y
+        else:
+            # New line
+            if current_line:
+                # Sort current line by horizontal position
+                current_line.sort(key=lambda w: w["x0"])
+                lines.append(current_line)
+            current_line = [word]
+            current_y = word_y
+    
+    # Don't forget the last line
+    if current_line:
+        current_line.sort(key=lambda w: w["x0"])
+        lines.append(current_line)
+    
+    return lines
 
 async def generate_audio_edge_tts_async(text, voice_id):
     """Generate audio using Edge TTS asynchronously"""

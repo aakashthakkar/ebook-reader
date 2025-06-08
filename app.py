@@ -687,10 +687,13 @@ def filter_patterns_from_words(words, skip_patterns=True):
     if not skip_patterns or not words:
         return words, {'total_filtered': 0}
     
+    logger.info(f"Starting pattern filtering on {len(words)} words")
+    
     # Detect patterns
     patterns = detect_repeated_patterns(words)
     
     if patterns['total_filtered'] == 0:
+        logger.info("No patterns detected, returning original words")
         return words, patterns
     
     # Create a set of word indices to skip
@@ -699,14 +702,18 @@ def filter_patterns_from_words(words, skip_patterns=True):
     for pattern_type in ['headers', 'footers', 'page_numbers', 'other_repeats']:
         for line_words in patterns[pattern_type]:
             for word in line_words:
-                # Find the word index in the original words array
-                for i, original_word in enumerate(words):
-                    if (original_word['text'] == word['text'] and 
-                        original_word['page'] == word['page'] and
-                        abs(original_word['x'] - word['x']) < 1 and
-                        abs(original_word['y'] - word['y']) < 1):
-                        words_to_skip.add(i)
-                        break
+                # Use the word's original index if available, otherwise find by matching
+                if 'index' in word:
+                    words_to_skip.add(word['index'])
+                else:
+                    # Fallback: find the word index in the original words array
+                    for i, original_word in enumerate(words):
+                        if (original_word['text'] == word['text'] and 
+                            original_word['page'] == word['page'] and
+                            abs(original_word['x'] - word['x']) < 1 and
+                            abs(original_word['y'] - word['y']) < 1):
+                            words_to_skip.add(i)
+                            break
     
     # Filter words and reindex
     filtered_words = []
@@ -721,7 +728,12 @@ def filter_patterns_from_words(words, skip_patterns=True):
             new_index += 1
     
     patterns['total_filtered'] = len(words_to_skip)
-    logger.info(f"Filtered {len(words_to_skip)} words from {len(words)} total words")
+    logger.info(f"Filtered {len(words_to_skip)} words from {len(words)} total words, result: {len(filtered_words)} words")
+    
+    # Verify no duplicates in filtered words
+    indices = [w['index'] for w in filtered_words]
+    if len(indices) != len(set(indices)):
+        logger.warning(f"Duplicate indices found in filtered words! indices length: {len(indices)}, unique: {len(set(indices))}")
     
     return filtered_words, patterns
 
@@ -1027,18 +1039,30 @@ def get_user_pdf_file(file_id):
 @app.route('/api/user/pdfs/<file_id>', methods=['DELETE'])
 @token_required
 def delete_user_pdf_file(file_id):
-    """Delete PDF file for the current user"""
+    """Delete PDF file and all associated data for the current user"""
     try:
         user_id = request.current_user['id']
+        logger.info(f"DELETE request for PDF {file_id} by user {user_id}")
+        
         result = auth_service.delete_user_pdf(user_id, file_id)
         
         if 'error' in result:
+            logger.warning(f"Delete failed for PDF {file_id}: {result['error']}")
             return jsonify(result), 404
+        
+        # Log the comprehensive cleanup results
+        if 'deletion_summary' in result:
+            summary = result['deletion_summary']
+            logger.info(f"Complete PDF deletion summary for {file_id}:")
+            logger.info(f"  - Local file: {'✓' if summary['local_file_deleted'] else '✗'}")
+            logger.info(f"  - Word cache: {'✓' if summary['word_cache_deleted'] else '✗'}")
+            logger.info(f"  - Reading progress: {'✓' if summary['reading_progress_deleted'] else '✗'} ({summary['progress_records_count']} records)")
+            logger.info(f"  - Metadata: {'✓' if summary['metadata_deleted'] else '✗'}")
         
         return jsonify(result)
         
     except Exception as e:
-        logger.error(f"Error deleting PDF file: {e}")
+        logger.error(f"Error deleting PDF file {file_id}: {e}")
         return jsonify({'error': 'Failed to delete PDF file'}), 500
 
 @app.route('/api/user/pdfs/<file_id>/words', methods=['GET'])

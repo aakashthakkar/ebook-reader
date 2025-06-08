@@ -371,52 +371,96 @@ class AuthService:
                 return {'error': 'PDF not found'}, 404
             
             pdf_metadata = pdf_record.data[0]
-            logger.info(f"Deleting PDF: {pdf_metadata['filename']} for user {user_id}")
+            logger.info(f"Starting deletion of PDF: {pdf_metadata['filename']} (ID: {file_id}) for user {user_id}")
             
-            # Delete from local storage first
+            deletion_summary = {
+                'local_file_deleted': False,
+                'word_cache_deleted': False,
+                'reading_progress_deleted': False,
+                'metadata_deleted': False,
+                'progress_records_count': 0
+            }
+            
+            # 1. Delete from local storage first
             try:
-                self._delete_pdf_from_local_storage(user_id, pdf_metadata['local_filename'])
-                logger.info(f"Deleted local file: {pdf_metadata['local_filename']}")
+                if self._delete_pdf_from_local_storage(user_id, pdf_metadata['local_filename']):
+                    deletion_summary['local_file_deleted'] = True
+                    logger.info(f"✓ Deleted local file: {pdf_metadata['local_filename']}")
+                else:
+                    logger.warning(f"⚠ Local file not found: {pdf_metadata['local_filename']}")
             except Exception as storage_error:
-                logger.warning(f"Failed to delete local file: {storage_error}")
+                logger.warning(f"⚠ Failed to delete local file: {storage_error}")
                 # Continue with database cleanup even if file deletion fails
             
-            # Delete cached word data
+            # 2. Delete cached word data
             try:
-                self._delete_word_cache(user_id, file_id)
-                logger.info(f"Deleted cached word data for file: {file_id}")
+                if self._delete_word_cache(user_id, file_id):
+                    deletion_summary['word_cache_deleted'] = True
+                    logger.info(f"✓ Deleted cached word data for file: {file_id}")
+                else:
+                    logger.info(f"⚠ No word cache found for file: {file_id}")
             except Exception as cache_error:
-                logger.warning(f"Failed to delete word cache: {cache_error}")
+                logger.warning(f"⚠ Failed to delete word cache: {cache_error}")
                 # Continue with cleanup even if cache deletion fails
             
-            # Delete associated reading progress first (to avoid foreign key constraints)
+            # 3. Delete associated reading progress (CASCADE should handle this, but being explicit)
             try:
                 progress_result = self.supabase_admin.table('reading_progress').delete().eq('user_id', user_id).eq('pdf_id', file_id).execute()
-                logger.info(f"Deleted reading progress records: {len(progress_result.data) if progress_result.data else 0}")
+                progress_count = len(progress_result.data) if progress_result.data else 0
+                deletion_summary['progress_records_count'] = progress_count
+                deletion_summary['reading_progress_deleted'] = True
+                logger.info(f"✓ Deleted {progress_count} reading progress record(s)")
             except Exception as progress_error:
-                logger.warning(f"Failed to delete reading progress: {progress_error}")
+                logger.warning(f"⚠ Failed to delete reading progress: {progress_error}")
             
-            # Delete metadata from database
+            # 4. Delete metadata from database (this should cascade to remaining reading progress)
             try:
                 delete_result = self.supabase_admin.table('user_pdfs').delete().eq('user_id', user_id).eq('file_id', file_id).execute()
-                logger.info(f"Deleted PDF records: {len(delete_result.data) if delete_result.data else 0}")
+                pdf_records_deleted = len(delete_result.data) if delete_result.data else 0
                 
-                if not delete_result.data:
-                    logger.warning(f"No records were deleted for file_id: {file_id}")
+                if pdf_records_deleted > 0:
+                    deletion_summary['metadata_deleted'] = True
+                    logger.info(f"✓ Deleted {pdf_records_deleted} PDF metadata record(s)")
+                else:
+                    logger.warning(f"⚠ No PDF metadata records were deleted for file_id: {file_id}")
                     return {'error': 'No records were deleted'}, 404
                     
             except Exception as db_error:
-                logger.error(f"Failed to delete PDF metadata: {db_error}")
+                logger.error(f"✗ Failed to delete PDF metadata: {db_error}")
                 return {'error': f'Database deletion failed: {str(db_error)}'}, 500
             
-            # Verify deletion by checking if record still exists
-            verification = self.supabase_admin.table('user_pdfs').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
-            if verification.data:
-                logger.error(f"PDF still exists after deletion attempt: {file_id}")
-                return {'error': 'PDF deletion failed - record still exists'}, 500
+            # 5. Verification step - ensure complete cleanup
+            try:
+                # Check if PDF metadata still exists
+                pdf_verification = self.supabase_admin.table('user_pdfs').select('*').eq('user_id', user_id).eq('file_id', file_id).execute()
+                if pdf_verification.data:
+                    logger.error(f"✗ PDF metadata still exists after deletion attempt: {file_id}")
+                    return {'error': 'PDF deletion failed - metadata still exists'}, 500
+                
+                # Check if reading progress still exists
+                progress_verification = self.supabase_admin.table('reading_progress').select('*').eq('user_id', user_id).eq('pdf_id', file_id).execute()
+                if progress_verification.data:
+                    logger.warning(f"⚠ Orphaned reading progress still exists for file: {file_id}")
+                    # Try to clean it up
+                    orphan_cleanup = self.supabase_admin.table('reading_progress').delete().eq('pdf_id', file_id).execute()
+                    logger.info(f"✓ Cleaned up {len(orphan_cleanup.data) if orphan_cleanup.data else 0} orphaned reading progress records")
+                
+                # Run the orphaned cleanup function for good measure
+                self.supabase_admin.rpc('cleanup_orphaned_reading_progress').execute()
+                logger.info("✓ Ran orphaned reading progress cleanup function")
+                
+            except Exception as verification_error:
+                logger.warning(f"⚠ Verification step failed: {verification_error}")
+                # Don't fail the operation for verification issues
             
-            logger.info(f"Successfully deleted PDF {file_id} for user {user_id}")
-            return {'success': True, 'deleted_file': pdf_metadata['filename']}
+            logger.info(f"✓ Successfully deleted PDF {file_id} for user {user_id}")
+            logger.info(f"Deletion summary: {deletion_summary}")
+            
+            return {
+                'success': True, 
+                'deleted_file': pdf_metadata['filename'],
+                'deletion_summary': deletion_summary
+            }
             
         except Exception as e:
             logger.error(f"Error deleting user PDF: {e}")

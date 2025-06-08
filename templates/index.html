@@ -1172,7 +1172,14 @@
             }
         }
 
+        let skipPatternsChangeTimeout = null;
+        
         async function handleSkipPatternsChange(newSkipPatterns) {
+            // Debounce rapid changes
+            if (skipPatternsChangeTimeout) {
+                clearTimeout(skipPatternsChangeTimeout);
+            }
+            
             const oldSkipPatterns = skipPatterns;
             skipPatterns = newSkipPatterns;
             saveUserPreferences();
@@ -1180,11 +1187,22 @@
             
             // If we have a current file loaded and the setting changed, reload the words
             if (currentFileId && oldSkipPatterns !== newSkipPatterns) {
-                await reloadCurrentPDFWithNewSettings();
+                skipPatternsChangeTimeout = setTimeout(async () => {
+                    await reloadCurrentPDFWithNewSettings();
+                    skipPatternsChangeTimeout = null;
+                }, 300); // 300ms debounce
             }
         }
 
+        let isReloadingSettings = false;
+        
         async function reloadCurrentPDFWithNewSettings() {
+            if (isReloadingSettings) {
+                console.log('Already reloading settings, skipping duplicate request');
+                return;
+            }
+            
+            isReloadingSettings = true;
             showLoading('Applying pattern filtering...');
             
             try {
@@ -1230,6 +1248,7 @@
                 showError('Failed to apply pattern filtering setting');
             } finally {
                 hideLoading();
+                isReloadingSettings = false;
             }
         }
 

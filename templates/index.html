@@ -219,6 +219,13 @@
                         <option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
                      </select>
                 </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-sm text-slate-400">Skip Headers/Footers:</div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="sticky-skip-patterns" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <button id="sticky-stop-btn" class="p-2.5 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all"><i data-lucide="x" class="h-6 w-6"></i></button>
@@ -268,6 +275,13 @@
                         <select id="mobile-voice-select" class="bg-slate-700 text-white text-sm rounded-md px-3 py-1.5 border border-slate-600 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
                              {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
                         </select>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label for="mobile-skip-patterns" class="text-sm text-slate-400">Skip Headers/Footers</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="mobile-skip-patterns" class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
                     </div>
                 </div>
             </div>
@@ -357,6 +371,7 @@
         let currentViewingPage = 1;
         let isViewChanging = false;
         let hasUserInteracted = false;
+        let skipPatterns = false; // Pattern filtering preference
         
         // Smart Auto-Scroll State
         let autoScrollEnabled = true;
@@ -404,6 +419,7 @@
             $('sticky-stop-btn').addEventListener('click', closePlayer);
             $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
+            $('sticky-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
 
             // Top bar controls
             $('pdf-start-reading').addEventListener('click', () => playFromWord(0));
@@ -418,6 +434,7 @@
             $('mobile-sticky-stop-btn').addEventListener('click', closePlayer);
             $('mobile-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
+            $('mobile-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
             $('mobile-options-btn').addEventListener('click', () => $('mobile-options-panel').classList.toggle('hidden'));
             $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
             $('mobile-forward-btn').addEventListener('click', () => seek(10));
@@ -1155,6 +1172,67 @@
             }
         }
 
+        async function handleSkipPatternsChange(newSkipPatterns) {
+            const oldSkipPatterns = skipPatterns;
+            skipPatterns = newSkipPatterns;
+            saveUserPreferences();
+            applyPreferencesToUI();
+            
+            // If we have a current file loaded and the setting changed, reload the words
+            if (currentFileId && oldSkipPatterns !== newSkipPatterns) {
+                await reloadCurrentPDFWithNewSettings();
+            }
+        }
+
+        async function reloadCurrentPDFWithNewSettings() {
+            showLoading('Applying pattern filtering...');
+            
+            try {
+                // Fetch words with new pattern filtering setting
+                const url = new URL(`/api/user/pdfs/${currentFileId}/words`, window.location.origin);
+                url.searchParams.set('skip_patterns', skipPatterns.toString());
+                
+                const response = await makeAuthenticatedRequest(url);
+                if (!response.ok) {
+                    throw new Error('Failed to reload PDF words');
+                }
+                
+                const data = await response.json();
+                if (data.cached && data.words) {
+                    const oldWordIndex = currentChunk ? currentChunk.startIndex : 0;
+                    
+                    // Update word map
+                    wordMap = data.words;
+                    
+                    // Clear audio cache since word indices might have changed
+                    audioCache.clear();
+                    
+                    // Show feedback about filtering
+                    if (data.patterns_filtered > 0) {
+                        showSuccessMessage(`Filtered ${data.patterns_filtered} repeated words (headers/footers/page numbers)`);
+                    }
+                    
+                    // Try to maintain playback position if we were playing
+                    if (isPlaying || isPaused) {
+                        // Find the closest word position in the new filtered text
+                        const newPosition = Math.min(oldWordIndex, wordMap.length - 1);
+                        await stopPlayback();
+                        setTimeout(() => {
+                            playFromWord(newPosition);
+                        }, 100);
+                    }
+                    
+                    // Re-render the PDF to update word mappings
+                    await rerenderVisiblePages();
+                }
+            } catch (error) {
+                console.error('Error reloading PDF with new settings:', error);
+                showError('Failed to apply pattern filtering setting');
+            } finally {
+                hideLoading();
+            }
+        }
+
         function changePlaybackRate(newRate) {
             currentPlaybackRate = parseFloat(newRate);
             saveUserPreferences();
@@ -1204,18 +1282,25 @@
                 const prefs = JSON.parse(localStorage.getItem('sonic-reader-prefs'));
                 if (prefs) { 
                     selectedModel = prefs.voice || 'edge-tts-andrew'; 
-                    currentPlaybackRate = parseFloat(prefs.speed || 1.0); 
+                    currentPlaybackRate = parseFloat(prefs.speed || 1.0);
+                    skipPatterns = prefs.skipPatterns || false;
                 } else {
                     currentPlaybackRate = 1.0;
+                    skipPatterns = false;
                 }
             } catch (e) { 
                 console.error("Could not load user preferences", e); 
                 currentPlaybackRate = 1.0;
+                skipPatterns = false;
             }
         }
 
         function saveUserPreferences() { 
-            localStorage.setItem('sonic-reader-prefs', JSON.stringify({ voice: selectedModel, speed: currentPlaybackRate })); 
+            localStorage.setItem('sonic-reader-prefs', JSON.stringify({ 
+                voice: selectedModel, 
+                speed: currentPlaybackRate,
+                skipPatterns: skipPatterns
+            })); 
         }
 
         function applyPreferencesToUI() {
@@ -1229,6 +1314,10 @@
             }
             $('sticky-speed-select').value = speedValue;
             $('mobile-speed-select').value = speedValue;
+            
+            // Apply skip patterns preference
+            $('sticky-skip-patterns').checked = skipPatterns;
+            $('mobile-skip-patterns').checked = skipPatterns;
         }
 
 
@@ -1803,10 +1892,13 @@
         
         async function loadExistingPDFData(file, fileId) {
             try {
-                // First try to load cached word data
+                // First try to load cached word data with current skip patterns preference
                 console.log('Checking for cached word data...');
                 
-                const cachedResponse = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}/words`);
+                const url = new URL(`/api/user/pdfs/${fileId}/words`, window.location.origin);
+                url.searchParams.set('skip_patterns', skipPatterns.toString());
+                
+                const cachedResponse = await makeAuthenticatedRequest(url);
                 
                 if (cachedResponse.ok) {
                     const cachedData = await cachedResponse.json();
@@ -1814,6 +1906,11 @@
                     if (cachedData.cached && cachedData.words && cachedData.words.length > 0) {
                         console.log(`Using cached word data: ${cachedData.word_count} words (cached at ${cachedData.cached_at})`);
                         wordMap = cachedData.words;
+                        
+                        // Show feedback about pattern filtering if applied
+                        if (cachedData.skip_patterns_enabled && cachedData.patterns_filtered > 0) {
+                            showSuccessMessage(`Filtered ${cachedData.patterns_filtered} repeated words (headers/footers/page numbers) from ${cachedData.original_word_count} total words`);
+                        }
                         
                         showUploadLoading(false);
                         await displayPDF(file);
@@ -1833,6 +1930,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('file_id', fileId); // Include file_id for caching
+                formData.append('skip_patterns', skipPatterns.toString());
                 
                 // Call extract-words endpoint which will cache the results
                 const response = await makeAuthenticatedRequest('/api/extract-words', {
@@ -1843,6 +1941,11 @@
                 if (response.ok) {
                     const data = await response.json();
                     wordMap = data.words || [];
+                    
+                    // Show feedback about pattern filtering if applied
+                    if (data.skip_patterns_enabled && data.patterns_filtered > 0) {
+                        showSuccessMessage(`Filtered ${data.patterns_filtered} repeated words (headers/footers/page numbers) from ${data.original_word_count} total words`);
+                    }
                     
                     if (data.cached) {
                         console.log(`Used cached word data: ${data.word_count} words`);
@@ -2061,6 +2164,7 @@
         async function processPDFFile(file) {
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('skip_patterns', skipPatterns.toString());
             
             showUploadLoading(true, 'Processing PDF...');
             
@@ -2077,6 +2181,11 @@
                 
                 const data = await response.json();
                 wordMap = data.words || [];
+                
+                // Show feedback about pattern filtering if applied
+                if (data.skip_patterns_enabled && data.patterns_filtered > 0) {
+                    showSuccessMessage(`Filtered ${data.patterns_filtered} repeated words (headers/footers/page numbers) from ${data.original_word_count} total words`);
+                }
                 
                 showUploadLoading(false);
                 await displayPDF(file);

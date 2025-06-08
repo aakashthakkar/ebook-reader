@@ -8,6 +8,7 @@ A sophisticated web application that converts PDF documents into interactive aud
 - **Smart PDF Text Extraction**: Dual-engine text extraction using both `pdfplumber` and `PyPDF2` for maximum compatibility
 - **Interactive Click-to-Play**: Click any word in the extracted text to start audio playback from that exact position
 - **On-Demand Audio Generation**: Audio is generated in real-time using Microsoft Edge TTS as you navigate through the text
+- **Pattern Detection & Filtering**: Automatically detect and optionally skip repeated headers, footers, and page numbers during playback
 - **Multiple High-Quality Voices**: Choose from 6 different neural voices including Andrew, Jenny, Aria, Guy, and Christopher
 - **Real-Time Visual Feedback**: Current word highlighting and chunk-based progress tracking during playback
 
@@ -15,6 +16,7 @@ A sophisticated web application that converts PDF documents into interactive aud
 - **Modern Web Interface**: Beautiful, responsive UI built with Tailwind CSS and Lucide icons
 - **Drag & Drop Upload**: Easy PDF upload with visual feedback
 - **Floating Audio Controls**: Sticky audio player that follows you as you scroll
+- **Smart Content Filtering**: Toggle to skip repetitive content like headers and footers
 - **Large File Support**: Handles PDFs up to 100MB in size
 - **Word-Level Navigation**: Precise control over audio playback position
 
@@ -93,8 +95,24 @@ docker run -p 8000:8000 ebook-reader
 ### Web Interface
 1. **Upload PDF**: Drag and drop or click to select a PDF file
 2. **Choose Voice**: Select from 6 available neural voices (Andrew is recommended)
-3. **Interactive Reading**: Click any word to start audio playback from that position
-4. **Control Playback**: Use the floating audio controls to pause, resume, or navigate
+3. **Configure Settings**: Toggle "Skip Headers/Footers" to filter out repetitive content
+4. **Interactive Reading**: Click any word to start audio playbook from that position
+5. **Control Playback**: Use the floating audio controls to pause, resume, or navigate
+
+### Pattern Detection & Filtering
+The application includes intelligent pattern detection to improve the listening experience:
+
+- **Automatic Detection**: Identifies repeated headers, footers, and page numbers across the document
+- **Smart Filtering**: Uses spatial analysis and frequency detection to find patterns that appear on multiple pages
+- **Optional Feature**: Toggle on/off via the "Skip Headers/Footers" control in the audio player
+- **Conservative Approach**: Only filters content that appears consistently across multiple pages to avoid removing important text
+- **Real-time Feedback**: Shows how many words were filtered when the feature is enabled
+
+**Pattern Types Detected:**
+- Headers: Text in the top 15% of pages that repeats across multiple pages
+- Footers: Text in the bottom 15% of pages that repeats across multiple pages  
+- Page Numbers: Numeric text in corner positions
+- Running Headers: Consistent text in the same position across consecutive pages
 
 ### Available Voices
 - **Andrew (Neural)** - ⭐ Recommended: High-quality English male voice

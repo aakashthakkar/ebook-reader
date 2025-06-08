@@ -238,8 +238,8 @@ def has_aggressive_vertical_spacing(line_words, prev_line):
     line_spacing = current_line_top - prev_line_bottom
     
     # Calculate average line height for context
-    current_line_height = max(word["bottom"] for word in line_words) - min(word["top"] for word in line_words)
-    prev_line_height = max(word["bottom"] for word in prev_line) - min(word["top"] for word in prev_line)
+    current_line_height = max(word["bottom"] - word["top"] for word in line_words)
+    prev_line_height = max(word["bottom"] - word["top"] for word in prev_line)
     avg_line_height = (current_line_height + prev_line_height) / 2
     
     # BALANCED threshold: > 1.0x line height
@@ -350,6 +350,41 @@ def group_words_by_lines(words, y_tolerance=3):
     
     return lines
 
+def group_words_by_lines_converted(words, y_tolerance=3):
+    """Group words into lines based on their vertical position - for converted word objects."""
+    if not words:
+        return []
+    
+    # Sort words by vertical position first, then horizontal
+    sorted_words = sorted(words, key=lambda w: (w["y"], w["x"]))
+    
+    lines = []
+    current_line = []
+    current_y = None
+    
+    for word in sorted_words:
+        word_y = word["y"]
+        
+        if current_y is None or abs(word_y - current_y) <= y_tolerance:
+            # Same line
+            current_line.append(word)
+            current_y = word_y if current_y is None else current_y
+        else:
+            # New line
+            if current_line:
+                # Sort current line by horizontal position
+                current_line.sort(key=lambda w: w["x"])
+                lines.append(current_line)
+            current_line = [word]
+            current_y = word_y
+    
+    # Don't forget the last line
+    if current_line:
+        current_line.sort(key=lambda w: w["x"])
+        lines.append(current_line)
+    
+    return lines
+
 async def generate_audio_edge_tts_async(text, voice_id):
     """Generate audio using Edge TTS asynchronously"""
     try:
@@ -438,6 +473,257 @@ def is_clear_paragraph_break(prev_line, current_line):
     return ((ends_with_strong and starts_with_capital) or
             (prev_line_short and starts_with_capital and ends_with_strong) or
             starts_with_strong)
+
+def detect_repeated_patterns(words):
+    """Detect repeated patterns like headers, footers, and page numbers across the document."""
+    if not words or len(words) < 50:  # Skip for very short documents
+        return {
+            'headers': [],
+            'footers': [],
+            'page_numbers': [],
+            'other_repeats': [],
+            'total_filtered': 0
+        }
+    
+    # Group words by page
+    pages = {}
+    for word in words:
+        page = word['page']
+        if page not in pages:
+            pages[page] = []
+        pages[page].append(word)
+    
+    if len(pages) < 2:  # Need at least 2 pages to detect patterns
+        return {
+            'headers': [],
+            'footers': [],
+            'page_numbers': [],
+            'other_repeats': [],
+            'total_filtered': 0
+        }
+    
+    patterns = {
+        'headers': [],
+        'footers': [],
+        'page_numbers': [],
+        'other_repeats': []
+    }
+    
+    # Analyze each page for potential patterns
+    page_patterns = {}  # Store patterns per page for comparison
+    
+    for page_num, page_words in pages.items():
+        if not page_words:
+            continue
+            
+        # Calculate page dimensions
+        page_height = max(word['page_height'] for word in page_words)
+        page_width = max(word['page_width'] for word in page_words)
+        
+        # Define header and footer zones (top/bottom 20% of page for better coverage)
+        header_threshold = page_height * 0.20
+        footer_threshold = page_height * 0.80
+        
+        # Group words by approximate lines
+        lines = group_words_by_lines_converted(page_words)
+        
+        page_patterns[page_num] = {
+            'headers': [],
+            'footers': [],
+            'page_numbers': [],
+            'other_repeats': []
+        }
+        
+        for line in lines:
+            if not line:
+                continue
+                
+            line_text = ' '.join(word['text'] for word in line).strip()
+            line_y = sum(word['y'] for word in line) / len(line)
+            line_x = sum(word['x'] for word in line) / len(line)
+            
+            # Skip very short text (less than 3 characters) unless it's potentially a page number
+            if len(line_text) < 3 and not line_text.isdigit():
+                continue
+            
+            # Check for file paths and URLs (common in footers)
+            is_file_path = False
+            if any(indicator in line_text.lower() for indicator in ['file:///', 'http://', 'https://', '.html', '.pdf', '.com', '.org']):
+                is_file_path = True
+            elif '/' in line_text and len(line_text) > 10:  # Likely a file path
+                is_file_path = True
+            
+            if is_file_path and line_y >= footer_threshold:
+                page_patterns[page_num]['footers'].append({
+                    'text': line_text,
+                    'y': line_y,
+                    'x': line_x,
+                    'words': line,
+                    'page': page_num
+                })
+            
+            # Classify potential patterns
+            if line_y <= header_threshold:
+                # Potential header
+                page_patterns[page_num]['headers'].append({
+                    'text': line_text,
+                    'y': line_y,
+                    'x': line_x,
+                    'words': line,
+                    'page': page_num
+                })
+            elif line_y >= footer_threshold:
+                # Potential footer
+                page_patterns[page_num]['footers'].append({
+                    'text': line_text,
+                    'y': line_y,
+                    'x': line_x,
+                    'words': line,
+                    'page': page_num
+                })
+            
+            # Check for page numbers (expanded patterns)
+            is_page_number = False
+            
+            # Pattern 1: Simple digits (1, 2, 3, etc.)
+            if line_text.isdigit() and len(line_text) <= 4:
+                is_page_number = True
+            
+            # Pattern 2: "Page X" or "Page X of Y" formats
+            elif 'page' in line_text.lower() and any(char.isdigit() for char in line_text):
+                is_page_number = True
+            
+            # Pattern 3: "X of Y" format
+            elif ' of ' in line_text.lower() and any(char.isdigit() for char in line_text):
+                is_page_number = True
+            
+            # Pattern 4: Roman numerals
+            elif len(line_text) <= 10 and all(c.lower() in 'ivxlcdm ' for c in line_text.strip()):
+                is_page_number = True
+            
+            # Pattern 5: Numbers with dashes or dots (1-1, 1.1, etc.)
+            elif len(line_text) <= 15 and any(char.isdigit() for char in line_text) and \
+                 any(sep in line_text for sep in ['-', '.', '/']):
+                is_page_number = True
+            
+            if is_page_number:
+                # Check if it's in corner or edge positions (expanded areas)
+                is_edge_position = (line_x < page_width * 0.3 or line_x > page_width * 0.7) or \
+                                  (line_y < page_height * 0.15 or line_y > page_height * 0.85)
+                if is_edge_position:
+                    page_patterns[page_num]['page_numbers'].append({
+                        'text': line_text,
+                        'y': line_y,
+                        'x': line_x,
+                        'words': line,
+                        'page': page_num
+                    })
+    
+    # Find repeating patterns across pages
+    all_pages = list(pages.keys())
+    min_pages_for_pattern = max(2, len(all_pages) // 4)  # Must appear on at least 1/4 of pages or minimum 2
+    
+    # Check headers
+    header_candidates = {}
+    for page_num, page_data in page_patterns.items():
+        for header in page_data['headers']:
+            text = header['text']
+            if text not in header_candidates:
+                header_candidates[text] = []
+            header_candidates[text].append(header)
+    
+    for text, occurrences in header_candidates.items():
+        if len(occurrences) >= min_pages_for_pattern:
+            # Check if positions are similar (within 20% of page height)
+            avg_y = sum(h['y'] for h in occurrences) / len(occurrences)
+            position_consistent = all(abs(h['y'] - avg_y) < h['words'][0]['page_height'] * 0.2 for h in occurrences)
+            
+            if position_consistent:
+                patterns['headers'].extend([h['words'] for h in occurrences])
+    
+    # Check footers
+    footer_candidates = {}
+    for page_num, page_data in page_patterns.items():
+        for footer in page_data['footers']:
+            text = footer['text']
+            if text not in footer_candidates:
+                footer_candidates[text] = []
+            footer_candidates[text].append(footer)
+    
+    for text, occurrences in footer_candidates.items():
+        if len(occurrences) >= min_pages_for_pattern:
+            # Check if positions are similar
+            avg_y = sum(f['y'] for f in occurrences) / len(occurrences)
+            position_consistent = all(abs(f['y'] - avg_y) < f['words'][0]['page_height'] * 0.2 for f in occurrences)
+            
+            if position_consistent:
+                patterns['footers'].extend([f['words'] for f in occurrences])
+    
+    # Check page numbers (less strict - can appear on most pages)
+    pagenum_candidates = {}
+    for page_num, page_data in page_patterns.items():
+        for pagenum in page_data['page_numbers']:
+            # For page numbers, we group by position rather than exact text
+            position_key = f"{int(pagenum['x']/50)}_{int(pagenum['y']/50)}"  # Group by approximate position
+            if position_key not in pagenum_candidates:
+                pagenum_candidates[position_key] = []
+            pagenum_candidates[position_key].append(pagenum)
+    
+    for position_key, occurrences in pagenum_candidates.items():
+        if len(occurrences) >= min(2, len(all_pages) // 3):  # At least 2 pages or third of the pages
+            patterns['page_numbers'].extend([p['words'] for p in occurrences])
+    
+    # Flatten patterns to get word indices for filtering
+    patterns['total_filtered'] = sum(len(pattern_list) for pattern_list in patterns.values())
+    
+    logger.info(f"Pattern detection found: {len(patterns['headers'])} header lines, "
+                f"{len(patterns['footers'])} footer lines, "
+                f"{len(patterns['page_numbers'])} page number lines")
+    
+    return patterns
+
+def filter_patterns_from_words(words, skip_patterns=True):
+    """Filter out detected patterns from the words array if skip_patterns is True."""
+    if not skip_patterns or not words:
+        return words, {'total_filtered': 0}
+    
+    # Detect patterns
+    patterns = detect_repeated_patterns(words)
+    
+    if patterns['total_filtered'] == 0:
+        return words, patterns
+    
+    # Create a set of word indices to skip
+    words_to_skip = set()
+    
+    for pattern_type in ['headers', 'footers', 'page_numbers', 'other_repeats']:
+        for line_words in patterns[pattern_type]:
+            for word in line_words:
+                # Find the word index in the original words array
+                for i, original_word in enumerate(words):
+                    if (original_word['text'] == word['text'] and 
+                        original_word['page'] == word['page'] and
+                        abs(original_word['x'] - word['x']) < 1 and
+                        abs(original_word['y'] - word['y']) < 1):
+                        words_to_skip.add(i)
+                        break
+    
+    # Filter words and reindex
+    filtered_words = []
+    new_index = 0
+    
+    for i, word in enumerate(words):
+        if i not in words_to_skip:
+            word_copy = word.copy()
+            word_copy['index'] = new_index
+            word_copy['original_index'] = i  # Keep track of original position
+            filtered_words.append(word_copy)
+            new_index += 1
+    
+    patterns['total_filtered'] = len(words_to_skip)
+    logger.info(f"Filtered {len(words_to_skip)} words from {len(words)} total words")
+    
+    return filtered_words, patterns
 
 # Authentication Routes
 @app.route('/')
@@ -533,11 +819,22 @@ def upload_file():
         if not file.filename.lower().endswith('.pdf'):
             return jsonify({'error': 'Please upload a PDF file'}), 400
         
+        # Get pattern filtering preference from form data
+        skip_patterns = request.form.get('skip_patterns', 'false').lower() == 'true'
+        
         file_bytes = file.read()
         words_data = extract_words_from_pdf_bytes(file_bytes)
         
         if words_data is None:
             return jsonify({'error': 'Could not extract words from PDF'}), 500
+        
+        # Apply pattern filtering if requested
+        original_word_count = len(words_data)
+        pattern_info = {'total_filtered': 0}
+        
+        if skip_patterns:
+            words_data, pattern_info = filter_patterns_from_words(words_data, skip_patterns=True)
+            logger.info(f"Pattern filtering: {pattern_info['total_filtered']} words filtered from {original_word_count}")
         
         # Save PDF to user's storage
         user_id = request.current_user['id']
@@ -560,6 +857,9 @@ def upload_file():
             'words': words_data,
             'filename': filename,
             'word_count': len(words_data),
+            'original_word_count': original_word_count,
+            'patterns_filtered': pattern_info['total_filtered'],
+            'skip_patterns_enabled': skip_patterns,
             'file_id': file_id,
             'cached': file_id is not None
         })
@@ -744,13 +1044,31 @@ def delete_user_pdf_file(file_id):
 @app.route('/api/user/pdfs/<file_id>/words', methods=['GET'])
 @token_required
 def get_pdf_words(file_id):
-    """Get cached word data for a PDF"""
+    """Get cached word data for a PDF with optional pattern filtering"""
     try:
         user_id = request.current_user['id']
+        skip_patterns = request.args.get('skip_patterns', 'false').lower() == 'true'
+        
         result = auth_service.get_cached_words(user_id, file_id)
         
         if 'error' in result:
             return jsonify(result), 500
+        
+        # Apply pattern filtering if requested
+        if skip_patterns and result.get('cached') and 'words' in result:
+            original_word_count = len(result['words'])
+            filtered_words, pattern_info = filter_patterns_from_words(result['words'], skip_patterns=True)
+            
+            result['words'] = filtered_words
+            result['word_count'] = len(filtered_words)
+            result['original_word_count'] = original_word_count
+            result['patterns_filtered'] = pattern_info['total_filtered']
+            result['skip_patterns_enabled'] = True
+            
+            logger.info(f"Pattern filtering applied: {pattern_info['total_filtered']} words filtered from {original_word_count}")
+        else:
+            result['skip_patterns_enabled'] = False
+            result['patterns_filtered'] = 0
         
         return jsonify(result)
         
@@ -761,9 +1079,10 @@ def get_pdf_words(file_id):
 @app.route('/api/extract-words', methods=['POST'])
 @token_required
 def extract_words_only():
-    """Extract words from PDF and cache the results"""
+    """Extract words from PDF and cache the results with optional pattern filtering"""
     try:
         user_id = request.current_user['id']
+        skip_patterns = request.form.get('skip_patterns', 'false').lower() == 'true'
         
         # Check if file_id is provided for caching
         file_id = request.form.get('file_id')
@@ -773,9 +1092,22 @@ def extract_words_only():
             cached_result = auth_service.get_cached_words(user_id, file_id)
             if cached_result['cached']:
                 logger.info(f"Using cached word data for file {file_id}")
+                
+                words_data = cached_result['words']
+                original_word_count = len(words_data)
+                pattern_info = {'total_filtered': 0}
+                
+                # Apply pattern filtering if requested
+                if skip_patterns:
+                    words_data, pattern_info = filter_patterns_from_words(words_data, skip_patterns=True)
+                    logger.info(f"Pattern filtering on cached data: {pattern_info['total_filtered']} words filtered from {original_word_count}")
+                
                 return jsonify({
-                    'words': cached_result['words'],
-                    'word_count': cached_result['word_count'],
+                    'words': words_data,
+                    'word_count': len(words_data),
+                    'original_word_count': original_word_count,
+                    'patterns_filtered': pattern_info['total_filtered'],
+                    'skip_patterns_enabled': skip_patterns,
                     'cached': True,
                     'cached_at': cached_result['cached_at']
                 })
@@ -797,15 +1129,28 @@ def extract_words_only():
         if words_data is None:
             return jsonify({'error': 'Could not extract words from PDF'}), 500
         
-        # Cache the results if file_id is provided
+        # Apply pattern filtering if requested
+        original_word_count = len(words_data)
+        pattern_info = {'total_filtered': 0}
+        
+        if skip_patterns:
+            words_data, pattern_info = filter_patterns_from_words(words_data, skip_patterns=True)
+            logger.info(f"Pattern filtering on new extraction: {pattern_info['total_filtered']} words filtered from {original_word_count}")
+        
+        # Cache the results if file_id is provided (cache the original unfiltered data)
         if file_id:
-            cache_result = auth_service.save_word_cache(user_id, file_id, words_data)
+            # Always cache the original unfiltered data so we can apply different filtering later
+            original_words = extract_words_from_pdf_bytes(file_bytes) if skip_patterns else words_data
+            cache_result = auth_service.save_word_cache(user_id, file_id, original_words)
             if 'error' not in cache_result:
-                logger.info(f"Cached word data for file {file_id}: {len(words_data)} words")
+                logger.info(f"Cached word data for file {file_id}: {len(original_words)} words")
         
         return jsonify({
             'words': words_data,
             'word_count': len(words_data),
+            'original_word_count': original_word_count,
+            'patterns_filtered': pattern_info['total_filtered'],
+            'skip_patterns_enabled': skip_patterns,
             'cached': False
         })
     

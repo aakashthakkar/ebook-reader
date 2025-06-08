@@ -27,6 +27,8 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PDF_STORAGE_PATH=/app/pdf_storage
+ENV MUSIC_STORAGE_PATH=/app/music_storage
 
 # Install architecture-specific packages
 RUN apt-get update && \
@@ -68,15 +70,20 @@ RUN python -m pip install --upgrade pip setuptools wheel && \
         pip install --no-cache-dir -r requirements.txt; \
     fi
 
-# Create non-root user
+# Create storage directories and non-root user
 RUN useradd -m -u 1000 appuser && \
+    mkdir -p /app/pdf_storage /app/music_storage && \
     chown -R appuser:appuser /app && \
-    chmod -R 755 /app
+    chmod -R 755 /app && \
+    chmod 755 /app/pdf_storage /app/music_storage
 
 USER appuser
 
 # Expose port
 EXPOSE 8000
+
+# Create volumes for storage
+VOLUME ["/app/pdf_storage", "/app/music_storage"]
 
 # Labels
 LABEL maintainer="aakashthakkar" \

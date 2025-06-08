@@ -25,6 +25,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PDF_STORAGE_PATH=/app/pdf_storage
+ENV MUSIC_STORAGE_PATH=/app/music_storage
 
 # Update package lists and install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -64,12 +65,12 @@ RUN echo "Cache bust value: ${CACHEBUST}" && \
 RUN python -m pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
-# Create PDF storage directory and set up user
+# Create storage directories and set up user
 RUN useradd -m -u 1000 appuser && \
-    mkdir -p /app/pdf_storage && \
+    mkdir -p /app/pdf_storage /app/music_storage && \
     chown -R appuser:appuser /app && \
     chmod -R 755 /app && \
-    chmod 755 /app/pdf_storage
+    chmod 755 /app/pdf_storage /app/music_storage
 
 # Switch to non-root user
 USER appuser
@@ -77,8 +78,8 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Create volume for PDF storage (can be mounted to host)
-VOLUME ["/app/pdf_storage"]
+# Create volumes for storage (can be mounted to host)
+VOLUME ["/app/pdf_storage", "/app/music_storage"]
 
 # Add labels for better image management
 LABEL maintainer="aakashthakkar" \

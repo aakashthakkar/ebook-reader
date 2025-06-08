@@ -9,11 +9,13 @@ services:
       - "8000:8000"
     volumes:
       - ${PDF_STORAGE_HOST_PATH:-./pdf_storage}:/app/pdf_storage
+      - ${MUSIC_STORAGE_HOST_PATH:-./music_storage}:/app/music_storage
     environment:
       - HOST=0.0.0.0
       - PORT=8000
       - DEBUG=true
       - PDF_STORAGE_PATH=/app/pdf_storage
+      - MUSIC_STORAGE_PATH=/app/music_storage
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-change-me}
       - JWT_ACCESS_TOKEN_EXPIRES=${JWT_ACCESS_TOKEN_EXPIRES:-3600}

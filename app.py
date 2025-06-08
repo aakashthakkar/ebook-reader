@@ -548,11 +548,20 @@ def upload_file():
             logger.warning(f"Failed to save PDF to storage: {pdf_result['error']}")
             # Continue anyway for now, just log the error
         
+        # Cache the extracted words if PDF was saved successfully
+        file_id = None
+        if 'pdf' in pdf_result and 'file_id' in pdf_result['pdf']:
+            file_id = pdf_result['pdf']['file_id']
+            cache_result = auth_service.save_word_cache(user_id, file_id, words_data)
+            if 'error' not in cache_result:
+                logger.info(f"Cached word data for uploaded file {file_id}: {len(words_data)} words")
+        
         return jsonify({
             'words': words_data,
             'filename': filename,
             'word_count': len(words_data),
-            'file_id': pdf_result.get('pdf', {}).get('file_id') if 'pdf' in pdf_result else None
+            'file_id': file_id,
+            'cached': file_id is not None
         })
     
     except Exception as e:
@@ -737,10 +746,13 @@ def delete_user_pdf_file(file_id):
 def get_pdf_words(file_id):
     """Get cached word data for a PDF"""
     try:
-        # For now, we'll return empty since we don't cache words yet
-        # In a full implementation, you'd cache the word extraction results
-        # This endpoint allows the frontend to check if cached data exists
-        return jsonify({'words': [], 'cached': False})
+        user_id = request.current_user['id']
+        result = auth_service.get_cached_words(user_id, file_id)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
         
     except Exception as e:
         logger.error(f"Error getting PDF words: {e}")
@@ -749,8 +761,26 @@ def get_pdf_words(file_id):
 @app.route('/api/extract-words', methods=['POST'])
 @token_required
 def extract_words_only():
-    """Extract words from PDF without saving the file"""
+    """Extract words from PDF and cache the results"""
     try:
+        user_id = request.current_user['id']
+        
+        # Check if file_id is provided for caching
+        file_id = request.form.get('file_id')
+        
+        # First check if we have cached data for this file
+        if file_id:
+            cached_result = auth_service.get_cached_words(user_id, file_id)
+            if cached_result['cached']:
+                logger.info(f"Using cached word data for file {file_id}")
+                return jsonify({
+                    'words': cached_result['words'],
+                    'word_count': cached_result['word_count'],
+                    'cached': True,
+                    'cached_at': cached_result['cached_at']
+                })
+        
+        # No cache or file_id not provided, extract words from uploaded file
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
         
@@ -767,9 +797,16 @@ def extract_words_only():
         if words_data is None:
             return jsonify({'error': 'Could not extract words from PDF'}), 500
         
+        # Cache the results if file_id is provided
+        if file_id:
+            cache_result = auth_service.save_word_cache(user_id, file_id, words_data)
+            if 'error' not in cache_result:
+                logger.info(f"Cached word data for file {file_id}: {len(words_data)} words")
+        
         return jsonify({
             'words': words_data,
-            'word_count': len(words_data)
+            'word_count': len(words_data),
+            'cached': False
         })
     
     except Exception as e:

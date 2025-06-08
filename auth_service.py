@@ -2,6 +2,7 @@ import os
 import jwt
 import bcrypt
 import uuid
+import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from functools import wraps
@@ -41,6 +42,94 @@ class AuthService:
         user_path = os.path.join(self.local_storage_path, user_id)
         os.makedirs(user_path, exist_ok=True)
         return user_path
+
+    def _get_cache_file_path(self, user_id: str, file_id: str):
+        """Get the cache file path for PDF word data"""
+        user_storage_path = self._get_user_storage_path(user_id)
+        return os.path.join(user_storage_path, f"{file_id}_words.json")
+
+    def _save_word_cache(self, user_id: str, file_id: str, word_data: list):
+        """Save extracted word data to cache file"""
+        try:
+            cache_file_path = self._get_cache_file_path(user_id, file_id)
+            cache_data = {
+                'word_data': word_data,
+                'cached_at': datetime.utcnow().isoformat(),
+                'word_count': len(word_data)
+            }
+            
+            with open(cache_file_path, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, ensure_ascii=False, indent=2)
+            
+            logger.info(f"Cached word data for file {file_id}: {len(word_data)} words")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving word cache: {e}")
+            return False
+
+    def _load_word_cache(self, user_id: str, file_id: str):
+        """Load cached word data if available"""
+        try:
+            cache_file_path = self._get_cache_file_path(user_id, file_id)
+            
+            if not os.path.exists(cache_file_path):
+                return None
+            
+            with open(cache_file_path, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+            
+            logger.info(f"Loaded cached word data for file {file_id}: {cache_data.get('word_count', 0)} words")
+            return cache_data
+        except Exception as e:
+            logger.error(f"Error loading word cache: {e}")
+            return None
+
+    def _delete_word_cache(self, user_id: str, file_id: str):
+        """Delete cached word data"""
+        try:
+            cache_file_path = self._get_cache_file_path(user_id, file_id)
+            if os.path.exists(cache_file_path):
+                os.remove(cache_file_path)
+                logger.info(f"Deleted word cache for file {file_id}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Error deleting word cache: {e}")
+            return False
+
+    def get_cached_words(self, user_id: str, file_id: str):
+        """Get cached word data for a PDF file"""
+        try:
+            cache_data = self._load_word_cache(user_id, file_id)
+            if cache_data:
+                return {
+                    'success': True,
+                    'words': cache_data['word_data'],
+                    'cached': True,
+                    'cached_at': cache_data['cached_at'],
+                    'word_count': cache_data['word_count']
+                }
+            else:
+                return {
+                    'success': True,
+                    'words': [],
+                    'cached': False
+                }
+        except Exception as e:
+            logger.error(f"Error getting cached words: {e}")
+            return {'error': str(e)}, 500
+
+    def save_word_cache(self, user_id: str, file_id: str, word_data: list):
+        """Save word data to cache"""
+        try:
+            success = self._save_word_cache(user_id, file_id, word_data)
+            if success:
+                return {'success': True, 'cached_words': len(word_data)}
+            else:
+                return {'error': 'Failed to cache word data'}, 500
+        except Exception as e:
+            logger.error(f"Error saving word cache: {e}")
+            return {'error': str(e)}, 500
 
     def _save_pdf_to_local_storage(self, user_id: str, filename: str, file_data: bytes):
         """Save PDF file to local storage"""
@@ -291,6 +380,14 @@ class AuthService:
             except Exception as storage_error:
                 logger.warning(f"Failed to delete local file: {storage_error}")
                 # Continue with database cleanup even if file deletion fails
+            
+            # Delete cached word data
+            try:
+                self._delete_word_cache(user_id, file_id)
+                logger.info(f"Deleted cached word data for file: {file_id}")
+            except Exception as cache_error:
+                logger.warning(f"Failed to delete word cache: {cache_error}")
+                # Continue with cleanup even if cache deletion fails
             
             # Delete associated reading progress first (to avoid foreign key constraints)
             try:

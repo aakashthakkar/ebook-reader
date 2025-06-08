@@ -1803,15 +1803,38 @@
         
         async function loadExistingPDFData(file, fileId) {
             try {
-                // For now, we need to reprocess the PDF to get word data
-                // since we don't cache words yet. This will be optimized later.
-                console.log('Reprocessing PDF to extract words...');
+                // First try to load cached word data
+                console.log('Checking for cached word data...');
                 
-                // Extract words from the PDF file
+                const cachedResponse = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}/words`);
+                
+                if (cachedResponse.ok) {
+                    const cachedData = await cachedResponse.json();
+                    
+                    if (cachedData.cached && cachedData.words && cachedData.words.length > 0) {
+                        console.log(`Using cached word data: ${cachedData.word_count} words (cached at ${cachedData.cached_at})`);
+                        wordMap = cachedData.words;
+                        
+                        showUploadLoading(false);
+                        await displayPDF(file);
+                        
+                        // Set the current file ID for progress tracking
+                        currentFileId = fileId;
+                        
+                        // Load reading progress and resume from last position
+                        await loadReadingProgress(fileId);
+                        return;
+                    }
+                }
+                
+                // No cache available, extract words from the PDF file
+                console.log('No cached data found, extracting words from PDF...');
+                
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('file_id', fileId); // Include file_id for caching
                 
-                // Call a special endpoint that only extracts words without saving
+                // Call extract-words endpoint which will cache the results
                 const response = await makeAuthenticatedRequest('/api/extract-words', {
                     method: 'POST',
                     body: formData
@@ -1820,6 +1843,12 @@
                 if (response.ok) {
                     const data = await response.json();
                     wordMap = data.words || [];
+                    
+                    if (data.cached) {
+                        console.log(`Used cached word data: ${data.word_count} words`);
+                    } else {
+                        console.log(`Extracted and cached word data: ${data.word_count} words`);
+                    }
                 } else {
                     throw new Error('Failed to extract words from PDF');
                 }

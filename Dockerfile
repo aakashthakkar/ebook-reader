@@ -26,6 +26,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PDF_STORAGE_PATH=/app/pdf_storage
 ENV MUSIC_STORAGE_PATH=/app/music_storage
+ENV UPLOAD_FOLDER=/tmp
 
 # Update package lists and install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

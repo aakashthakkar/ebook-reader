@@ -25,7 +25,7 @@ class Config:
     SUPABASE_SERVICE_ROLE_KEY = os.getenv('SUPABASE_SERVICE_ROLE_KEY', '')
     
     # File upload settings
-    UPLOAD_FOLDER = tempfile.gettempdir()  # Use system temp directory
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', '/tmp')  # Use /tmp by default, configurable via env var
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB max file size
     
     # Text processing settings

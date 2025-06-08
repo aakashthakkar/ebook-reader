@@ -16,6 +16,7 @@ services:
       - DEBUG=true
       - PDF_STORAGE_PATH=/app/pdf_storage
       - MUSIC_STORAGE_PATH=/app/music_storage
+      - UPLOAD_FOLDER=/tmp
       - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-me}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt-secret-change-me}
       - JWT_ACCESS_TOKEN_EXPIRES=${JWT_ACCESS_TOKEN_EXPIRES:-3600}
@@ -53,6 +54,7 @@ services:
       - DEBUG=false
       - PDF_STORAGE_PATH=/app/pdf_storage
       - MUSIC_STORAGE_PATH=/app/music_storage
+      - UPLOAD_FOLDER=/tmp
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-change-me}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-jwt-secret-change-me}
       - JWT_ACCESS_TOKEN_EXPIRES=${JWT_ACCESS_TOKEN_EXPIRES:-3600}

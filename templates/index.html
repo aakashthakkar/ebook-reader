@@ -75,11 +75,11 @@
         }
     </style>
 </head>
-<body class="overscroll-none">
+<body class="bg-slate-950 text-slate-200 selection:bg-slate-700">
     <main id="app-container" class="transition-all duration-300">
         <div id="upload-container">
-            <header class="absolute top-0 left-0 right-0 p-4">
-                <div class="flex items-center justify-between max-w-5xl mx-auto">
+            <header class="absolute top-0 left-0 right-0 z-20 bg-slate-950/50 backdrop-blur-lg border-b border-slate-800/50">
+                <div class="flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16">
                      <div class="flex items-center space-x-3">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-blue-500">
                             <path d="M2.75 12C2.75 11.5858 3.08579 11.25 3.5 11.25H4.25C4.66421 11.25 5 11.5858 5 12V16C5 16.4142 4.66421 16.75 4.25 16.75H3.5C3.08579 16.75 2.75 16.4142 2.75 16V12Z" fill="currentColor" />
@@ -88,21 +88,24 @@
                             <path d="M14.75 6C14.75 5.58579 15.0858 5.25 15.5 5.25H16.25C16.6642 5.25 17 5.58579 17 6V16C17 16.4142 16.6642 16.75 16.25 16.75H15.5C15.0858 16.75 14.75 16.4142 14.75 16V6Z" fill="currentColor" />
                             <path d="M18.75 9C18.75 8.58579 19.0858 8.25 19.5 8.25H20.25C20.6642 8.25 21 8.58579 21 9V16C21 16.4142 20.6642 16.75 20.25 16.75H19.5C19.0858 16.75 18.75 16.4142 18.75 16V9Z" fill="currentColor" />
                         </svg>
-                        <h1 class="text-xl font-bold">SonicRead</h1>
+                        <h1 class="text-xl font-bold text-slate-100">SonicRead</h1>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <span id="user-welcome" class="text-sm text-slate-400"></span>
-                        <button id="logout-btn" class="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg transition-all">
+                    <div class="flex items-center space-x-4">
+                        <span id="user-welcome" class="hidden sm:block text-sm text-slate-400"></span>
+                        <button id="logout-btn" class="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 hover:bg-slate-700/80 text-white text-sm rounded-lg transition-colors border border-slate-700">
                             <i data-lucide="log-out" class="h-4 w-4"></i>
-                            <span>Logout</span>
+                            <span class="hidden sm:inline">Logout</span>
                         </button>
                     </div>
                 </div>
             </header>
-            <div class="min-h-screen flex items-center justify-center p-4 pt-32 sm:pt-24">
-                <div class="text-center w-full max-w-2xl">
-                    <h2 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-4">Listen to your PDFs, hands-free.</h2>
-                    <p class="text-lg md:text-xl text-slate-400 mb-8 max-w-xl mx-auto">Upload any PDF and have it read out to you with perfectly synced text highlighting.</p>
+            <div class="min-h-screen flex flex-col items-center justify-center p-4 pt-24">
+                <div class="text-center w-full max-w-4xl mx-auto">
+                    <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4">
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Listen to your PDFs,</span>
+                        <span class="text-slate-200">hands-free.</span>
+                    </h2>
+                    <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto">Upload any document and have it read out to you with perfectly synced, real-time text highlighting.</p>
 
                     <!-- User's PDF Files Section -->
                     <div id="user-pdfs-section" class="mb-12">
@@ -116,7 +119,7 @@
                                 <h3 class="text-2xl font-bold text-slate-100">Your PDF Library</h3>
                                 <span class="text-sm text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full" id="pdf-count">0 documents</span>
                             </div>
-                            <div id="pdfs-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <div id="pdfs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 <!-- PDF items will be inserted here -->
                             </div>
                         </div>
@@ -133,105 +136,93 @@
                     <!-- Upload Sections Container -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <!-- PDF Upload Card -->
-                        <div class="group relative overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-blue-500/5 to-cyan-600/10 rounded-2xl"></div>
-                            <div class="relative bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 h-full transition-all duration-300 hover:border-blue-500/50 hover:bg-slate-800/60">
-                                <div class="flex items-center gap-3 mb-6">
-                                    <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-                                        <i data-lucide="file-text" class="h-5 w-5 text-blue-400"></i>
+                        <div class="group relative overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 transition-all duration-300 hover:border-blue-500/50 hover:bg-slate-800/60">
+                            <div class="flex items-center gap-4 mb-6">
+                                <div class="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+                                    <i data-lucide="file-text" class="h-6 w-6 text-blue-400"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-slate-100">Upload PDF</h3>
+                                    <p class="text-sm text-slate-400">Add documents to your library</p>
+                                </div>
+                            </div>
+                            
+                            <div id="upload-area" class="upload-area border-2 border-dashed border-slate-600/60 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500/60 transition-all duration-300">
+                                <div class="flex flex-col items-center space-y-3">
+                                    <div class="w-14 h-14 bg-slate-800/50 rounded-2xl flex items-center justify-center group-hover:bg-blue-500/10 transition-all duration-300">
+                                        <i data-lucide="upload-cloud" class="h-7 w-7 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
                                     </div>
                                     <div>
-                                        <h3 class="text-lg font-semibold text-slate-100">Upload PDF</h3>
-                                        <p class="text-sm text-slate-400">Add documents to your library</p>
+                                        <h4 class="font-medium text-slate-200 mb-1">Drop your PDF here</h4>
+                                        <p class="text-sm text-slate-400">or <span class="text-blue-400 font-medium hover:text-blue-300 transition-colors">click to browse</span></p>
                                     </div>
+                                    <p class="text-xs text-slate-500">Supports PDF files up to 500MB</p>
                                 </div>
-                                
-                                <div id="upload-area" class="upload-area border-2 border-dashed border-slate-600/60 rounded-xl p-8 text-center cursor-pointer group-hover:border-blue-500/60 transition-all duration-300">
-                                    <div class="flex flex-col items-center space-y-4">
-                                        <div class="w-16 h-16 bg-slate-800/50 rounded-2xl flex items-center justify-center group-hover:bg-blue-500/20 transition-all duration-300">
-                                            <i data-lucide="upload-cloud" class="h-8 w-8 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-lg font-medium text-slate-200 mb-1">Drop your PDF here</h4>
-                                            <p class="text-sm text-slate-400">or <span class="text-blue-400 font-medium hover:text-blue-300 transition-colors">click to browse</span></p>
-                                        </div>
-                                        <p class="text-xs text-slate-500">Supports PDF files up to 500MB</p>
-                                    </div>
-                                    <input type="file" id="pdf-input" accept=".pdf" class="hidden">
-                                </div>
+                                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
                             </div>
                         </div>
 
                         <!-- Background Music Upload Card -->
-                        <div class="group relative overflow-hidden">
-                            <div class="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-purple-500/5 to-pink-600/10 rounded-2xl"></div>
-                            <div class="relative bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 h-full transition-all duration-300 hover:border-purple-500/50 hover:bg-slate-800/60">
-                                <div class="flex items-center justify-between mb-6">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
-                                            <i data-lucide="music" class="h-5 w-5 text-purple-400"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="text-lg font-semibold text-slate-100">Background Music</h3>
-                                            <p class="text-sm text-slate-400">Enhance your reading experience</p>
-                                        </div>
-                                    </div>
-                                    <button id="upload-music-btn" class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-xl transition-all duration-200 hover:scale-105">
-                                        <i data-lucide="upload" class="h-4 w-4"></i>
-                                        Upload
-                                    </button>
-                                </div>
-                                
-                                <!-- YouTube Download Instructions -->
-                                <div class="mb-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-xl">
-                                    <div class="flex items-start gap-3">
-                                        <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
-                                            <i data-lucide="info" class="h-4 w-4 text-blue-400"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="text-sm font-semibold text-blue-200 mb-2">Get music from YouTube</h4>
-                                            <p class="text-xs text-blue-300/90 mb-2">
-                                                Download MP3 audio from YouTube videos at: 
-                                                <a href="https://ytmp3.cc/mZ9P" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline font-medium transition-colors">
-                                                    ytmp3.cc/mZ9P
-                                                </a>
-                                            </p>
-                                            <p class="text-xs text-blue-300/75">
-                                                Convert any YouTube URL to MP3, then upload here for ambient background music.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div id="music-list-loading" class="text-center py-6">
-                                    <div class="w-5 h-5 mx-auto spinner border-2 border-purple-400 border-t-transparent rounded-full"></div>
-                                    <p class="text-sm text-slate-400 mt-3">Loading music...</p>
-                                </div>
-                                
-                                <div id="music-list-container" class="hidden">
-                                    <div class="mb-3">
-                                        <h4 class="text-sm font-medium text-slate-300">Uploaded Music</h4>
-                                    </div>
-                                    <div id="music-list" class="space-y-3 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50">
-                                        <!-- Music items will be inserted here -->
-                                    </div>
-                                </div>
-                                
-                                <div id="music-list-empty" class="hidden text-center py-6">
-                                    <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <div class="group relative overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 transition-all duration-300 hover:border-purple-500/50 hover:bg-slate-800/60">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
                                         <i data-lucide="music" class="h-6 w-6 text-purple-400"></i>
                                     </div>
-                                    <p class="text-sm text-slate-400">No background music yet</p>
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-slate-100">Background Music</h3>
+                                        <p class="text-sm text-slate-400">Enhance your experience</p>
+                                    </div>
                                 </div>
+                                <button id="upload-music-btn" class="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-all duration-200 hover:scale-105 shadow-sm shadow-black/20">
+                                    <i data-lucide="upload" class="h-4 w-4"></i>
+                                    Upload
+                                </button>
+                            </div>
+                            
+                            <!-- YouTube Download Instructions -->
+                            <div class="mb-4 p-3 bg-blue-900/20 border border-blue-700/30 rounded-xl">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <i data-lucide="info" class="h-4 w-4 text-blue-400"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-blue-200 mb-1">Get music from YouTube</h4>
+                                        <p class="text-xs text-blue-300/80">
+                                            Use a service like <a href="https://ytmp3.cc/mZ9P" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:text-blue-300 underline font-medium">ytmp3.cc</a> to download audio, then upload here.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="music-list-loading" class="text-center py-6">
+                                <div class="w-5 h-5 mx-auto spinner border-2 border-purple-400 border-t-transparent rounded-full"></div>
+                                <p class="text-sm text-slate-400 mt-3">Loading music...</p>
+                            </div>
+                            
+                            <div id="music-list-container" class="hidden">
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-medium text-slate-300">Uploaded Music</h4>
+                                </div>
+                                <div id="music-list" class="space-y-2 max-h-36 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800/50 pr-2">
+                                    <!-- Music items will be inserted here -->
+                                </div>
+                            </div>
+                            
+                            <div id="music-list-empty" class="hidden text-center py-6">
+                                <div class="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <i data-lucide="music" class="h-6 w-6 text-purple-400"></i>
+                                </div>
+                                <p class="text-sm text-slate-400">No background music yet</p>
                             </div>
                         </div>
                     </div>
 
-
-                    
-                    <div id="upload-loading" class="hidden mt-8">
-                        <div class="w-8 h-8 mx-auto spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
-                        <p class="text-lg font-medium text-blue-300 mt-4" id="upload-loading-text">Processing PDF...</p>
+                    <div id="upload-loading-text" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
+                        <div class="bg-slate-800 p-8 rounded-2xl shadow-lg flex flex-col items-center gap-4">
+                            <div class="w-8 h-8 spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
+                            <p class="text-lg font-medium text-blue-300" id="upload-loading-text-inner">Processing PDF...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1453,26 +1444,31 @@
         }
         
         async function resetToUpload() {
-            // Save progress before exiting PDF (only if audio was played)
-            if (currentFileId && wordMap.length > 0 && currentChunk) {
-                await saveReadingProgress();
+            showUploadLoading('Exiting...');
+            try {
+                // Save progress before exiting PDF (only if audio was played)
+                if (currentFileId && wordMap.length > 0 && currentChunk) {
+                    await saveReadingProgress();
+                }
+                stopProgressTracking();
+                
+                closePlayer();
+                $('pdf-display').classList.add('hidden');
+                $('upload-container').classList.remove('hidden');
+                document.body.classList.remove('reading');
+                $('app-container').style.paddingBottom = '0px';
+                resetPdfState();
+                $('pdf-input').value = '';
+                
+                // Reload the PDF library to show updated progress
+                await loadUserPDFs();
+                
+                // Clear current file ID and saved progress when exiting
+                currentFileId = null;
+                savedProgress = null;
+            } finally {
+                hideUploadLoading();
             }
-            stopProgressTracking();
-            
-            closePlayer();
-            $('pdf-display').classList.add('hidden');
-            $('upload-container').classList.remove('hidden');
-            document.body.classList.remove('reading');
-            $('app-container').style.paddingBottom = '0px';
-            resetPdfState();
-            $('pdf-input').value = '';
-            
-            // Reload the PDF library to show updated progress
-            await loadUserPDFs();
-            
-            // Clear current file ID and saved progress when exiting
-            currentFileId = null;
-            savedProgress = null;
         }
         
         function resetPdfState() {
@@ -1928,7 +1924,7 @@
         
         async function createPDFCard(pdf) {
             const card = document.createElement('div');
-            card.className = 'pdf-item group relative overflow-hidden bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 hover:border-blue-500/50 hover:bg-slate-800/70 transition-all duration-300 cursor-pointer h-[300px]';
+            card.className = 'pdf-item group relative overflow-hidden bg-slate-900/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-4 hover:border-blue-500/50 hover:bg-slate-800/70 transition-all duration-300 cursor-pointer';
             
             const createdDate = new Date(pdf.created_at).toLocaleDateString();
             const fileSize = formatFileSize(pdf.file_size || 0);
@@ -1968,51 +1964,49 @@
                 <!-- Gradient overlay -->
                 <div class="absolute inset-0 bg-gradient-to-br from-blue-600/5 via-transparent to-purple-600/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 
+                <!-- Delete Button -->
+                <button class="delete-pdf-btn absolute top-3 right-3 z-10 w-7 h-7 flex items-center justify-center text-slate-500 bg-slate-800/50 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-all duration-200 opacity-0 group-hover:opacity-100" 
+                        data-pdf-id="${pdf.file_id}" title="Delete PDF">
+                    <i data-lucide="trash-2" class="h-3.5 w-3.5"></i>
+                </button>
+
                 <!-- New Badge -->
-                ${progressPercentage === 0 ? '<div class="absolute top-4 right-4 z-10"><span class="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full font-medium">New</span></div>' : ''}
+                ${progressPercentage === 0 ? '<div class="absolute top-4 left-4 z-10"><span class="text-xs bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2 py-1 rounded-full font-medium">New</span></div>' : ''}
                 
-                <div class="relative h-full flex flex-col">
+                <div class="relative h-full flex flex-col text-center">
                     <!-- Thumbnail Section -->
-                    <div class="text-center mb-4">
-                        <div class="relative w-20 h-28 bg-blue-500/20 rounded-xl overflow-hidden flex items-center justify-center mx-auto mb-3">
+                    <div class="mb-4">
+                        <div class="relative w-24 h-32 bg-slate-800/70 rounded-lg overflow-hidden flex items-center justify-center mx-auto shadow-md">
                             ${thumbnailElement}
                             ${progressPercentage > 0 ? `
-                                <div class="absolute -top-1 -right-1 w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700">
-                                    <span class="text-[8px] font-bold text-blue-400">${Math.round(progressPercentage)}%</span>
+                                <div class="absolute bottom-1 right-1 px-1.5 py-0.5 bg-slate-900/70 backdrop-blur-sm rounded-md flex items-center justify-center border border-slate-700">
+                                    <span class="text-xs font-bold text-blue-300">${Math.round(progressPercentage)}%</span>
                                 </div>
                             ` : ''}
                         </div>
                     </div>
                     
-                    <!-- Title Section -->
-                    <div class="text-center mb-3 flex-shrink-0">
-                        <h4 class="text-sm font-semibold text-slate-100 mb-1 leading-tight" title="${escapeHtml(pdf.filename)}">${escapeHtml(truncatedFilename)}</h4>
-                        <p class="text-xs text-slate-400">${createdDate}</p>
-                    </div>
-                    
-                    <!-- Progress Section -->
-                    <div class="mb-3 flex-1 min-h-0">
-                        <div class="text-center mb-2">
-                            <span class="text-xs font-medium text-slate-300">${progressDisplay}</span>
+                    <!-- Flexible Content Section -->
+                    <div class="flex flex-col flex-1 justify-between">
+                        <!-- Title & Progress -->
+                        <div>
+                            <h4 class="font-semibold text-slate-100 mb-1 leading-tight" title="${escapeHtml(pdf.filename)}">${escapeHtml(truncatedFilename)}</h4>
+                            <p class="text-xs text-slate-400 mb-3">${createdDate}</p>
+
+                            <div class="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden" title="${progressDisplay}">
+                                <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500" 
+                                     style="width: ${progressPercentage}%"></div>
+                            </div>
                         </div>
-                        <div class="w-full bg-slate-700/50 rounded-full h-1.5 overflow-hidden">
-                            <div class="bg-gradient-to-r from-blue-500 to-cyan-500 h-1.5 rounded-full transition-all duration-500" 
-                                 style="width: ${progressPercentage}%"></div>
+
+                        <!-- Action Button -->
+                        <div class="mt-4">
+                            <button class="load-pdf-btn w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40" 
+                                    data-pdf-id="${pdf.file_id}">
+                                <i data-lucide="play" class="h-4 w-4"></i>
+                                <span>${progressPercentage > 0 ? 'Continue Reading' : 'Start Reading'}</span>
+                            </button>
                         </div>
-                    </div>
-                    
-                    <!-- Actions Section - always at bottom -->
-                    <div class="mt-auto flex-shrink-0">
-                        <button class="load-pdf-btn w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 mb-2" 
-                                data-pdf-id="${pdf.file_id}">
-                            <i data-lucide="play" class="h-3 w-3"></i>
-                            ${progressPercentage > 0 ? 'Continue' : 'Start Reading'}
-                        </button>
-                        <button class="delete-pdf-btn w-full text-slate-400 hover:text-red-400 py-1 text-xs hover:bg-red-500/10 rounded transition-all duration-200 opacity-0 group-hover:opacity-100" 
-                                data-pdf-id="${pdf.file_id}" title="Delete PDF">
-                            <i data-lucide="trash-2" class="h-3 w-3 inline mr-1"></i>
-                            Delete
-                        </button>
                     </div>
                 </div>
             `;
@@ -2861,6 +2855,24 @@
                 errorSection.classList.add('hidden');
                 errorSection.className = 'hidden fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-red-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]';
             }, 3000);
+        }
+
+        // PDF Loading Indicator
+        function showUploadLoading(text) {
+            const loadingEl = $('upload-loading-text');
+            const loadingTextEl = $('upload-loading-text-inner');
+            if (loadingEl && loadingTextEl) {
+                // If text is not a valid string, show a default message
+                loadingTextEl.textContent = (typeof text === 'string' && text.length > 0) ? text : 'Loading...';
+                loadingEl.classList.remove('hidden');
+            }
+        }
+
+        function hideUploadLoading() {
+            const loadingEl = $('upload-loading-text');
+            if (loadingEl) {
+                loadingEl.classList.add('hidden');
+            }
         }
     </script>
 </body>

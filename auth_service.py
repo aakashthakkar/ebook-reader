@@ -695,6 +695,222 @@ class AuthService:
             logger.error(f"Error deleting background music: {e}")
             return {'error': str(e)}, 500
 
+    def get_user_preferences(self, user_id: str):
+        """Get user's default preferences"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get user preferences from database
+            prefs_result = self.supabase_admin.table('user_preferences').select('*').eq('user_id', user_id).execute()
+            
+            if prefs_result.data:
+                prefs = prefs_result.data[0]
+                return {
+                    'success': True,
+                    'preferences': {
+                        'voice_model': prefs['voice_model'],
+                        'voice_speed': float(prefs['voice_speed']),
+                        'skip_patterns': prefs['skip_patterns']
+                    }
+                }
+            else:
+                # Create default preferences for the user
+                default_prefs = {
+                    'user_id': user_id,
+                    'voice_model': 'edge-tts-andrew',
+                    'voice_speed': 1.0,
+                    'skip_patterns': False
+                }
+                
+                insert_result = self.supabase_admin.table('user_preferences').insert(default_prefs).execute()
+                
+                return {
+                    'success': True,
+                    'preferences': {
+                        'voice_model': default_prefs['voice_model'],
+                        'voice_speed': default_prefs['voice_speed'],
+                        'skip_patterns': default_prefs['skip_patterns']
+                    }
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting user preferences: {e}")
+            return {'error': str(e)}, 500
+
+    def update_user_preferences(self, user_id: str, preferences: dict):
+        """Update user's default preferences"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Validate preferences
+            update_data = {}
+            if 'voice_model' in preferences:
+                update_data['voice_model'] = preferences['voice_model']
+            if 'voice_speed' in preferences:
+                speed = float(preferences['voice_speed'])
+                if speed < 0.1 or speed > 5.0:
+                    return {'error': 'Voice speed must be between 0.1 and 5.0'}, 400
+                update_data['voice_speed'] = speed
+            if 'skip_patterns' in preferences:
+                update_data['skip_patterns'] = bool(preferences['skip_patterns'])
+            
+            if not update_data:
+                return {'error': 'No valid preferences provided'}, 400
+            
+            # Update preferences in database
+            result = self.supabase_admin.table('user_preferences').update(update_data).eq('user_id', user_id).execute()
+            
+            if not result.data:
+                # If no rows were updated, create new preferences
+                new_prefs = {
+                    'user_id': user_id,
+                    'voice_model': update_data.get('voice_model', 'edge-tts-andrew'),
+                    'voice_speed': update_data.get('voice_speed', 1.0),
+                    'skip_patterns': update_data.get('skip_patterns', False)
+                }
+                result = self.supabase_admin.table('user_preferences').insert(new_prefs).execute()
+            
+            return {'success': True, 'updated': len(result.data)}
+            
+        except Exception as e:
+            logger.error(f"Error updating user preferences: {e}")
+            return {'error': str(e)}, 500
+
+    def get_book_preferences(self, user_id: str, pdf_id: str):
+        """Get book-specific preferences"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Get book preferences from database
+            prefs_result = self.supabase_admin.table('book_preferences').select('*').eq('user_id', user_id).eq('pdf_id', pdf_id).execute()
+            
+            if prefs_result.data:
+                prefs = prefs_result.data[0]
+                return {
+                    'success': True,
+                    'preferences': {
+                        'voice_model': prefs['voice_model'],
+                        'voice_speed': float(prefs['voice_speed']) if prefs['voice_speed'] is not None else None,
+                        'skip_patterns': prefs['skip_patterns'],
+                        'background_music_enabled': prefs['background_music_enabled'],
+                        'background_music_file_id': prefs['background_music_file_id'],
+                        'background_music_volume': float(prefs['background_music_volume']) if prefs['background_music_volume'] is not None else 0.10
+                    }
+                }
+            else:
+                return {
+                    'success': True,
+                    'preferences': None  # No book-specific preferences
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting book preferences: {e}")
+            return {'error': str(e)}, 500
+
+    def update_book_preferences(self, user_id: str, pdf_id: str, preferences: dict):
+        """Update book-specific preferences"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Validate preferences
+            update_data = {'user_id': user_id, 'pdf_id': pdf_id}
+            
+            if 'voice_model' in preferences:
+                update_data['voice_model'] = preferences['voice_model']
+            if 'voice_speed' in preferences:
+                if preferences['voice_speed'] is not None:
+                    speed = float(preferences['voice_speed'])
+                    if speed < 0.1 or speed > 5.0:
+                        return {'error': 'Voice speed must be between 0.1 and 5.0'}, 400
+                    update_data['voice_speed'] = speed
+                else:
+                    update_data['voice_speed'] = None
+            if 'skip_patterns' in preferences:
+                update_data['skip_patterns'] = bool(preferences['skip_patterns']) if preferences['skip_patterns'] is not None else None
+            if 'background_music_enabled' in preferences:
+                update_data['background_music_enabled'] = bool(preferences['background_music_enabled'])
+            if 'background_music_file_id' in preferences:
+                update_data['background_music_file_id'] = preferences['background_music_file_id']
+            if 'background_music_volume' in preferences:
+                volume = float(preferences['background_music_volume'])
+                if volume < 0.0 or volume > 1.0:
+                    return {'error': 'Background music volume must be between 0.0 and 1.0'}, 400
+                update_data['background_music_volume'] = volume
+            
+            # Try to update existing record
+            result = self.supabase_admin.table('book_preferences').update(update_data).eq('user_id', user_id).eq('pdf_id', pdf_id).execute()
+            
+            if not result.data:
+                # If no rows were updated, create new book preferences
+                result = self.supabase_admin.table('book_preferences').insert(update_data).execute()
+            
+            return {'success': True, 'updated': len(result.data)}
+            
+        except Exception as e:
+            logger.error(f"Error updating book preferences: {e}")
+            return {'error': str(e)}, 500
+
+    def delete_book_preferences(self, user_id: str, pdf_id: str):
+        """Delete book-specific preferences (revert to user defaults)"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Delete book preferences from database
+            result = self.supabase_admin.table('book_preferences').delete().eq('user_id', user_id).eq('pdf_id', pdf_id).execute()
+            
+            return {'success': True, 'deleted': len(result.data)}
+            
+        except Exception as e:
+            logger.error(f"Error deleting book preferences: {e}")
+            return {'error': str(e)}, 500
+
+    def get_effective_preferences(self, user_id: str, pdf_id: str):
+        """Get effective preferences for a book (combines user defaults with book overrides)"""
+        try:
+            if not self.supabase:
+                return {'error': 'Authentication service not configured'}, 500
+            
+            # Use the database function to get effective preferences
+            result = self.supabase_admin.rpc('get_effective_preferences', {'user_uuid': user_id, 'pdf_file_id': pdf_id}).execute()
+            
+            if result.data:
+                prefs = result.data
+                return {
+                    'success': True,
+                    'preferences': {
+                        'voice_model': prefs['voice_model'],
+                        'voice_speed': float(prefs['voice_speed']),
+                        'skip_patterns': prefs['skip_patterns'],
+                        'background_music_enabled': prefs['background_music_enabled'],
+                        'background_music_file_id': prefs['background_music_file_id'],
+                        'background_music_volume': float(prefs['background_music_volume']),
+                        'has_book_overrides': prefs['has_book_overrides']
+                    }
+                }
+            else:
+                # Fallback to defaults if function fails
+                return {
+                    'success': True,
+                    'preferences': {
+                        'voice_model': 'edge-tts-andrew',
+                        'voice_speed': 1.0,
+                        'skip_patterns': False,
+                        'background_music_enabled': False,
+                        'background_music_file_id': None,
+                        'background_music_volume': 0.10,
+                        'has_book_overrides': False
+                    }
+                }
+                
+        except Exception as e:
+            logger.error(f"Error getting effective preferences: {e}")
+            return {'error': str(e)}, 500
+
 # Global auth service instance
 auth_service = AuthService()
 

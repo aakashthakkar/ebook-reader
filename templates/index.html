@@ -133,6 +133,9 @@
                         </div>
                     </div>
 
+
+
+
                     <!-- Upload Sections Container -->
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <!-- PDF Upload Card -->
@@ -222,6 +225,101 @@
                         <div class="bg-slate-800 p-8 rounded-2xl shadow-lg flex flex-col items-center gap-4">
                             <div class="w-8 h-8 spinner border-4 border-blue-400 border-t-transparent rounded-full"></div>
                             <p class="text-lg font-medium text-blue-300" id="upload-loading-text-inner">Processing PDF...</p>
+                        </div>
+                    </div>
+
+                    <!-- Default Voice Settings Section -->
+                    <div class="max-w-2xl mx-auto mt-16">
+                        <div class="text-center mb-8">
+                            <h3 class="text-2xl font-bold text-slate-100 mb-4">Default Voice Settings</h3>
+                            <p class="text-slate-400">Configure your preferred voice and speed. These settings will be applied to all new PDFs by default.</p>
+                        </div>
+                        
+                        <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                                <!-- Voice Selection -->
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+                                            <i data-lucide="mic" class="h-5 w-5 text-blue-400"></i>
+                                        </div>
+                                        <div>
+                                            <label for="default-voice-select" class="text-sm font-medium text-slate-200">Voice</label>
+                                            <p class="text-xs text-slate-400">Choose your preferred narrator</p>
+                                        </div>
+                                    </div>
+                                    <div class="relative">
+                                        <select id="default-voice-select" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 pr-10 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
+                                            {% for key, model in models.items() %}
+                                            <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Speed Selection -->
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <div class="w-10 h-10 bg-green-500/10 rounded-xl flex items-center justify-center border border-green-500/20">
+                                            <i data-lucide="gauge" class="h-5 w-5 text-green-400"></i>
+                                        </div>
+                                        <div>
+                                            <label for="default-speed-select" class="text-sm font-medium text-slate-200">Speed</label>
+                                            <p class="text-xs text-slate-400">Set your reading pace</p>
+                                        </div>
+                                    </div>
+                                    <div class="relative">
+                                        <select id="default-speed-select" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 pr-10 border border-slate-700 focus:border-green-500 focus:ring-0 outline-none appearance-none">
+                                            <option value="0.5">0.5x (Very Slow)</option>
+                                            <option value="0.75">0.75x (Slow)</option>
+                                            <option value="1.0" selected>1.0x (Normal)</option>
+                                            <option value="1.25">1.25x (Fast)</option>
+                                            <option value="1.5">1.5x (Faster)</option>
+                                            <option value="2.0">2.0x (Very Fast)</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Skip Patterns Option -->
+                            <div class="mb-8 p-4 bg-slate-800/30 rounded-xl border border-slate-700/50">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20">
+                                            <i data-lucide="skip-forward" class="h-5 w-5 text-purple-400"></i>
+                                        </div>
+                                        <div>
+                                            <label for="default-skip-patterns" class="text-sm font-medium text-slate-200">Skip Headers/Footers</label>
+                                            <p class="text-xs text-slate-400">Automatically skip page numbers and headers</p>
+                                        </div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" id="default-skip-patterns" class="sr-only peer">
+                                        <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <button id="test-voice-btn" class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-green-600/20">
+                                    <i data-lucide="play-circle" class="h-5 w-5"></i>
+                                    <span id="test-voice-btn-text">Test Voice & Speed</span>
+                                </button>
+                                <button id="save-default-prefs-btn" class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 hover:scale-105 shadow-lg shadow-blue-600/20">
+                                    <i data-lucide="save" class="h-5 w-5"></i>
+                                    Save as Default
+                                </button>
+                            </div>
+                            
+                            <!-- Test audio player -->
+                            <audio id="test-audio-player" style="display:none;"></audio>
                         </div>
                     </div>
                 </div>
@@ -476,7 +574,7 @@
                     // Store user data and initialize the app
                     localStorage.setItem('user_data', JSON.stringify(data.user));
                     displayUserInfo(data.user);
-                    initializeApp();
+                    await initializeApp();
                 } else {
                     window.location.href = '/login';
                 }
@@ -486,9 +584,9 @@
             }
         }
 
-        function initializeApp() {
+        async function initializeApp() {
             lucide.createIcons();
-            loadUserPreferences();
+            await loadUserPreferences();
             applyPreferencesToUI();
             setupEventListeners();
             initializeWebAudioPlayer();
@@ -621,6 +719,13 @@
                     togglePlayPause(); 
                 }
             });
+
+            // Default preferences controls
+            $('test-voice-btn').addEventListener('click', testVoiceAndSpeed);
+            $('save-default-prefs-btn').addEventListener('click', saveDefaultPreferences);
+            $('default-voice-select').addEventListener('change', updateDefaultPreferencesUI);
+            $('default-speed-select').addEventListener('change', updateDefaultPreferencesUI);
+            $('default-skip-patterns').addEventListener('change', updateDefaultPreferencesUI);
         }
 
         // --- PDF PROCESSING & RENDERING --- //
@@ -1165,6 +1270,11 @@
                 // Start progress tracking only after successful start
                 startProgressTracking();
                 
+                // Start background music if enabled
+                if (backgroundMusicEnabled && currentBackgroundMusic) {
+                    await playBackgroundMusic();
+                }
+                
                 const nextChunkStartIndex = chunk.endIndex + 1;
                 if (nextChunkStartIndex < wordMap.length) {
                     preloadNextChunk(nextChunkStartIndex);
@@ -1476,30 +1586,127 @@
             if ($('pdf-viewer')) $('pdf-viewer').innerHTML = '';
         }
 
-        function loadUserPreferences() {
+        async function loadUserPreferences() {
             try {
-                const prefs = JSON.parse(localStorage.getItem('sonic-reader-prefs'));
-                if (prefs) { 
-                    selectedModel = prefs.voice || 'edge-tts-andrew'; 
-                    currentPlaybackRate = parseFloat(prefs.speed || 1.0);
-                    skipPatterns = prefs.skipPatterns || false;
+                // First check if we have localStorage preferences to migrate
+                const localPrefs = localStorage.getItem('sonic-reader-prefs');
+                if (localPrefs) {
+                    console.log("Found localStorage preferences, migrating to database...");
+                    try {
+                        const response = await fetch('/api/user/preferences/migrate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                            },
+                            body: JSON.stringify({
+                                localStorage_prefs: JSON.parse(localPrefs)
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            console.log("Successfully migrated preferences to database");
+                            localStorage.removeItem('sonic-reader-prefs');
+                        }
+                    } catch (migrationError) {
+                        console.error("Failed to migrate preferences:", migrationError);
+                    }
+                }
+                
+                // Load preferences from database
+                const response = await fetch('/api/user/preferences', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.preferences) {
+                        selectedModel = data.preferences.voice_model || 'edge-tts-andrew';
+                        currentPlaybackRate = data.preferences.voice_speed || 1.0;
+                        skipPatterns = data.preferences.skip_patterns || false;
+                        console.log("Loaded user preferences from database:", data.preferences);
+                    } else {
+                        setDefaultPreferences();
+                    }
                 } else {
-                    currentPlaybackRate = 1.0;
-                    skipPatterns = false;
+                    console.error("Failed to load preferences from database");
+                    setDefaultPreferences();
                 }
             } catch (e) { 
                 console.error("Could not load user preferences", e); 
-                currentPlaybackRate = 1.0;
-                skipPatterns = false;
+                setDefaultPreferences();
             }
         }
 
-        function saveUserPreferences() { 
-            localStorage.setItem('sonic-reader-prefs', JSON.stringify({ 
-                voice: selectedModel, 
-                speed: currentPlaybackRate,
-                skipPatterns: skipPatterns
-            })); 
+        function setDefaultPreferences() {
+            selectedModel = 'edge-tts-andrew';
+            currentPlaybackRate = 1.0;
+            skipPatterns = false;
+        }
+
+        async function saveUserPreferences() { 
+            try {
+                if (currentFileId) {
+                    // Save as book-specific preferences if a PDF is open
+                    await saveBookPreferences();
+                } else {
+                    // Save as user default preferences
+                    const response = await fetch('/api/user/preferences', {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                        },
+                        body: JSON.stringify({
+                            voice_model: selectedModel,
+                            voice_speed: currentPlaybackRate,
+                            skip_patterns: skipPatterns
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log("User preferences saved to database");
+                    } else {
+                        console.error("Failed to save preferences to database");
+                    }
+                }
+            } catch (e) {
+                console.error("Error saving preferences:", e);
+            }
+        }
+
+        async function saveBookPreferences() {
+            if (!currentFileId) return;
+            
+            try {
+                const preferences = {
+                    voice_model: selectedModel,
+                    voice_speed: currentPlaybackRate,
+                    skip_patterns: skipPatterns,
+                    background_music_enabled: backgroundMusicEnabled,
+                    background_music_file_id: currentBackgroundMusic,
+                    background_music_volume: backgroundMusicVolume
+                };
+
+                const response = await fetch(`/api/user/preferences/book/${currentFileId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    },
+                    body: JSON.stringify(preferences)
+                });
+                
+                if (response.ok) {
+                    console.log("Book preferences saved to database");
+                } else {
+                    console.error("Failed to save book preferences to database");
+                }
+            } catch (e) {
+                console.error("Error saving book preferences:", e);
+            }
         }
 
         function applyPreferencesToUI() {
@@ -1517,6 +1724,9 @@
             // Apply skip patterns preference
             $('sticky-skip-patterns').checked = skipPatterns;
             $('mobile-skip-patterns').checked = skipPatterns;
+            
+            // Apply preferences to default preferences UI on homepage
+            applyPreferencesToDefaultUI();
         }
 
 
@@ -1744,10 +1954,72 @@
         
         let savedProgress = null; // Store saved progress globally
         
+        async function loadBookPreferences(fileId) {
+            try {
+                console.log('Loading book preferences for fileId:', fileId);
+                const response = await makeAuthenticatedRequest(`/api/user/preferences/effective/${fileId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.preferences) {
+                        console.log('Book preferences loaded:', data.preferences);
+                        
+                        // Apply book preferences
+                        selectedModel = data.preferences.voice_model || 'edge-tts-andrew';
+                        currentPlaybackRate = data.preferences.voice_speed || 1.0;
+                        skipPatterns = data.preferences.skip_patterns || false;
+                        
+                        // Apply background music preferences
+                        if (data.preferences.background_music_enabled && data.preferences.background_music_file_id) {
+                            backgroundMusicEnabled = true;
+                            currentBackgroundMusic = data.preferences.background_music_file_id;
+                            backgroundMusicVolume = data.preferences.background_music_volume || 0.10;
+                            
+                            // Update UI
+                            $('background-music-toggle').checked = true;
+                            $('mobile-background-music-toggle').checked = true;
+                            $('background-music-select').value = currentBackgroundMusic;
+                            $('mobile-background-music-select').value = currentBackgroundMusic;
+                            setBackgroundMusicVolume(backgroundMusicVolume * 100); // Convert to percentage
+                            
+                            // Show the background music controls
+                            toggleBackgroundMusic(true);
+                        } else {
+                            backgroundMusicEnabled = false;
+                            currentBackgroundMusic = null;
+                            $('background-music-toggle').checked = false;
+                            $('mobile-background-music-toggle').checked = false;
+                            $('background-music-select').value = '';
+                            $('mobile-background-music-select').value = '';
+                            
+                            // Hide the background music controls
+                            toggleBackgroundMusic(false);
+                        }
+                        
+                        // Update UI to reflect preferences
+                        applyPreferencesToUI();
+                        
+                        // Show indicator if book has custom preferences
+                        if (data.preferences.has_book_overrides) {
+                            console.log('Book has custom preferences');
+                            // Could add a visual indicator here
+                        }
+                    }
+                } else {
+                    console.error('Failed to load book preferences');
+                }
+            } catch (error) {
+                console.error('Error loading book preferences:', error);
+            }
+        }
+
         async function loadReadingProgress(fileId) {
             try {
                 currentFileId = fileId;
                 console.log('loadReadingProgress called for fileId:', fileId);
+                
+                // Load book preferences first
+                await loadBookPreferences(fileId);
+                
                 const response = await makeAuthenticatedRequest(`/api/reading-progress?pdf_id=${fileId}`);
                 if (response.ok) {
                     const data = await response.json();
@@ -2673,6 +2945,11 @@
                 mobileIndicator.classList.add('hidden');
                 stopBackgroundMusic();
             }
+            
+            // Save preferences
+            if (currentFileId) {
+                saveBookPreferences();
+            }
         }
 
         async function selectBackgroundMusic(fileId) {
@@ -2682,6 +2959,11 @@
                 // Sync both dropdowns
                 $('background-music-select').value = '';
                 $('mobile-background-music-select').value = '';
+                
+                // Save preferences
+                if (currentFileId) {
+                    await saveBookPreferences();
+                }
                 return;
             }
 
@@ -2699,6 +2981,11 @@
             // If TTS is currently playing and background music is enabled, start playing
             if (backgroundMusicEnabled && isPlaying) {
                 await playBackgroundMusic();
+            }
+            
+            // Save preferences
+            if (currentFileId) {
+                await saveBookPreferences();
             }
         }
 
@@ -2803,6 +3090,11 @@
             $('mobile-background-volume-text').textContent = `${volume}%`;
             
             updateAudioVolumes();
+            
+            // Save preferences
+            if (currentFileId) {
+                saveBookPreferences();
+            }
         }
 
         function updateAudioVolumes() {
@@ -2855,6 +3147,184 @@
                 errorSection.classList.add('hidden');
                 errorSection.className = 'hidden fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-red-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]';
             }, 3000);
+        }
+
+        // --- DEFAULT PREFERENCES FUNCTIONS --- //
+        let isTestingVoice = false;
+        
+        async function testVoiceAndSpeed() {
+            const testBtn = $('test-voice-btn');
+            const testBtnText = $('test-voice-btn-text');
+            const testAudio = $('test-audio-player');
+            
+            // If currently testing, stop the audio
+            if (isTestingVoice) {
+                stopTestAudio();
+                return;
+            }
+            
+            // Get selected voice and speed
+            const selectedVoice = $('default-voice-select').value;
+            const selectedSpeed = parseFloat($('default-speed-select').value);
+            
+            // Sample text for testing
+            const sampleText = "Hello! This is a preview of how your selected voice and speed will sound when reading your PDFs. You can adjust these settings anytime in your preferences.";
+            
+            try {
+                // Update button state
+                isTestingVoice = true;
+                testBtn.disabled = true;
+                testBtnText.textContent = 'Generating...';
+                testBtn.className = testBtn.className.replace('bg-green-600 hover:bg-green-700', 'bg-gray-600 hover:bg-gray-700');
+                
+                // Generate audio with selected voice
+                const response = await makeAuthenticatedRequest('/api/generate-audio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sampleText, model: selectedVoice })
+                });
+
+                if (!response.ok) {
+                    throw new Error((await response.json()).error || 'Failed to generate test audio');
+                }
+                
+                const data = await response.json();
+                const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(blob);
+                
+                // Set up audio player
+                testAudio.src = audioUrl;
+                testAudio.playbackRate = selectedSpeed;
+                
+                // Update button to show playing state (clickable to stop)
+                testBtn.disabled = false;
+                testBtnText.textContent = 'Stop Test';
+                testBtn.className = testBtn.className.replace('bg-gray-600 hover:bg-gray-700', 'bg-red-600 hover:bg-red-700');
+                
+                // Play the audio
+                await testAudio.play();
+                
+                // Reset button when audio ends naturally
+                testAudio.onended = () => {
+                    stopTestAudio();
+                };
+                
+                // Store the blob URL for cleanup
+                testAudio.blobUrl = audioUrl;
+                
+            } catch (error) {
+                console.error('Error testing voice:', error);
+                showError('Failed to test voice: ' + error.message);
+                stopTestAudio();
+            }
+        }
+        
+        function stopTestAudio() {
+            const testBtn = $('test-voice-btn');
+            const testBtnText = $('test-voice-btn-text');
+            const testAudio = $('test-audio-player');
+            
+            // Stop and reset audio
+            testAudio.pause();
+            testAudio.currentTime = 0;
+            
+            // Clean up blob URL if it exists
+            if (testAudio.blobUrl) {
+                URL.revokeObjectURL(testAudio.blobUrl);
+                testAudio.blobUrl = null;
+            }
+            
+            // Reset audio source
+            testAudio.src = '';
+            
+            // Reset button state
+            isTestingVoice = false;
+            testBtn.disabled = false;
+            testBtnText.textContent = 'Test Voice & Speed';
+            testBtn.className = testBtn.className.replace('bg-red-600 hover:bg-red-700', 'bg-green-600 hover:bg-green-700').replace('bg-gray-600 hover:bg-gray-700', 'bg-green-600 hover:bg-green-700');
+        }
+
+        async function saveDefaultPreferences() {
+            const saveBtn = $('save-default-prefs-btn');
+            const selectedVoice = $('default-voice-select').value;
+            const selectedSpeed = parseFloat($('default-speed-select').value);
+            const selectedSkipPatterns = $('default-skip-patterns').checked;
+            
+            try {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i> Saving...';
+                
+                // Update local preferences
+                selectedModel = selectedVoice;
+                currentPlaybackRate = selectedSpeed;
+                skipPatterns = selectedSkipPatterns;
+                
+                // Save to database
+                const response = await makeAuthenticatedRequest('/api/user/preferences', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        voice_model: selectedVoice,
+                        voice_speed: selectedSpeed,
+                        skip_patterns: selectedSkipPatterns
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save preferences');
+                }
+                
+                // Update UI controls to reflect saved preferences
+                selectedModel = selectedVoice;
+                currentPlaybackRate = selectedSpeed;
+                
+                // Sync with PDF player controls if they exist
+                const desktopVoiceSelect = $('sticky-voice-select');
+                const mobileVoiceSelect = $('mobile-voice-select');
+                const desktopSpeedSelect = $('sticky-speed-select');
+                const mobileSpeedSelect = $('mobile-speed-select');
+                
+                if (desktopVoiceSelect) desktopVoiceSelect.value = selectedVoice;
+                if (mobileVoiceSelect) mobileVoiceSelect.value = selectedVoice;
+                if (desktopSpeedSelect) desktopSpeedSelect.value = selectedSpeed;
+                if (mobileSpeedSelect) mobileSpeedSelect.value = selectedSpeed;
+                
+                showSuccessMessage('Default preferences saved successfully!');
+                
+            } catch (error) {
+                console.error('Error saving preferences:', error);
+                showError('Failed to save preferences: ' + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i data-lucide="save" class="h-4 w-4"></i> Save as Default';
+                lucide.createIcons(); // Refresh icons
+            }
+        }
+
+        function updateDefaultPreferencesUI() {
+            // This function can be used to provide real-time feedback 
+            // as user changes selections (future enhancement)
+        }
+
+        function applyPreferencesToDefaultUI() {
+            // Apply loaded user preferences to the default preferences UI
+            try {
+                const defaultVoiceSelect = $('default-voice-select');
+                const defaultSpeedSelect = $('default-speed-select');
+                const defaultSkipPatterns = $('default-skip-patterns');
+                
+                if (defaultVoiceSelect && selectedModel) {
+                    defaultVoiceSelect.value = selectedModel;
+                }
+                if (defaultSpeedSelect && currentPlaybackRate) {
+                    defaultSpeedSelect.value = currentPlaybackRate;
+                }
+                if (defaultSkipPatterns) {
+                    defaultSkipPatterns.checked = skipPatterns;
+                }
+            } catch (error) {
+                console.log('Default preferences UI not available (user might be in PDF view)');
+            }
         }
 
         // PDF Loading Indicator

@@ -1296,5 +1296,162 @@ def delete_background_music_file(file_id):
         logger.error(f"Error deleting background music file {file_id}: {e}")
         return jsonify({'error': 'Failed to delete background music file'}), 500
 
+# --- USER PREFERENCES ENDPOINTS --- #
+
+@app.route('/api/user/preferences', methods=['GET'])
+@token_required
+def get_user_preferences():
+    """Get user's default preferences"""
+    try:
+        user_id = request.current_user['id']
+        result = auth_service.get_user_preferences(user_id)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting user preferences: {e}")
+        return jsonify({'error': 'Failed to get user preferences'}), 500
+
+@app.route('/api/user/preferences', methods=['PUT'])
+@token_required
+def update_user_preferences():
+    """Update user's default preferences"""
+    try:
+        user_id = request.current_user['id']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No preferences data provided'}), 400
+        
+        result = auth_service.update_user_preferences(user_id, data)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error updating user preferences: {e}")
+        return jsonify({'error': 'Failed to update user preferences'}), 500
+
+@app.route('/api/user/preferences/book/<pdf_id>', methods=['GET'])
+@token_required
+def get_book_preferences(pdf_id):
+    """Get book-specific preferences"""
+    try:
+        user_id = request.current_user['id']
+        result = auth_service.get_book_preferences(user_id, pdf_id)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting book preferences: {e}")
+        return jsonify({'error': 'Failed to get book preferences'}), 500
+
+@app.route('/api/user/preferences/book/<pdf_id>', methods=['PUT'])
+@token_required
+def update_book_preferences(pdf_id):
+    """Update book-specific preferences"""
+    try:
+        user_id = request.current_user['id']
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No preferences data provided'}), 400
+        
+        result = auth_service.update_book_preferences(user_id, pdf_id, data)
+        
+        if 'error' in result:
+            return jsonify(result), 400
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error updating book preferences: {e}")
+        return jsonify({'error': 'Failed to update book preferences'}), 500
+
+@app.route('/api/user/preferences/book/<pdf_id>', methods=['DELETE'])
+@token_required
+def delete_book_preferences(pdf_id):
+    """Delete book-specific preferences (revert to user defaults)"""
+    try:
+        user_id = request.current_user['id']
+        result = auth_service.delete_book_preferences(user_id, pdf_id)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error deleting book preferences: {e}")
+        return jsonify({'error': 'Failed to delete book preferences'}), 500
+
+@app.route('/api/user/preferences/effective/<pdf_id>', methods=['GET'])
+@token_required
+def get_effective_preferences(pdf_id):
+    """Get effective preferences for a book (combines user defaults with book overrides)"""
+    try:
+        user_id = request.current_user['id']
+        result = auth_service.get_effective_preferences(user_id, pdf_id)
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting effective preferences: {e}")
+        return jsonify({'error': 'Failed to get effective preferences'}), 500
+
+@app.route('/api/user/preferences/migrate', methods=['POST'])
+@token_required
+def migrate_localStorage_preferences():
+    """Migrate preferences from localStorage to database (one-time migration helper)"""
+    try:
+        user_id = request.current_user['id']
+        data = request.get_json()
+        
+        if not data or 'localStorage_prefs' not in data:
+            return jsonify({'error': 'No localStorage preferences provided'}), 400
+        
+        localStorage_prefs = data['localStorage_prefs']
+        
+        # Extract preferences from localStorage format
+        preferences = {}
+        if 'voice' in localStorage_prefs:
+            preferences['voice_model'] = localStorage_prefs['voice']
+        if 'speed' in localStorage_prefs:
+            preferences['voice_speed'] = float(localStorage_prefs['speed'])
+        if 'skipPatterns' in localStorage_prefs:
+            preferences['skip_patterns'] = bool(localStorage_prefs['skipPatterns'])
+        
+        if preferences:
+            result = auth_service.update_user_preferences(user_id, preferences)
+            
+            if 'error' in result:
+                return jsonify(result), 400
+            
+            return jsonify({
+                'success': True, 
+                'migrated': preferences,
+                'message': 'Preferences successfully migrated from localStorage to database'
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'No valid preferences found to migrate'
+            })
+        
+    except Exception as e:
+        logger.error(f"Error migrating localStorage preferences: {e}")
+        return jsonify({'error': 'Failed to migrate preferences'}), 500
+
 if __name__ == '__main__':
     app.run(debug=Config.DEBUG, host=Config.HOST, port=Config.PORT) 

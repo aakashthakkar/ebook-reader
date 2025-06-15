@@ -648,6 +648,10 @@
         let backgroundMusicEnabled = false;
         let currentBackgroundMusic = null;
         let backgroundMusicVolume = 0.1; // Default 10%
+        
+        // Background Music Buffering
+        let bufferedBackgroundMusic = null; // Stores preloaded audio data
+        let bufferedMusicId = null; // ID of the buffered music
 
 
         const $ = (id) => document.getElementById(id);
@@ -2018,6 +2022,11 @@
                             
                             // Show the background music controls
                             toggleBackgroundMusic(true);
+                            
+                            // Preload the background music for instant playback
+                            if (currentBackgroundMusic) {
+                                preloadBackgroundMusic(currentBackgroundMusic);
+                            }
                         } else {
                             backgroundMusicEnabled = false;
                             currentBackgroundMusic = null;
@@ -2989,10 +2998,49 @@
             }
         }
 
+        async function preloadBackgroundMusic(fileId) {
+            if (!fileId || bufferedMusicId === fileId) return; // Already buffered
+            
+            try {
+                console.log(`Preloading background music: ${fileId}`);
+                
+                // Clean up previous buffer
+                if (bufferedBackgroundMusic) {
+                    URL.revokeObjectURL(bufferedBackgroundMusic);
+                    bufferedBackgroundMusic = null;
+                    bufferedMusicId = null;
+                }
+                
+                // Fetch and buffer the new audio
+                const response = await makeAuthenticatedRequest(`/api/user/background-music/${fileId}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch background music: ${response.status}`);
+                }
+                
+                const audioBlob = await response.blob();
+                bufferedBackgroundMusic = URL.createObjectURL(audioBlob);
+                bufferedMusicId = fileId;
+                
+                console.log(`Background music buffered successfully: ${fileId}`);
+                
+            } catch (error) {
+                console.error('Error preloading background music:', error);
+                // Clear failed buffer
+                bufferedBackgroundMusic = null;
+                bufferedMusicId = null;
+            }
+        }
+
         async function selectBackgroundMusic(fileId) {
             if (!fileId) {
                 currentBackgroundMusic = null;
                 stopBackgroundMusic();
+                // Clean up buffer
+                if (bufferedBackgroundMusic) {
+                    URL.revokeObjectURL(bufferedBackgroundMusic);
+                    bufferedBackgroundMusic = null;
+                    bufferedMusicId = null;
+                }
                 // Sync both dropdowns
                 $('background-music-select').value = '';
                 $('mobile-background-music-select').value = '';
@@ -3015,6 +3063,9 @@
             $('background-music-select').value = fileId;
             $('mobile-background-music-select').value = fileId;
             
+            // Preload the selected music for instant playback
+            await preloadBackgroundMusic(fileId);
+            
             // If TTS is currently playing and background music is enabled, start playing
             if (backgroundMusicEnabled && isPlaying) {
                 await playBackgroundMusic();
@@ -3031,18 +3082,26 @@
 
             try {
                 const backgroundAudio = $('background-music-element');
+                let audioUrl;
                 
-                // Fetch the audio file with authentication and create a blob URL
-                const response = await makeAuthenticatedRequest(`/api/user/background-music/${currentBackgroundMusic}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch background music: ${response.status}`);
+                // Use buffered audio if available, otherwise fetch it
+                if (bufferedBackgroundMusic && bufferedMusicId === currentBackgroundMusic) {
+                    console.log('Using buffered background music for instant playback');
+                    audioUrl = bufferedBackgroundMusic;
+                } else {
+                    console.log('Buffered music not available, fetching from server');
+                    // Fetch the audio file with authentication and create a blob URL
+                    const response = await makeAuthenticatedRequest(`/api/user/background-music/${currentBackgroundMusic}`);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch background music: ${response.status}`);
+                    }
+                    
+                    const audioBlob = await response.blob();
+                    audioUrl = URL.createObjectURL(audioBlob);
                 }
                 
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-                
-                // Clean up any previous blob URL
-                if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:')) {
+                // Clean up any previous blob URL (but not if it's our buffer)
+                if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:') && backgroundAudio.src !== bufferedBackgroundMusic) {
                     URL.revokeObjectURL(backgroundAudio.src);
                 }
                 
@@ -3072,11 +3131,11 @@
             backgroundAudio.pause();
             backgroundAudio.currentTime = 0;
             
-            // Clean up blob URL to free memory
-            if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:')) {
+            // Clean up blob URL to free memory (but keep the buffer)
+            if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:') && backgroundAudio.src !== bufferedBackgroundMusic) {
                 URL.revokeObjectURL(backgroundAudio.src);
-                backgroundAudio.src = '';
             }
+            backgroundAudio.src = '';
             
             // Hide mobile status indicator
             $('mobile-bg-music-status').classList.add('hidden');

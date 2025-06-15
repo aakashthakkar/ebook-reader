@@ -397,8 +397,14 @@
             <!-- Main controls row -->
             <div class="flex items-center justify-between gap-2 mb-3">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <button id="sticky-rewind-btn" class="p-2 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 transition-all flex-shrink-0">
+                        <i data-lucide="rewind" class="h-5 w-5"></i>
+                    </button>
                     <button id="sticky-play-pause-btn" class="p-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white transition-all flex-shrink-0">
                         <i data-lucide="pause" class="h-5 w-5"></i>
+                    </button>
+                    <button id="sticky-forward-btn" class="p-2 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 transition-all flex-shrink-0">
+                        <i data-lucide="fast-forward" class="h-5 w-5"></i>
                     </button>
                     <div class="flex items-center gap-2 min-w-0">
                         <div class="text-xs text-slate-400 hidden lg:block">Voice:</div>
@@ -674,7 +680,9 @@
             $('pdf-input').addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
             
             // Desktop player controls
+            $('sticky-rewind-btn').addEventListener('click', () => seek(-10));
             $('sticky-play-pause-btn').addEventListener('click', togglePlayPause);
+            $('sticky-forward-btn').addEventListener('click', () => seek(10));
             $('sticky-stop-btn').addEventListener('click', closePlayer);
             $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));

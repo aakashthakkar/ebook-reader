@@ -641,9 +641,7 @@
         let backgroundMusicEnabled = false;
         let currentBackgroundMusic = null;
         let backgroundMusicVolume = 0.1; // Default 10%
-        let backgroundAudioContext = null;
-        let backgroundGainNode = null;
-        let ttsGainNode = null;
+
 
         const $ = (id) => document.getElementById(id);
 
@@ -696,7 +694,11 @@
             $('mobile-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
             $('mobile-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
-            $('mobile-options-btn').addEventListener('click', () => $('mobile-options-panel').classList.toggle('hidden'));
+            $('mobile-options-btn').addEventListener('click', () => {
+                $('mobile-options-panel').classList.toggle('hidden');
+                // Setup mobile volume slider when panel becomes visible
+                setTimeout(setupMobileVolumeSlider, 10);
+            });
             $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
             $('mobile-forward-btn').addEventListener('click', () => seek(10));
 
@@ -705,12 +707,34 @@
             $('music-input').addEventListener('change', (e) => { if (e.target.files.length) handleMusicUpload(e.target.files[0]); });
             $('background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
             $('background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
-            $('background-music-volume').addEventListener('input', (e) => setBackgroundMusicVolume(e.target.value));
+            $('background-music-volume').addEventListener('input', (e) => {
+                console.log('Desktop volume slider changed:', e.target.value);
+                setBackgroundMusicVolume(e.target.value);
+            });
             
             // Mobile background music controls
             $('mobile-background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
             $('mobile-background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
-            $('mobile-background-music-volume').addEventListener('input', (e) => setBackgroundMusicVolume(e.target.value));
+            
+            // Setup mobile volume slider with deferred attachment for hidden elements
+            function setupMobileVolumeSlider() {
+                const mobileVolumeSlider = $('mobile-background-music-volume');
+                console.log('Setting up mobile volume slider, element found:', mobileVolumeSlider);
+                if (mobileVolumeSlider && !mobileVolumeSlider.hasVolumeListener) {
+                    mobileVolumeSlider.addEventListener('input', (e) => {
+                        console.log('Mobile volume slider changed:', e.target.value);
+                        setBackgroundMusicVolume(e.target.value);
+                    });
+                    mobileVolumeSlider.hasVolumeListener = true;
+                    console.log('Mobile volume slider event listener attached successfully');
+                }
+            }
+            
+            // Try to setup mobile volume slider immediately
+            setupMobileVolumeSlider();
+            
+            // Also setup mobile volume slider when mobile options panel is opened
+            // (Add to existing mobile options button event listener)
 
             document.addEventListener('keydown', (e) => { 
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -1979,7 +2003,9 @@
                             $('mobile-background-music-toggle').checked = true;
                             $('background-music-select').value = currentBackgroundMusic;
                             $('mobile-background-music-select').value = currentBackgroundMusic;
-                            setBackgroundMusicVolume(backgroundMusicVolume * 100); // Convert to percentage
+                            // Convert DB decimal (0.1) to slider value (0-50 range)
+                            const sliderValue = Math.round(backgroundMusicVolume * 50); // 0.1 -> 5
+                            setBackgroundMusicVolume(sliderValue);
                             
                             // Show the background music controls
                             toggleBackgroundMusic(true);
@@ -2936,6 +2962,8 @@
                 controls.classList.remove('hidden');
                 mobileControls.classList.remove('hidden');
                 mobileIndicator.classList.remove('hidden');
+                // Setup mobile volume slider when controls become visible
+                setTimeout(setupMobileVolumeSlider, 10);
                 if (currentBackgroundMusic && isPlaying) {
                     playBackgroundMusic();
                 }
@@ -3012,29 +3040,14 @@
                 // Set the source to the blob URL
                 backgroundAudio.src = audioUrl;
                 
-                // Initialize Web Audio API for volume mixing if not already done
-                if (!backgroundAudioContext) {
-                    backgroundAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    
-                    // Create gain nodes for volume control
-                    backgroundGainNode = backgroundAudioContext.createGain();
-                    ttsGainNode = backgroundAudioContext.createGain();
-                    
-                    // Connect background music
-                    const backgroundSource = backgroundAudioContext.createMediaElementSource(backgroundAudio);
-                    backgroundSource.connect(backgroundGainNode).connect(backgroundAudioContext.destination);
-                    
-                    // Connect TTS audio (if using Web Audio API)
-                    const ttsAudio = $('audio-player-element');
-                    const ttsSource = backgroundAudioContext.createMediaElementSource(ttsAudio);
-                    ttsSource.connect(ttsGainNode).connect(backgroundAudioContext.destination);
-                }
-                
-                // Set initial volumes
-                updateAudioVolumes();
+                // Set volume and loop
+                backgroundAudio.volume = backgroundMusicVolume;
+                backgroundAudio.loop = true;
+                console.log(`Setting background music volume to ${backgroundMusicVolume} before playing`);
                 
                 // Play background music
                 await backgroundAudio.play();
+                console.log(`Background music started with volume: ${backgroundAudio.volume}`);
                 
                 // Show mobile status indicator
                 $('mobile-bg-music-status').classList.remove('hidden');
@@ -3080,32 +3093,51 @@
             });
         }
 
-        function setBackgroundMusicVolume(volume) {
-            backgroundMusicVolume = volume / 100; // Convert percentage to decimal
+        // Volume save timeout for debouncing
+        let volumeSaveTimeout = null;
+        
+        function setBackgroundMusicVolume(sliderValue) {
+            // Convert slider value (0-50) to percentage (0-100) and then to decimal (0-1)
+            const percentage = (sliderValue / 50) * 100; // 0-50 -> 0-100
+            backgroundMusicVolume = percentage / 100; // 0-100 -> 0-1
             
-            // Sync both desktop and mobile volume controls
-            $('background-music-volume').value = volume;
-            $('mobile-background-music-volume').value = volume;
-            $('background-volume-text').textContent = `${volume}%`;
-            $('mobile-background-volume-text').textContent = `${volume}%`;
+            console.log(`setBackgroundMusicVolume called with: ${sliderValue}`);
+            console.log(`Volume slider: ${sliderValue}, percentage: ${percentage}%, decimal: ${backgroundMusicVolume}`);
             
+            // Sync both desktop and mobile volume controls 
+            const desktopSlider = $('background-music-volume');
+            const mobileSlider = $('mobile-background-music-volume');
+            const desktopText = $('background-volume-text');
+            const mobileText = $('mobile-background-volume-text');
+            
+            console.log('Updating volume controls - Desktop slider:', desktopSlider, 'Mobile slider:', mobileSlider);
+            
+            if (desktopSlider) desktopSlider.value = sliderValue;
+            if (mobileSlider) mobileSlider.value = sliderValue;
+            if (desktopText) desktopText.textContent = `${Math.round(percentage)}%`;
+            if (mobileText) mobileText.textContent = `${Math.round(percentage)}%`;
+            
+            // Apply volume immediately
             updateAudioVolumes();
             
-            // Save preferences
+            // Debounced save to database
             if (currentFileId) {
-                saveBookPreferences();
+                clearTimeout(volumeSaveTimeout);
+                volumeSaveTimeout = setTimeout(() => {
+                    saveBookPreferences();
+                }, 500); // Save after 500ms of no changes
             }
         }
 
         function updateAudioVolumes() {
-            if (!backgroundGainNode || !ttsGainNode) return;
-            
-            // Background music volume (user selected percentage)
-            backgroundGainNode.gain.value = backgroundMusicVolume;
-            
-            // TTS volume (remaining percentage, ensuring total doesn't exceed 100%)
-            const ttsVolume = Math.max(0, 1 - backgroundMusicVolume);
-            ttsGainNode.gain.value = ttsVolume;
+            // Apply background music volume to HTML5 audio element
+            const backgroundAudio = $('background-music-element');
+            if (backgroundAudio) {
+                backgroundAudio.volume = backgroundMusicVolume;
+                console.log(`Applied volume ${backgroundMusicVolume} to background audio element`);
+            } else {
+                console.warn('Background audio element not found');
+            }
         }
 
         // Modify existing playback functions to integrate background music

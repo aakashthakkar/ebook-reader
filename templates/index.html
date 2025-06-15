@@ -652,7 +652,129 @@
         // Background Music Buffering
         let bufferedBackgroundMusic = null; // Stores preloaded audio data
         let bufferedMusicId = null; // ID of the buffered music
+        
+        // Web Audio API for Mobile Safari Volume Control (background music only)
+        let backgroundAudioContext = null;
+        let backgroundGainNode = null;
+        let backgroundSourceNode = null;
+        
+        // Detect mobile Safari for special handling (global scope)
+        const isMobileSafari = /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 
+        // Initialize Web Audio API for mobile Safari background music volume control
+        async function initMobileSafariAudioContext() {
+            if (!isMobileSafari || backgroundAudioContext) return;
+            
+            try {
+                backgroundAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                backgroundGainNode = backgroundAudioContext.createGain();
+                backgroundGainNode.connect(backgroundAudioContext.destination);
+                backgroundGainNode.gain.value = backgroundMusicVolume;
+                
+                console.log('Mobile Safari Web Audio context initialized for background music volume control');
+                
+                // Resume context if suspended (required for mobile Safari)
+                if (backgroundAudioContext.state === 'suspended') {
+                    await backgroundAudioContext.resume();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize mobile Safari audio context:', error);
+                return false;
+            }
+        }
+
+        // Setup mobile volume slider with deferred attachment for hidden elements
+        function setupMobileVolumeSlider() {
+            const mobileVolumeSlider = $('mobile-background-music-volume');
+            console.log('Setting up mobile volume slider, element found:', mobileVolumeSlider, 'isMobileSafari:', isMobileSafari);
+            
+            if (mobileVolumeSlider && !mobileVolumeSlider.hasVolumeListener) {
+                // Enhanced volume change handler for mobile Safari
+                const handleVolumeChange = async (e) => {
+                    console.log('Mobile volume slider changed:', e.target.value, 'Event type:', e.type);
+                    
+                    if (isMobileSafari) {
+                        // Initialize Web Audio API for volume control
+                        await initMobileSafariAudioContext();
+                        
+                        // Apply volume using Web Audio API
+                        setBackgroundMusicVolume(e.target.value);
+                    } else {
+                        setBackgroundMusicVolume(e.target.value);
+                    }
+                };
+                
+                // Add multiple event listeners for better mobile Safari compatibility
+                mobileVolumeSlider.addEventListener('input', handleVolumeChange);
+                mobileVolumeSlider.addEventListener('change', handleVolumeChange);
+                
+                // Additional touch events for mobile Safari
+                if (isMobileSafari) {
+                    mobileVolumeSlider.addEventListener('touchend', handleVolumeChange);
+                    mobileVolumeSlider.addEventListener('mouseup', handleVolumeChange);
+                }
+                
+                mobileVolumeSlider.hasVolumeListener = true;
+                console.log('Mobile volume slider event listeners attached successfully');
+            }
+        }
+
+        // Force volume application specifically for mobile Safari
+        function forceMobileVolumeApplication(sliderValue) {
+            if (!isMobileSafari) return;
+            
+            const percentage = (sliderValue / 50) * 100;
+            const volumeDecimal = percentage / 100;
+            
+            const backgroundAudio = $('background-music-element');
+            if (backgroundAudio && !backgroundAudio.paused) {
+                console.log('Force applying mobile Safari volume:', volumeDecimal);
+                backgroundAudio.volume = volumeDecimal;
+                
+                // Double-check and re-apply if needed
+                setTimeout(() => {
+                    if (Math.abs(backgroundAudio.volume - volumeDecimal) > 0.01) {
+                        console.log('Mobile Safari volume mismatch, re-applying:', volumeDecimal);
+                        backgroundAudio.volume = volumeDecimal;
+                    }
+                }, 50);
+                
+                // Additional verification with extended retry
+                setTimeout(() => {
+                    verifyMobileSafariVolume(volumeDecimal);
+                }, 150);
+            }
+        }
+
+        // Verify and ensure mobile Safari volume is correctly applied
+        function verifyMobileSafariVolume(expectedVolume) {
+            if (!isMobileSafari) return;
+            
+            const backgroundAudio = $('background-music-element');
+            if (backgroundAudio && !backgroundAudio.paused) {
+                const actualVolume = backgroundAudio.volume;
+                const volumeDiff = Math.abs(actualVolume - expectedVolume);
+                
+                console.log(`Mobile Safari volume verification - Expected: ${expectedVolume}, Actual: ${actualVolume}, Diff: ${volumeDiff}`);
+                
+                if (volumeDiff > 0.02) { // More tolerance for mobile Safari
+                    console.log('Mobile Safari volume verification failed, forcing correction');
+                    backgroundAudio.volume = expectedVolume;
+                    
+                    // One more attempt after a longer delay
+                    setTimeout(() => {
+                        if (Math.abs(backgroundAudio.volume - expectedVolume) > 0.02) {
+                            backgroundAudio.volume = expectedVolume;
+                            console.log('Mobile Safari final volume correction attempt:', expectedVolume);
+                        }
+                    }, 300);
+                } else {
+                    console.log('Mobile Safari volume verification passed');
+                }
+            }
+        }
 
         const $ = (id) => document.getElementById(id);
 
@@ -729,19 +851,7 @@
             $('mobile-background-music-toggle').addEventListener('change', (e) => toggleBackgroundMusic(e.target.checked));
             $('mobile-background-music-select').addEventListener('change', (e) => selectBackgroundMusic(e.target.value));
             
-            // Setup mobile volume slider with deferred attachment for hidden elements
-            function setupMobileVolumeSlider() {
-                const mobileVolumeSlider = $('mobile-background-music-volume');
-                console.log('Setting up mobile volume slider, element found:', mobileVolumeSlider);
-                if (mobileVolumeSlider && !mobileVolumeSlider.hasVolumeListener) {
-                    mobileVolumeSlider.addEventListener('input', (e) => {
-                        console.log('Mobile volume slider changed:', e.target.value);
-                        setBackgroundMusicVolume(e.target.value);
-                    });
-                    mobileVolumeSlider.hasVolumeListener = true;
-                    console.log('Mobile volume slider event listener attached successfully');
-                }
-            }
+
             
             // Try to setup mobile volume slider immediately
             setupMobileVolumeSlider();
@@ -2831,13 +2941,17 @@
 
         async function loadBackgroundMusic() {
             try {
+                console.log('Loading background music...');
                 const response = await makeAuthenticatedRequest('/api/user/background-music');
                 if (response.ok) {
                     const data = await response.json();
                     backgroundMusicFiles = data.music_files || [];
+                    console.log('Background music files loaded:', backgroundMusicFiles.length, 'files');
                     updateBackgroundMusicUI();
                 } else {
-                    console.error('Failed to load background music');
+                    console.error('Failed to load background music, status:', response.status);
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
                 }
             } catch (error) {
                 console.error('Error loading background music:', error);
@@ -2845,6 +2959,7 @@
         }
 
         function updateBackgroundMusicUI() {
+            console.log('Updating background music UI with', backgroundMusicFiles.length, 'files');
             const musicListLoading = $('music-list-loading');
             const musicListContainer = $('music-list-container');
             const musicListEmpty = $('music-list-empty');
@@ -2852,12 +2967,13 @@
             const musicSelect = $('background-music-select');
 
             // Hide loading
-            musicListLoading.classList.add('hidden');
+            if (musicListLoading) musicListLoading.classList.add('hidden');
 
             if (backgroundMusicFiles.length === 0) {
-                musicListContainer.classList.add('hidden');
-                musicListEmpty.classList.remove('hidden');
-                musicSelect.innerHTML = '<option value="">No music available</option>';
+                console.log('No background music files found, showing empty state');
+                if (musicListContainer) musicListContainer.classList.add('hidden');
+                if (musicListEmpty) musicListEmpty.classList.remove('hidden');
+                if (musicSelect) musicSelect.innerHTML = '<option value="">No music available</option>';
                 return;
             }
 
@@ -2890,8 +3006,17 @@
                     `<option value="${music.file_id}">${escapeHtml(truncateFilename(music.filename, 25))}</option>`
                 ).join('');
             
-            musicSelect.innerHTML = selectOptions;
-            mobileSelect.innerHTML = selectOptions;
+            console.log('Updating select dropdowns with options:', selectOptions);
+            if (musicSelect) {
+                musicSelect.innerHTML = selectOptions;
+                console.log('Desktop select updated');
+            }
+            if (mobileSelect) {
+                mobileSelect.innerHTML = selectOptions;
+                console.log('Mobile select updated');
+            } else {
+                console.warn('Mobile select element not found!');
+            }
 
             // Re-create icons for new elements
             lucide.createIcons();
@@ -2967,28 +3092,50 @@
         }
 
         function toggleBackgroundMusic(enabled) {
+            console.log('Toggling background music:', enabled);
             backgroundMusicEnabled = enabled;
             const controls = $('background-music-controls');
             const mobileControls = $('mobile-background-music-controls');
             const mobileIndicator = $('mobile-music-indicator');
             
+            console.log('Background music controls found:', {
+                desktop: !!controls,
+                mobile: !!mobileControls,
+                indicator: !!mobileIndicator
+            });
+            
             // Sync both desktop and mobile toggles
-            $('background-music-toggle').checked = enabled;
-            $('mobile-background-music-toggle').checked = enabled;
+            const desktopToggle = $('background-music-toggle');
+            const mobileToggle = $('mobile-background-music-toggle');
+            if (desktopToggle) desktopToggle.checked = enabled;
+            if (mobileToggle) mobileToggle.checked = enabled;
             
             if (enabled) {
-                controls.classList.remove('hidden');
-                mobileControls.classList.remove('hidden');
-                mobileIndicator.classList.remove('hidden');
+                console.log('Enabling background music controls');
+                if (controls) controls.classList.remove('hidden');
+                if (mobileControls) {
+                    mobileControls.classList.remove('hidden');
+                    console.log('Mobile background music controls shown');
+                }
+                if (mobileIndicator) mobileIndicator.classList.remove('hidden');
+                
                 // Setup mobile volume slider when controls become visible
                 setTimeout(setupMobileVolumeSlider, 10);
+                
+                // Ensure background music files are loaded and UI is updated
+                if (backgroundMusicFiles.length === 0) {
+                    console.log('No background music files loaded, reloading...');
+                    loadBackgroundMusic();
+                }
+                
                 if (currentBackgroundMusic && isPlaying) {
                     playBackgroundMusic();
                 }
             } else {
-                controls.classList.add('hidden');
-                mobileControls.classList.add('hidden');
-                mobileIndicator.classList.add('hidden');
+                console.log('Disabling background music controls');
+                if (controls) controls.classList.add('hidden');
+                if (mobileControls) mobileControls.classList.add('hidden');
+                if (mobileIndicator) mobileIndicator.classList.add('hidden');
                 stopBackgroundMusic();
             }
             
@@ -3078,51 +3225,131 @@
         }
 
         async function playBackgroundMusic() {
-            if (!currentBackgroundMusic || !backgroundMusicEnabled) return;
+            console.log('playBackgroundMusic called:', {
+                currentBackgroundMusic,
+                backgroundMusicEnabled,
+                isPlaying
+            });
+            
+            if (!currentBackgroundMusic || !backgroundMusicEnabled) {
+                console.log('Background music not enabled or no music selected');
+                return;
+            }
 
             try {
                 const backgroundAudio = $('background-music-element');
+                if (!backgroundAudio) {
+                    throw new Error('Background audio element not found');
+                }
+                
+                console.log('Background audio element found:', backgroundAudio);
                 let audioUrl;
+                
+                // Initialize Web Audio API for mobile Safari
+                if (isMobileSafari) {
+                    console.log('Mobile Safari detected, initializing Web Audio API');
+                    const initialized = await initMobileSafariAudioContext();
+                    console.log('Web Audio API initialized:', initialized);
+                }
                 
                 // Use buffered audio if available, otherwise fetch it
                 if (bufferedBackgroundMusic && bufferedMusicId === currentBackgroundMusic) {
                     console.log('Using buffered background music for instant playback');
                     audioUrl = bufferedBackgroundMusic;
                 } else {
-                    console.log('Buffered music not available, fetching from server');
+                    console.log('Buffered music not available, fetching from server for ID:', currentBackgroundMusic);
                     // Fetch the audio file with authentication and create a blob URL
                     const response = await makeAuthenticatedRequest(`/api/user/background-music/${currentBackgroundMusic}`);
+                    console.log('Background music fetch response:', response.status, response.ok);
+                    
                     if (!response.ok) {
                         throw new Error(`Failed to fetch background music: ${response.status}`);
                     }
                     
                     const audioBlob = await response.blob();
+                    console.log('Audio blob created, size:', audioBlob.size, 'type:', audioBlob.type);
                     audioUrl = URL.createObjectURL(audioBlob);
+                    console.log('Blob URL created:', audioUrl);
                 }
                 
                 // Clean up any previous blob URL (but not if it's our buffer)
                 if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:') && backgroundAudio.src !== bufferedBackgroundMusic) {
+                    console.log('Cleaning up previous blob URL:', backgroundAudio.src);
                     URL.revokeObjectURL(backgroundAudio.src);
                 }
                 
                 // Set the source to the blob URL
+                console.log('Setting audio source to:', audioUrl);
                 backgroundAudio.src = audioUrl;
-                
-                // Set volume and loop
-                backgroundAudio.volume = backgroundMusicVolume;
                 backgroundAudio.loop = true;
-                console.log(`Setting background music volume to ${backgroundMusicVolume} before playing`);
+                
+                // Wait for audio to be ready
+                await new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => reject(new Error('Audio load timeout')), 10000);
+                    
+                    backgroundAudio.addEventListener('canplaythrough', () => {
+                        clearTimeout(timeout);
+                        console.log('Audio ready to play');
+                        resolve();
+                    }, { once: true });
+                    
+                    backgroundAudio.addEventListener('error', (e) => {
+                        clearTimeout(timeout);
+                        console.error('Audio load error:', e);
+                        reject(new Error('Audio load failed'));
+                    }, { once: true });
+                    
+                    // Trigger loading
+                    backgroundAudio.load();
+                });
+                
+                // Handle volume control based on platform
+                if (isMobileSafari && backgroundAudioContext && backgroundGainNode) {
+                    // Mobile Safari: Use Web Audio API for reliable volume control
+                    console.log('Mobile Safari: Setting up Web Audio API volume control');
+                    
+                    // Set HTML5 audio to full volume and use gain node for actual volume control
+                    backgroundAudio.volume = 1.0;
+                    
+                    // Connect to Web Audio API if not already connected
+                    if (!backgroundSourceNode) {
+                        console.log('Creating Web Audio source node');
+                        backgroundSourceNode = backgroundAudioContext.createMediaElementSource(backgroundAudio);
+                        backgroundSourceNode.connect(backgroundGainNode);
+                        console.log('Web Audio source connected');
+                    }
+                    
+                    // Set volume through gain node
+                    backgroundGainNode.gain.value = backgroundMusicVolume;
+                    console.log(`Mobile Safari: Web Audio gain set to ${backgroundMusicVolume}`);
+                } else {
+                    // Standard volume control for other browsers
+                    backgroundAudio.volume = backgroundMusicVolume;
+                    console.log(`Standard volume control set to ${backgroundMusicVolume}`);
+                }
+                
+                // Resume audio context if suspended (required for mobile Safari)
+                if (isMobileSafari && backgroundAudioContext && backgroundAudioContext.state === 'suspended') {
+                    console.log('Resuming suspended audio context');
+                    await backgroundAudioContext.resume();
+                }
                 
                 // Play background music
+                console.log('Attempting to play background music...');
                 await backgroundAudio.play();
-                console.log(`Background music started with volume: ${backgroundAudio.volume}`);
+                console.log(`Background music started successfully`);
                 
                 // Show mobile status indicator
-                $('mobile-bg-music-status').classList.remove('hidden');
+                const statusIndicator = $('mobile-bg-music-status');
+                if (statusIndicator) {
+                    statusIndicator.classList.remove('hidden');
+                    console.log('Mobile status indicator shown');
+                }
                 
             } catch (error) {
                 console.error('Error playing background music:', error);
-                showError('Failed to play background music');
+                console.error('Error stack:', error.stack);
+                showError('Failed to play background music: ' + error.message);
             }
         }
 
@@ -3130,6 +3357,16 @@
             const backgroundAudio = $('background-music-element');
             backgroundAudio.pause();
             backgroundAudio.currentTime = 0;
+            
+            // Clean up Web Audio API connections for mobile Safari
+            if (isMobileSafari && backgroundSourceNode) {
+                try {
+                    backgroundSourceNode.disconnect();
+                    backgroundSourceNode = null;
+                } catch (error) {
+                    console.warn('Error disconnecting mobile Safari audio source:', error);
+                }
+            }
             
             // Clean up blob URL to free memory (but keep the buffer)
             if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:') && backgroundAudio.src !== bufferedBackgroundMusic) {
@@ -3198,11 +3435,21 @@
         }
 
         function updateAudioVolumes() {
-            // Apply background music volume to HTML5 audio element
+            // Apply background music volume
             const backgroundAudio = $('background-music-element');
             if (backgroundAudio) {
-                backgroundAudio.volume = backgroundMusicVolume;
-                console.log(`Applied volume ${backgroundMusicVolume} to background audio element`);
+                if (isMobileSafari && backgroundAudioContext && backgroundGainNode) {
+                    // Mobile Safari: Use Web Audio API gain node for volume control
+                    backgroundGainNode.gain.value = backgroundMusicVolume;
+                    console.log(`Mobile Safari: Updated Web Audio gain to ${backgroundMusicVolume}`);
+                    
+                    // Ensure HTML5 audio stays at full volume
+                    backgroundAudio.volume = 1.0;
+                } else {
+                    // Standard volume application for other browsers
+                    backgroundAudio.volume = backgroundMusicVolume;
+                    console.log(`Applied volume ${backgroundMusicVolume} to background audio element`);
+                }
             } else {
                 console.warn('Background audio element not found');
             }

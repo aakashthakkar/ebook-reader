@@ -3311,17 +3311,31 @@
                     // Set HTML5 audio to full volume and use gain node for actual volume control
                     backgroundAudio.volume = 1.0;
                     
-                    // Connect to Web Audio API if not already connected
+                    // Connect to Web Audio API only once per audio element
                     if (!backgroundSourceNode) {
-                        console.log('Creating Web Audio source node');
-                        backgroundSourceNode = backgroundAudioContext.createMediaElementSource(backgroundAudio);
-                        backgroundSourceNode.connect(backgroundGainNode);
-                        console.log('Web Audio source connected');
+                        try {
+                            console.log('Creating Web Audio source node');
+                            backgroundSourceNode = backgroundAudioContext.createMediaElementSource(backgroundAudio);
+                            backgroundSourceNode.connect(backgroundGainNode);
+                            console.log('Web Audio source connected');
+                        } catch (error) {
+                            if (error.name === 'InvalidStateError' && error.message.includes('already associated')) {
+                                console.log('Audio element already connected to Web Audio API, skipping connection');
+                                // The audio element is already connected, which is fine
+                            } else {
+                                console.error('Error creating Web Audio source:', error);
+                                // Fall back to standard volume control
+                                backgroundAudio.volume = backgroundMusicVolume;
+                                return;
+                            }
+                        }
                     }
                     
                     // Set volume through gain node
-                    backgroundGainNode.gain.value = backgroundMusicVolume;
-                    console.log(`Mobile Safari: Web Audio gain set to ${backgroundMusicVolume}`);
+                    if (backgroundGainNode) {
+                        backgroundGainNode.gain.value = backgroundMusicVolume;
+                        console.log(`Mobile Safari: Web Audio gain set to ${backgroundMusicVolume}`);
+                    }
                 } else {
                     // Standard volume control for other browsers
                     backgroundAudio.volume = backgroundMusicVolume;
@@ -3358,15 +3372,9 @@
             backgroundAudio.pause();
             backgroundAudio.currentTime = 0;
             
-            // Clean up Web Audio API connections for mobile Safari
-            if (isMobileSafari && backgroundSourceNode) {
-                try {
-                    backgroundSourceNode.disconnect();
-                    backgroundSourceNode = null;
-                } catch (error) {
-                    console.warn('Error disconnecting mobile Safari audio source:', error);
-                }
-            }
+            // Note: We DON'T disconnect the Web Audio API source node here
+            // because once disconnected, we can't reconnect the same audio element
+            // The source node will be reused for subsequent playback
             
             // Clean up blob URL to free memory (but keep the buffer)
             if (backgroundAudio.src && backgroundAudio.src.startsWith('blob:') && backgroundAudio.src !== bufferedBackgroundMusic) {

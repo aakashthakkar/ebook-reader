@@ -658,32 +658,18 @@
         let backgroundGainNode = null;
         let backgroundSourceNode = null;
         
+        // Wake Lock API to prevent screen from locking (mobile Safari compatibility)
+        let wakeLock = null;
+        let isWakeLockSupported = 'wakeLock' in navigator;
+        
+
+        
+
+        
         // Detect mobile Safari for special handling (global scope)
         const isMobileSafari = /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 
-        // Initialize Web Audio API for mobile Safari background music volume control
-        async function initMobileSafariAudioContext() {
-            if (!isMobileSafari || backgroundAudioContext) return;
-            
-            try {
-                backgroundAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-                backgroundGainNode = backgroundAudioContext.createGain();
-                backgroundGainNode.connect(backgroundAudioContext.destination);
-                backgroundGainNode.gain.value = backgroundMusicVolume;
-                
-                console.log('Mobile Safari Web Audio context initialized for background music volume control');
-                
-                // Resume context if suspended (required for mobile Safari)
-                if (backgroundAudioContext.state === 'suspended') {
-                    await backgroundAudioContext.resume();
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('Failed to initialize mobile Safari audio context:', error);
-                return false;
-            }
-        }
+
 
         // Setup mobile volume slider with deferred attachment for hidden elements
         function setupMobileVolumeSlider() {
@@ -1526,7 +1512,15 @@
 
         async function loadChunk(chunk, showIndicator = true) {
             const cacheKey = `${chunk.id}-${selectedModel}`;
-            if (audioCache.has(cacheKey)) return audioCache.get(cacheKey);
+            
+            // Check for direct cache hit
+            if (audioCache.has(cacheKey)) {
+                console.log(`Cache hit for chunk ${chunk.id}`);
+                return audioCache.get(cacheKey);
+            }
+            
+            // For playback chunks, always generate individual audio to ensure proper timing and highlighting
+            // The preload optimization is only for background caching, not for actual playback
             if (showIndicator) showLoading('Generating audio...');
             
             try {
@@ -1542,17 +1536,161 @@
                 const blob = new Blob([Uint8Array.from(atob(data.audio_data), c => c.charCodeAt(0))], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
                 audioCache.set(cacheKey, url);
+                console.log(`Generated and cached new audio for chunk ${chunk.id} (${chunk.text.length} chars)`);
                 return url;
             } finally {
                 if (showIndicator) hideLoading();
             }
         }
 
+
+
         async function preloadNextChunk(wordIndex) {
-            const chunk = getChunkForWord(wordIndex);
-            if (chunk && !audioCache.has(`${chunk.id}-${selectedModel}`)) {
-                await loadChunk(chunk, false);
+            // Generate optimized chunk for preloading
+            const optimizedChunk = getOptimalChunkForPreload(wordIndex);
+            if (!optimizedChunk) return;
+            
+            // Check if we already have this optimized chunk cached
+            const optimizedCacheKey = `${optimizedChunk.id}-${selectedModel}`;
+            if (audioCache.has(optimizedCacheKey)) {
+                console.log(`Optimized chunk already cached: ${optimizedChunk.id}`);
+                return;
             }
+            
+            // Also preload individual paragraph chunks that will be needed for playback
+            const individualChunksToPreload = getIndividualChunksFromOptimized(optimizedChunk);
+            
+            // Check if all individual chunks are already cached
+            const allIndividualsCached = individualChunksToPreload.every(chunk => 
+                audioCache.has(`${chunk.id}-${selectedModel}`)
+            );
+            
+            if (allIndividualsCached) {
+                console.log(`All individual chunks already cached for range ${wordIndex}`);
+                return;
+            }
+            
+            // If optimized chunk is just one paragraph, load individual chunk instead
+            if (optimizedChunk.paragraphsIncluded === 1) {
+                const individualChunk = getChunkForWord(wordIndex);
+                if (individualChunk && !audioCache.has(`${individualChunk.id}-${selectedModel}`)) {
+                    await loadChunk(individualChunk, false);
+                }
+                return;
+            }
+            
+            // For multi-paragraph optimized chunks, load individual chunks for proper playback timing
+            console.log(`Preloading ${individualChunksToPreload.length} individual chunks for seamless playback`);
+            for (const chunk of individualChunksToPreload) {
+                if (!audioCache.has(`${chunk.id}-${selectedModel}`)) {
+                    await loadChunk(chunk, false);
+                }
+            }
+        }
+
+        function getIndividualChunksFromOptimized(optimizedChunk) {
+            const chunks = [];
+            let currentIndex = optimizedChunk.startIndex;
+            
+            while (currentIndex <= optimizedChunk.endIndex && currentIndex < wordMap.length) {
+                const chunk = getChunkForWord(currentIndex);
+                if (!chunk) break;
+                
+                chunks.push(chunk);
+                currentIndex = chunk.endIndex + 1;
+            }
+            
+            return chunks;
+        }
+
+        function getOptimalChunkForPreload(wordIndex) {
+            console.log(`getOptimalChunkForPreload called with wordIndex: ${wordIndex}`);
+            if (wordIndex >= wordMap.length) {
+                console.log('wordIndex >= wordMap.length, returning null');
+                return null;
+            }
+
+            const MIN_WORDS_FOR_CACHING = 100; // Minimum words to cache for seamless playback
+            const maxCharacters = 9500; // Stay below API limit
+            const maxWordsPerChunk = 400; // Maximum words per chunk
+            
+            let startIndex = wordIndex;
+            let endIndex = startIndex;
+            let totalWords = 0;
+            let paragraphsIncluded = 0;
+            
+            // Start with the first paragraph
+            const startWord = wordMap[startIndex];
+            if (startWord.paragraph_id !== undefined) {
+                endIndex = getEndOfParagraph(startIndex);
+                totalWords = endIndex - startIndex + 1;
+                paragraphsIncluded = 1;
+                
+                console.log(`Initial paragraph ${startWord.paragraph_id}: ${totalWords} words`);
+                
+                // If this paragraph has enough words, use it as-is
+                if (totalWords >= MIN_WORDS_FOR_CACHING) {
+                    console.log(`Paragraph has sufficient words (${totalWords} >= ${MIN_WORDS_FOR_CACHING}), using single paragraph`);
+                } else {
+                    // Keep adding subsequent paragraphs until we reach minimum word count
+                    let nextParagraphStartIndex = endIndex + 1;
+                    
+                    while (nextParagraphStartIndex < wordMap.length && totalWords < MIN_WORDS_FOR_CACHING) {
+                        const nextParagraphEndIndex = getEndOfParagraph(nextParagraphStartIndex);
+                        const nextParagraphWords = nextParagraphEndIndex - nextParagraphStartIndex + 1;
+                        
+                        // Check if adding this paragraph would exceed safety limits
+                        const potentialTotalWords = totalWords + nextParagraphWords;
+                        const potentialText = wordMap.slice(startIndex, nextParagraphEndIndex + 1).map(w => w.text).join(' ');
+                        
+                        if (potentialTotalWords > maxWordsPerChunk || potentialText.length > maxCharacters) {
+                            console.log(`Adding paragraph would exceed limits (${potentialTotalWords} words, ${potentialText.length} chars), stopping at ${paragraphsIncluded} paragraphs`);
+                            break;
+                        }
+                        
+                        // Add this paragraph
+                        endIndex = nextParagraphEndIndex;
+                        totalWords = potentialTotalWords;
+                        paragraphsIncluded++;
+                        
+                        console.log(`Added paragraph ${paragraphsIncluded}: total ${totalWords} words`);
+                        
+                        // Move to next paragraph
+                        nextParagraphStartIndex = endIndex + 1;
+                    }
+                    
+                    console.log(`Optimized chunk: ${paragraphsIncluded} paragraphs, ${totalWords} words (target: ${MIN_WORDS_FOR_CACHING}+)`);
+                }
+            } else {
+                // Fallback to sentence-based chunking if no paragraph data
+                console.log('No paragraph data available, falling back to sentence-based chunking');
+                endIndex = getSentenceBasedEnd(startIndex);
+                totalWords = endIndex - startIndex + 1;
+            }
+            
+            // Apply final safety limits
+            const wordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+            const text = wordsInChunk.map(w => w.text).join(' ');
+            
+            if (text.length > maxCharacters || wordsInChunk.length > maxWordsPerChunk) {
+                console.log(`Final chunk too large (${text.length} chars, ${wordsInChunk.length} words), applying safety limits`);
+                endIndex = applySafetyLimits(startIndex, maxCharacters, maxWordsPerChunk);
+            }
+            
+            const finalWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+            const finalText = finalWordsInChunk.map(w => w.text).join(' ');
+            
+            console.log(`Generated optimized preload chunk from ${startIndex} to ${endIndex}: "${finalText.substring(0, 100)}..." (${finalText.length} characters, ${finalWordsInChunk.length} words, ${paragraphsIncluded} paragraphs)`);
+            
+            return {
+                startIndex: startIndex,
+                endIndex: endIndex,
+                text: finalText,
+                id: `chunk-${startIndex}`,
+                paragraphId: startWord.paragraph_id || 'N/A',
+                paragraphsIncluded: paragraphsIncluded,
+                isOptimizedPreload: true
+            };
         }
         
         function seek(seconds) {
@@ -3353,6 +3491,11 @@
                 await backgroundAudio.play();
                 console.log(`Background music started successfully`);
                 
+                // Request wake lock to prevent screen from turning off (helps with mobile Safari)
+                if (isMobileSafari && backgroundMusicEnabled) {
+                    await requestWakeLock();
+                }
+                
                 // Show mobile status indicator
                 const statusIndicator = $('mobile-bg-music-status');
                 if (statusIndicator) {
@@ -3372,6 +3515,9 @@
             backgroundAudio.pause();
             backgroundAudio.currentTime = 0;
             
+            // Release wake lock when background music stops
+            releaseWakeLock();
+            
             // Note: We DON'T disconnect the Web Audio API source node here
             // because once disconnected, we can't reconnect the same audio element
             // The source node will be reused for subsequent playback
@@ -3390,6 +3536,9 @@
             const backgroundAudio = $('background-music-element');
             backgroundAudio.pause();
             
+            // Release wake lock when paused (allow screen to turn off)
+            releaseWakeLock();
+            
             // Hide mobile status indicator when paused
             $('mobile-bg-music-status').classList.add('hidden');
         }
@@ -3398,13 +3547,79 @@
             if (!backgroundMusicEnabled || !currentBackgroundMusic) return;
             
             const backgroundAudio = $('background-music-element');
-            backgroundAudio.play().then(() => {
+            backgroundAudio.play().then(async () => {
+                // Request wake lock again when resuming (helps with mobile Safari)
+                if (isMobileSafari && backgroundMusicEnabled) {
+                    await requestWakeLock();
+                }
+                
                 // Show mobile status indicator when resumed
                 $('mobile-bg-music-status').classList.remove('hidden');
             }).catch(error => {
                 console.error('Error resuming background music:', error);
             });
         }
+
+        // Enhanced background music state management for mobile Safari
+        function isBackgroundMusicPlaying() {
+            const backgroundAudio = $('background-music-element');
+            return backgroundAudio && !backgroundAudio.paused && backgroundAudio.src;
+        }
+
+        // Initialize Web Audio API for mobile Safari background music volume control
+        async function initMobileSafariAudioContext() {
+            if (!isMobileSafari || backgroundAudioContext) return;
+            
+            try {
+                backgroundAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                backgroundGainNode = backgroundAudioContext.createGain();
+                backgroundGainNode.connect(backgroundAudioContext.destination);
+                backgroundGainNode.gain.value = backgroundMusicVolume;
+                
+                console.log('Mobile Safari Web Audio context initialized for background music volume control');
+                
+                // Resume context if suspended (required for mobile Safari)
+                if (backgroundAudioContext.state === 'suspended') {
+                    await backgroundAudioContext.resume();
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Failed to initialize mobile Safari audio context:', error);
+                return false;
+            }
+        }
+
+        // Wake Lock functions to prevent screen from locking
+        async function requestWakeLock() {
+            if (!isWakeLockSupported || wakeLock) return;
+            
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log('Wake lock acquired to prevent screen from turning off');
+                
+                wakeLock.addEventListener('release', () => {
+                    console.log('Wake lock released');
+                    wakeLock = null;
+                });
+            } catch (error) {
+                console.error('Failed to acquire wake lock:', error);
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (wakeLock) {
+                try {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    console.log('Wake lock manually released');
+                } catch (error) {
+                    console.error('Failed to release wake lock:', error);
+                }
+            }
+        }
+
+
 
         // Volume save timeout for debouncing
         let volumeSaveTimeout = null;

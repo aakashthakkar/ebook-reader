@@ -793,9 +793,17 @@
             $('pdf-input').addEventListener('change', (e) => { if (e.target.files.length) handleFile(e.target.files[0]); });
             
             // Desktop player controls
-            $('sticky-rewind-btn').addEventListener('click', () => seek(-10));
+            $('sticky-rewind-btn').addEventListener('click', async () => {
+                console.log('\n\n🔴🔴🔴 REWIND BUTTON CLICKED 🔴🔴🔴');
+                try { await seek(-10); } catch (e) { console.error('Seek error:', e); }
+                console.log('🔴🔴🔴 REWIND BUTTON HANDLER COMPLETE 🔴🔴🔴\n\n');
+            });
             $('sticky-play-pause-btn').addEventListener('click', togglePlayPause);
-            $('sticky-forward-btn').addEventListener('click', () => seek(10));
+            $('sticky-forward-btn').addEventListener('click', async () => {
+                console.log('\n\n🔵🔵🔵 FORWARD BUTTON CLICKED 🔵🔵🔵');
+                try { await seek(10); } catch (e) { console.error('Seek error:', e); }
+                console.log('🔵🔵🔵 FORWARD BUTTON HANDLER COMPLETE 🔵🔵🔵\n\n');
+            });
             $('sticky-stop-btn').addEventListener('click', closePlayer);
             $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
@@ -820,8 +828,16 @@
                 // Setup mobile volume slider when panel becomes visible
                 setTimeout(setupMobileVolumeSlider, 10);
             });
-            $('mobile-rewind-btn').addEventListener('click', () => seek(-10));
-            $('mobile-forward-btn').addEventListener('click', () => seek(10));
+            $('mobile-rewind-btn').addEventListener('click', async () => {
+                console.log('\n\n🔴🔴🔴 MOBILE REWIND BUTTON CLICKED 🔴🔴🔴');
+                try { await seek(-10); } catch (e) { console.error('Seek error:', e); }
+                console.log('🔴🔴🔴 MOBILE REWIND BUTTON HANDLER COMPLETE 🔴🔴🔴\n\n');
+            });
+            $('mobile-forward-btn').addEventListener('click', async () => {
+                console.log('\n\n🔵🔵🔵 MOBILE FORWARD BUTTON CLICKED 🔵🔵🔵');
+                try { await seek(10); } catch (e) { console.error('Seek error:', e); }
+                console.log('🔵🔵🔵 MOBILE FORWARD BUTTON HANDLER COMPLETE 🔵🔵🔵\n\n');
+            });
 
             // Background music controls
             $('upload-music-btn').addEventListener('click', () => $('music-input').click());
@@ -1294,6 +1310,29 @@
             };
         }
         
+        function getStartOfParagraph(wordIndex) {
+            // Find the FIRST word of the paragraph that contains wordIndex
+            const targetWord = wordMap[wordIndex];
+            const targetParagraphId = targetWord.paragraph_id;
+            
+            // Search backwards to find the first word with this paragraph ID
+            for (let i = wordIndex; i >= 0; i--) {
+                const word = wordMap[i];
+                
+                // If we've moved to a different paragraph, the start is i+1
+                if (word.paragraph_id !== targetParagraphId) {
+                    return i + 1;
+                }
+                
+                // If we reach the beginning of the document
+                if (i === 0) {
+                    return 0;
+                }
+            }
+            
+            return wordIndex; // Fallback
+        }
+        
         function getEndOfParagraph(startIndex) {
             const startWord = wordMap[startIndex];
             const targetParagraphId = startWord.paragraph_id;
@@ -1412,6 +1451,12 @@
                 if (nextChunkStartIndex < wordMap.length) {
                     preloadNextChunk(nextChunkStartIndex);
                 }
+                
+                // Preload previous chunks for seamless rewinding
+                const prevChunkStartIndex = chunk.startIndex - 1;
+                if (prevChunkStartIndex >= 0) {
+                    preloadPreviousChunks(prevChunkStartIndex);
+                }
             } catch (error) { 
                 showError('Playback failed: ' + error.message); 
                 await stopPlayback(); 
@@ -1443,6 +1488,12 @@
                 const subsequentChunkIndex = nextChunk.endIndex + 1;
                 if (subsequentChunkIndex < wordMap.length) {
                     preloadNextChunk(subsequentChunkIndex);
+                }
+                
+                // Preload previous chunks for seamless rewinding
+                const prevChunkStartIndex = nextChunk.startIndex - 1;
+                if (prevChunkStartIndex >= 0) {
+                    preloadPreviousChunks(prevChunkStartIndex);
                 }
             } catch (error) {
                 showError('Playback failed: ' + error.message);
@@ -1588,6 +1639,57 @@
             }
         }
 
+        async function preloadPreviousChunks(wordIndex) {
+            console.log(`[PRELOAD PREVIOUS] Starting for wordIndex: ${wordIndex}`);
+            // Preload previous chunks for seamless rewinding
+            if (wordIndex < 0) {
+                console.log('[PRELOAD PREVIOUS] wordIndex < 0, returning');
+                return;
+            }
+            
+            const BACKWARD_BUFFER_SIZE = 2; // Number of previous chunks to keep buffered
+            
+            // Get the previous chunks (going backwards by full paragraphs)
+            const chunksToPreload = [];
+            let currentIndex = wordIndex;
+            
+            for (let i = 0; i < BACKWARD_BUFFER_SIZE && currentIndex >= 0; i++) {
+                console.log(`[PRELOAD PREVIOUS] Iteration ${i}, getting chunk for index ${currentIndex}`);
+                
+                // Find the FIRST word of the paragraph containing currentIndex
+                // This ensures we get full paragraphs, not overlapping chunks
+                const paragraphStartIndex = getStartOfParagraph(currentIndex);
+                console.log(`[PRELOAD PREVIOUS] Paragraph starts at word ${paragraphStartIndex}`);
+                
+                const chunk = getChunkForWord(paragraphStartIndex);
+                if (!chunk) {
+                    console.log(`[PRELOAD PREVIOUS] No chunk found for index ${paragraphStartIndex}, breaking`);
+                    break;
+                }
+                
+                console.log(`[PRELOAD PREVIOUS] Found full paragraph chunk: ${chunk.id} (${chunk.startIndex}-${chunk.endIndex})`);
+                chunksToPreload.push(chunk);
+                
+                // Move to the word before the START of this paragraph (to get the previous paragraph)
+                currentIndex = paragraphStartIndex - 1;
+                console.log(`[PRELOAD PREVIOUS] Next currentIndex: ${currentIndex}`);
+            }
+            
+            // Preload all chunks that aren't already cached
+            console.log(`[PRELOAD PREVIOUS] Preloading ${chunksToPreload.length} previous chunks for seamless rewinding`);
+            for (const chunk of chunksToPreload) {
+                const cacheKey = `${chunk.id}-${selectedModel}`;
+                const isCached = audioCache.has(cacheKey);
+                console.log(`[PRELOAD PREVIOUS] Chunk ${chunk.id}: cached=${isCached}`);
+                if (!isCached) {
+                    console.log(`[PRELOAD PREVIOUS] Loading chunk ${chunk.id}...`);
+                    await loadChunk(chunk, false);
+                    console.log(`[PRELOAD PREVIOUS] Chunk ${chunk.id} loaded`);
+                }
+            }
+            console.log('[PRELOAD PREVIOUS] Complete');
+        }
+
         function getIndividualChunksFromOptimized(optimizedChunk) {
             const chunks = [];
             let currentIndex = optimizedChunk.startIndex;
@@ -1693,20 +1795,271 @@
             };
         }
         
-        function seek(seconds) {
-            if (!gaplessPlayer) return;
+        async function seek(seconds) {
+            console.log('=== SEEK CALLED ===');
+            console.log(`Seek amount: ${seconds}s`);
+            
+            if (!gaplessPlayer || !currentChunk) {
+                console.log('ERROR: No gapless player or current chunk');
+                return;
+            }
+            
             const audioEl = $('audio-player-element');
-            const newTime = audioEl.currentTime + seconds;
+            const currentTime = audioEl.currentTime;
+            const duration = audioEl.duration;
+            const newTime = currentTime + seconds;
+            
+            console.log(`Current chunk: startIndex=${currentChunk.startIndex}, endIndex=${currentChunk.endIndex}`);
+            console.log(`Current audio: currentTime=${currentTime}s, duration=${duration}s`);
+            console.log(`Calculated newTime: ${newTime}s`);
             
             if (newTime < 0) {
-                 // rewind to previous chunk
-                 const prevChunkIndex = currentChunk.startIndex - 1;
-                 if (prevChunkIndex >= 0) playFromWord(prevChunkIndex);
+                console.log('>>> SEEKING BACKWARDS TO PREVIOUS CHUNK <<<');
+                const overshoot = Math.abs(newTime);
+                
+                // Find the previous paragraph's FIRST word
+                let prevWordIndex = currentChunk.startIndex - 1;
+                
+                if (prevWordIndex < 0) {
+                    console.log('Already at first chunk, seeking to start');
+                    audioEl.currentTime = 0;
+                    return;
+                }
+                
+                // Find the FIRST word of the paragraph that contains prevWordIndex
+                // This is critical because getChunkForWord() creates overlapping chunks
+                // (it starts from the given word and goes to end of paragraph)
+                const prevChunkStartIndex = getStartOfParagraph(prevWordIndex);
+                
+                // Get the full chunk for logging purposes
+                const prevChunk = getChunkForWord(prevChunkStartIndex);
+                
+                console.log(`Overshoot: ${overshoot}s, prevChunkStartIndex: ${prevChunkStartIndex}`);
+                console.log(`Current chunk: ${currentChunk.startIndex}-${currentChunk.endIndex}, Previous chunk: ${prevChunk.startIndex}-${prevChunk.endIndex}`);
+                console.log(`✓ Found ACTUAL paragraph start at word ${prevChunkStartIndex}`);
+                
+                await seekToPreviousChunk(prevChunkStartIndex, overshoot);
             } else if (newTime >= audioEl.duration) {
-                playNextChunk();
+                console.log('>>> SEEKING FORWARDS TO NEXT CHUNK <<<');
+                const overshoot = newTime - audioEl.duration;
+                const nextChunkIndex = currentChunk.endIndex + 1;
+                console.log(`Overshoot: ${overshoot}s, nextChunkIndex: ${nextChunkIndex}`);
+                
+                if (nextChunkIndex < wordMap.length) {
+                    await seekToNextChunk(nextChunkIndex, overshoot);
+                } else {
+                    console.log('Already at last chunk, seeking to end');
+                    audioEl.currentTime = audioEl.duration;
+                }
             } else {
+                console.log('>>> SEEKING WITHIN CURRENT CHUNK <<<');
+                console.log(`Setting currentTime from ${currentTime}s to ${newTime}s`);
                 audioEl.currentTime = newTime;
             }
+            
+            console.log('=== SEEK COMPLETED ===');
+        }
+        
+        async function seekToPreviousChunk(prevChunkIndex, overshoot) {
+            console.log('--- seekToPreviousChunk START ---');
+            console.log(`prevChunkIndex: ${prevChunkIndex}, overshoot: ${overshoot}s`);
+            
+            const prevChunk = getChunkForWord(prevChunkIndex);
+            if (!prevChunk) {
+                console.log('ERROR: Could not get previous chunk');
+                return;
+            }
+            
+            console.log(`Previous chunk: id=${prevChunk.id}, startIndex=${prevChunk.startIndex}, endIndex=${prevChunk.endIndex}`);
+            console.log(`Previous chunk text (first 50 chars): "${prevChunk.text.substring(0, 50)}..."`);
+            
+            const wasPlaying = isPlaying && !isPaused;
+            console.log(`Was playing: ${wasPlaying}, isPlaying: ${isPlaying}, isPaused: ${isPaused}`);
+            
+            // Check if chunk is cached
+            const cacheKey = `${prevChunk.id}-${selectedModel}`;
+            const isCached = audioCache.has(cacheKey);
+            console.log(`Chunk cached: ${isCached} (cache key: ${cacheKey})`);
+            
+            // Load the previous chunk to get its audio
+            console.log('Loading previous chunk audio...');
+            const audioUrl = await loadChunk(prevChunk, false); // Don't show loading indicator for cached chunks
+            console.log(`Audio URL loaded: ${audioUrl.substring(0, 50)}...`);
+            
+            // Update current chunk
+            const oldChunk = currentChunk;
+            currentChunk = prevChunk;
+            console.log(`Updated currentChunk from ${oldChunk.id} to ${currentChunk.id}`);
+            
+            updateHighlighting();
+            scrollToWord(currentChunk.startIndex);
+            
+            const audioEl = $('audio-player-element');
+            console.log(`Audio element before changes: paused=${audioEl.paused}, src=${audioEl.src.substring(0, 50)}...`);
+            
+            // Stop current playback
+            if (!audioEl.paused) {
+                console.log('Pausing current playback...');
+                audioEl.pause();
+            }
+            
+            // Set the new audio source
+            console.log('Setting new audio source and playback rate...');
+            audioEl.src = audioUrl;
+            audioEl.playbackRate = currentPlaybackRate;
+            console.log(`Audio element readyState before load(): ${audioEl.readyState}`);
+            
+            // Wait for metadata to load
+            await new Promise((resolve, reject) => {
+                const performSeek = async () => {
+                    // Re-apply playback rate after load() (which may have reset it)
+                    audioEl.playbackRate = currentPlaybackRate;
+                    
+                    const targetTime = Math.max(0, audioEl.duration - overshoot);
+                    console.log(`>>> PERFORM SEEK: duration=${audioEl.duration}s, overshoot=${overshoot}s, targetTime=${targetTime}s`);
+                    console.log(`Setting currentTime to ${targetTime}s...`);
+                    audioEl.currentTime = targetTime;
+                    console.log(`currentTime set to: ${audioEl.currentTime}s`);
+                    
+                    if (wasPlaying) {
+                        console.log('Resuming playback...');
+                        try {
+                            await audioEl.play();
+                            console.log('Playback resumed successfully');
+                            isPlaying = true;
+                            isPaused = false;
+                            updatePlayPauseButtons('pause');
+                        } catch (e) {
+                            console.error('ERROR playing audio:', e);
+                            reject(e);
+                            return;
+                        }
+                    } else {
+                        console.log('Keeping paused state');
+                        isPaused = true;
+                        isPlaying = false;
+                        updatePlayPauseButtons('play');
+                    }
+                    
+                    // Preload surrounding chunks
+                    console.log('Preloading surrounding chunks...');
+                    const nextChunkStartIndex = prevChunk.endIndex + 1;
+                    if (nextChunkStartIndex < wordMap.length) {
+                        preloadNextChunk(nextChunkStartIndex);
+                    }
+                    const prevPrevChunkIndex = prevChunk.startIndex - 1;
+                    if (prevPrevChunkIndex >= 0) {
+                        preloadPreviousChunks(prevPrevChunkIndex);
+                    }
+                    
+                    console.log('--- seekToPreviousChunk COMPLETE ---');
+                    resolve();
+                };
+                
+                const onLoadedMetadata = () => {
+                    console.log(`loadedmetadata event fired! readyState: ${audioEl.readyState}, duration: ${audioEl.duration}s`);
+                    audioEl.removeEventListener('error', onError);
+                    performSeek();
+                };
+                
+                const onError = (e) => {
+                    console.error('ERROR event fired while loading audio:', e);
+                    audioEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                    reject(new Error('Failed to load previous chunk audio'));
+                };
+                
+                console.log('Adding event listeners for loadedmetadata and error...');
+                audioEl.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+                audioEl.addEventListener('error', onError, { once: true });
+                
+                // Force loading metadata if the audio is cached
+                console.log('Calling audioEl.load()...');
+                audioEl.load();
+                console.log(`Audio element readyState after load(): ${audioEl.readyState}`);
+            });
+        }
+        
+        async function seekToNextChunk(nextChunkIndex, overshoot) {
+            const nextChunk = getChunkForWord(nextChunkIndex);
+            if (!nextChunk) return;
+            
+            const wasPlaying = isPlaying && !isPaused;
+            
+            // Load the next chunk
+            const audioUrl = await loadChunk(nextChunk, false); // Don't show loading indicator for cached chunks
+            
+            // Update current chunk
+            currentChunk = nextChunk;
+            updateHighlighting();
+            scrollToWord(currentChunk.startIndex);
+            
+            const audioEl = $('audio-player-element');
+            
+            // Stop current playback
+            if (!audioEl.paused) {
+                audioEl.pause();
+            }
+            
+            // Set the new audio source
+            audioEl.src = audioUrl;
+            audioEl.playbackRate = currentPlaybackRate;
+            
+            // Wait for metadata to load
+            await new Promise((resolve, reject) => {
+                const performSeek = async () => {
+                    // Re-apply playback rate after load() (which may have reset it)
+                    audioEl.playbackRate = currentPlaybackRate;
+                    
+                    const targetTime = Math.min(overshoot, audioEl.duration);
+                    console.log(`Seeking to next chunk: duration=${audioEl.duration}s, overshoot=${overshoot}s, targetTime=${targetTime}s`);
+                    audioEl.currentTime = targetTime;
+                    
+                    if (wasPlaying) {
+                        try {
+                            await audioEl.play();
+                            isPlaying = true;
+                            isPaused = false;
+                            updatePlayPauseButtons('pause');
+                        } catch (e) {
+                            console.error('Error playing audio:', e);
+                            reject(e);
+                            return;
+                        }
+                    } else {
+                        isPaused = true;
+                        isPlaying = false;
+                        updatePlayPauseButtons('play');
+                    }
+                    
+                    // Preload surrounding chunks
+                    const subsequentChunkIndex = nextChunk.endIndex + 1;
+                    if (subsequentChunkIndex < wordMap.length) {
+                        preloadNextChunk(subsequentChunkIndex);
+                    }
+                    const prevChunkIndex = nextChunk.startIndex - 1;
+                    if (prevChunkIndex >= 0) {
+                        preloadPreviousChunks(prevChunkIndex);
+                    }
+                    
+                    resolve();
+                };
+                
+                const onLoadedMetadata = () => {
+                    audioEl.removeEventListener('error', onError);
+                    performSeek();
+                };
+                
+                const onError = () => {
+                    audioEl.removeEventListener('loadedmetadata', onLoadedMetadata);
+                    reject(new Error('Failed to load next chunk audio'));
+                };
+                
+                audioEl.addEventListener('loadedmetadata', onLoadedMetadata, { once: true });
+                audioEl.addEventListener('error', onError, { once: true });
+                
+                // Force loading metadata if the audio is cached
+                audioEl.load();
+            });
         }
 
         // --- UI & STATE MANAGEMENT --- //

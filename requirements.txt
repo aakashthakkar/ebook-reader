@@ -7,7 +7,7 @@ soundfile>=0.12.1
 werkzeug==3.0.1
 requests>=2.31.0
 numpy>=1.24.0
-edge-tts>=7.0.0
+edge-tts>=7.2.0
 supabase>=2.0.0
 pyjwt>=2.8.0
 flask-jwt-extended>=4.6.0

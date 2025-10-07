@@ -60,9 +60,16 @@ RUN echo "Cache bust value: ${CACHEBUST}" && \
     find . -name "*.py" -type f
 
 # Upgrade pip and install Python dependencies
-# Install PyTorch with CUDA 11.8 support (compatible with most GPUs, falls back to CPU if no GPU)
+# Install PyTorch with CUDA support for x86_64, CPU-only for ARM64
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
+        echo "Detected ARM64 architecture - installing CPU-only PyTorch..."; \
+        pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu; \
+    else \
+        echo "Detected x86_64 architecture - installing CUDA-enabled PyTorch..."; \
+        pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118; \
+    fi && \
     pip install --no-cache-dir -r requirements.txt && \
     python -m spacy download en_core_web_sm
 

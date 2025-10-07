@@ -183,14 +183,21 @@ If you have limited GPU memory:
 ## Architecture-Specific Notes
 
 ### AMD64 (x86_64) - Unraid Server
-- Full CUDA support enabled
+- **Full CUDA support enabled** ✅
 - PyTorch with CUDA 11.8
+- GPU acceleration for TTS
 - Recommended for maximum performance
+- **This is what you'll use on Unraid**
 
 ### ARM64 (e.g., Raspberry Pi)
 - CPU-only PyTorch automatically installed
-- No CUDA support (ARM doesn't support CUDA)
+- No CUDA support (ARM doesn't support NVIDIA CUDA)
 - Still functional, just slower
+- Useful for testing or low-power deployments
+
+**Note**: The Dockerfile automatically detects your architecture and installs the correct PyTorch version:
+- `x86_64` → CUDA-enabled PyTorch (for GPU acceleration)
+- `aarch64`/`arm64` → CPU-only PyTorch
 
 ## Additional Resources
 

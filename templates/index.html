@@ -1299,44 +1299,7 @@
             const finalWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
             const finalText = finalWordsInChunk.map(w => w.text).join(' ');
             
-            // Safety check: ensure minimum chunk size to avoid TTS failures
-            const MIN_CHUNK_CHARACTERS = 10;
-            const MIN_CHUNK_WORDS = 3;
-            
-            if (finalText.length < MIN_CHUNK_CHARACTERS || finalWordsInChunk.length < MIN_CHUNK_WORDS) {
-                console.log(`Chunk too small (${finalText.length} chars, ${finalWordsInChunk.length} words), expanding to minimum size`);
-                // Expand to at least MIN_CHUNK_WORDS or MIN_CHUNK_CHARACTERS
-                let expandedEndIndex = endIndex;
-                for (let i = endIndex + 1; i < wordMap.length; i++) {
-                    const expandedWords = wordMap.slice(startIndex, i + 1);
-                    const expandedText = expandedWords.map(w => w.text).join(' ');
-                    
-                    if (expandedText.length >= MIN_CHUNK_CHARACTERS && expandedWords.length >= MIN_CHUNK_WORDS) {
-                        expandedEndIndex = i;
-                        break;
-                    }
-                    
-                    expandedEndIndex = i;
-                    
-                    // Safety limit: don't expand indefinitely
-                    if (expandedWords.length >= 50) break;
-                }
-                
-                endIndex = expandedEndIndex;
-                const expandedWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
-                const expandedText = expandedWordsInChunk.map(w => w.text).join(' ');
-                console.log(`Expanded chunk to ${expandedWordsInChunk.length} words, ${expandedText.length} characters`);
-                
-                return {
-                    startIndex: startIndex,
-                    endIndex: endIndex,
-                    text: expandedText,
-                    id: `chunk-${startIndex}`,
-                    paragraphId: startWord.paragraph_id
-                };
-            }
-            
-            console.log(`Generated chunk from ${startIndex} to ${endIndex}: "${finalText.substring(0, 100)}..." (${finalText.length} characters, ${finalWordsInChunk.length} words, paragraph: ${startWord.paragraph_id !== undefined ? startWord.paragraph_id : 'N/A'})`);
+            console.log(`Generated chunk from ${startIndex} to ${endIndex}: "${finalText.substring(0, 100)}..." (${finalText.length} characters, ${finalWordsInChunk.length} words, paragraph: ${startWord.paragraph_id || 'N/A'})`);
             
             return {
                 startIndex: startIndex,
@@ -1375,8 +1338,7 @@
             const targetParagraphId = startWord.paragraph_id;
             
             // Find the end of the current paragraph
-            // Start from startIndex + 1 to ensure we get at least one word in the chunk
-            for (let i = startIndex + 1; i < wordMap.length; i++) {
+            for (let i = startIndex; i < wordMap.length; i++) {
                 const word = wordMap[i];
                 
                 // If we've moved to a different paragraph, stop at previous word

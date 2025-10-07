@@ -11,7 +11,7 @@ ARG TARGETOS
 ARG TARGETARCH
 
 # Choose base image based on architecture
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Print build information
 RUN echo "Building on: $BUILDPLATFORM, targeting: $TARGETPLATFORM" && \
@@ -44,13 +44,8 @@ RUN apt-get update && \
     pkg-config \
     libsndfile1 \
     libasound2-dev \
+    espeak-ng \
     && \
-    # Install espeak based on architecture
-    if [ "$TARGETARCH" = "arm64" ]; then \
-        apt-get install -y --no-install-recommends espeak espeak-data libespeak1 libespeak-dev; \
-    else \
-        apt-get install -y --no-install-recommends espeak espeak-data libespeak1 libespeak-dev; \
-    fi && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

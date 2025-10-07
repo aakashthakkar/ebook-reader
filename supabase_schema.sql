@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS reading_progress (
 CREATE TABLE IF NOT EXISTS user_preferences (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    voice_model VARCHAR(100) DEFAULT 'edge-tts-andrew',
+    voice_model VARCHAR(100) DEFAULT 'kokoro-af-heart',
     voice_speed DECIMAL(3,2) DEFAULT 1.0 CHECK (voice_speed >= 0.1 AND voice_speed <= 5.0),
     skip_patterns BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -280,7 +280,7 @@ DECLARE
     result JSON;
 BEGIN
     SELECT json_build_object(
-        'voice_model', COALESCE(bp.voice_model, up.voice_model, 'edge-tts-andrew'),
+        'voice_model', COALESCE(bp.voice_model, up.voice_model, 'kokoro-af-heart'),
         'voice_speed', COALESCE(bp.voice_speed, up.voice_speed, 1.0),
         'skip_patterns', COALESCE(bp.skip_patterns, up.skip_patterns, false),
         'background_music_enabled', COALESCE(bp.background_music_enabled, false),

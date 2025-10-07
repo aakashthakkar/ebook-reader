@@ -1,6 +1,6 @@
 # Multi-stage build with explicit architecture support
 # Use official Python image with explicit platform support
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Build arguments for cache busting - forces fresh git clone
 ARG CACHEBUST=1
@@ -38,10 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     pkg-config \
     libsndfile1 \
-    espeak \
-    espeak-data \
-    libespeak1 \
-    libespeak-dev \
+    espeak-ng \
     ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \

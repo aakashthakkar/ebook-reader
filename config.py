@@ -32,55 +32,264 @@ class Config:
     MAX_TEXT_LENGTH = 2_000_000  # 2 million characters (for books)
     CHUNK_SIZE = 100  # Process in chunks of exactly 100 words for on-demand streaming
     
-    # Edge TTS Voice configurations
+    # Kokoro TTS Voice configurations
+    # American English voices (lang_code='a')
     AVAILABLE_MODELS = {
-        'edge-tts-andrew': {
-            'name': 'Andrew (Neural)',
-            'description': 'High-quality English male voice with natural pronunciation - Edge TTS',
-            'voice_id': 'en-US-AndrewNeural',
+        # Female American English voices
+        'kokoro-af-heart': {
+            'name': 'Heart (Female, US) ⭐',
+            'description': 'Premium American English female voice - Grade A',
+            'voice_id': 'af_heart',
+            'lang_code': 'a',
             'speed': 'Real-time streaming',
             'sample_rate': 24000,
-            'type': 'edge-tts'
+            'type': 'kokoro'
         },
-        'edge-tts-andrew-multilingual': {
-            'name': 'Andrew (Multilingual)',
-            'description': 'Advanced multilingual male voice - Edge TTS',
-            'voice_id': 'en-US-AndrewMultilingualNeural',
+        'kokoro-af-bella': {
+            'name': 'Bella (Female, US)',
+            'description': 'High-quality warm American English female voice - Grade A-',
+            'voice_id': 'af_bella',
+            'lang_code': 'a',
             'speed': 'Real-time streaming',
             'sample_rate': 24000,
-            'type': 'edge-tts'
+            'type': 'kokoro'
         },
-        'edge-tts-jenny': {
-            'name': 'Jenny (Neural)',
-            'description': 'Friendly and considerate female voice - Edge TTS',
-            'voice_id': 'en-US-JennyNeural',
+        'kokoro-af-nicole': {
+            'name': 'Nicole (Female, US)',
+            'description': 'Headphone-optimized American English female voice - Grade B-',
+            'voice_id': 'af_nicole',
+            'lang_code': 'a',
             'speed': 'Real-time streaming',
             'sample_rate': 24000,
-            'type': 'edge-tts'
+            'type': 'kokoro'
         },
-        'edge-tts-aria': {
-            'name': 'Aria (Neural)',
-            'description': 'Positive and confident female voice - Edge TTS',
-            'voice_id': 'en-US-AriaNeural',
+        'kokoro-af-sarah': {
+            'name': 'Sarah (Female, US)',
+            'description': 'Natural American English female voice - Grade C+',
+            'voice_id': 'af_sarah',
+            'lang_code': 'a',
             'speed': 'Real-time streaming',
             'sample_rate': 24000,
-            'type': 'edge-tts'
+            'type': 'kokoro'
         },
-        'edge-tts-guy': {
-            'name': 'Guy (Neural)',
-            'description': 'Passionate male voice for engaging content - Edge TTS',
-            'voice_id': 'en-US-GuyNeural',
+        'kokoro-af-aoede': {
+            'name': 'Aoede (Female, US)',
+            'description': 'Smooth American English female voice - Grade C+',
+            'voice_id': 'af_aoede',
+            'lang_code': 'a',
             'speed': 'Real-time streaming',
             'sample_rate': 24000,
-            'type': 'edge-tts'
+            'type': 'kokoro'
         },
-        'edge-tts-christopher': {
-            'name': 'Christopher (Neural)',
-            'description': 'Reliable and authoritative male voice - Edge TTS',
-            'voice_id': 'en-US-ChristopherNeural',
+        'kokoro-af-kore': {
+            'name': 'Kore (Female, US)',
+            'description': 'Clear American English female voice - Grade C+',
+            'voice_id': 'af_kore',
+            'lang_code': 'a',
             'speed': 'Real-time streaming',
             'sample_rate': 24000,
-            'type': 'edge-tts'
+            'type': 'kokoro'
+        },
+        'kokoro-af-alloy': {
+            'name': 'Alloy (Female, US)',
+            'description': 'Versatile American English female voice - Grade C',
+            'voice_id': 'af_alloy',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-af-nova': {
+            'name': 'Nova (Female, US)',
+            'description': 'Modern American English female voice - Grade C',
+            'voice_id': 'af_nova',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-af-sky': {
+            'name': 'Sky (Female, US)',
+            'description': 'Bright American English female voice - Grade C-',
+            'voice_id': 'af_sky',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-af-jessica': {
+            'name': 'Jessica (Female, US)',
+            'description': 'American English female voice - Grade D',
+            'voice_id': 'af_jessica',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-af-river': {
+            'name': 'River (Female, US)',
+            'description': 'American English female voice - Grade D',
+            'voice_id': 'af_river',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        # Male American English voices
+        'kokoro-am-michael': {
+            'name': 'Michael (Male, US)',
+            'description': 'Strong American English male voice - Grade C+',
+            'voice_id': 'am_michael',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-fenrir': {
+            'name': 'Fenrir (Male, US)',
+            'description': 'Deep American English male voice - Grade C+',
+            'voice_id': 'am_fenrir',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-puck': {
+            'name': 'Puck (Male, US)',
+            'description': 'Energetic American English male voice - Grade C+',
+            'voice_id': 'am_puck',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-echo': {
+            'name': 'Echo (Male, US)',
+            'description': 'American English male voice - Grade D',
+            'voice_id': 'am_echo',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-eric': {
+            'name': 'Eric (Male, US)',
+            'description': 'American English male voice - Grade D',
+            'voice_id': 'am_eric',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-liam': {
+            'name': 'Liam (Male, US)',
+            'description': 'American English male voice - Grade D',
+            'voice_id': 'am_liam',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-onyx': {
+            'name': 'Onyx (Male, US)',
+            'description': 'American English male voice - Grade D',
+            'voice_id': 'am_onyx',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-santa': {
+            'name': 'Santa (Male, US)',
+            'description': 'Jolly American English male voice - Grade D-',
+            'voice_id': 'am_santa',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-am-adam': {
+            'name': 'Adam (Male, US)',
+            'description': 'American English male voice - Grade F+',
+            'voice_id': 'am_adam',
+            'lang_code': 'a',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        # Female British English voices (lang_code='b')
+        'kokoro-bf-emma': {
+            'name': 'Emma (Female, UK)',
+            'description': 'High-quality British English female voice - Grade B-',
+            'voice_id': 'bf_emma',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-bf-isabella': {
+            'name': 'Isabella (Female, UK)',
+            'description': 'Refined British English female voice - Grade C',
+            'voice_id': 'bf_isabella',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-bf-alice': {
+            'name': 'Alice (Female, UK)',
+            'description': 'British English female voice - Grade D',
+            'voice_id': 'bf_alice',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-bf-lily': {
+            'name': 'Lily (Female, UK)',
+            'description': 'British English female voice - Grade D',
+            'voice_id': 'bf_lily',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        # Male British English voices (lang_code='b')
+        'kokoro-bm-george': {
+            'name': 'George (Male, UK)',
+            'description': 'Distinguished British English male voice - Grade C',
+            'voice_id': 'bm_george',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-bm-fable': {
+            'name': 'Fable (Male, UK)',
+            'description': 'Narrative British English male voice - Grade C',
+            'voice_id': 'bm_fable',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-bm-lewis': {
+            'name': 'Lewis (Male, UK)',
+            'description': 'British English male voice - Grade D+',
+            'voice_id': 'bm_lewis',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
+        },
+        'kokoro-bm-daniel': {
+            'name': 'Daniel (Male, UK)',
+            'description': 'British English male voice - Grade D',
+            'voice_id': 'bm_daniel',
+            'lang_code': 'b',
+            'speed': 'Real-time streaming',
+            'sample_rate': 24000,
+            'type': 'kokoro'
         }
     }
     

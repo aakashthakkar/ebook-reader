@@ -115,12 +115,41 @@ The application includes intelligent pattern detection to improve the listening 
 - Running Headers: Consistent text in the same position across consecutive pages
 
 ### Available Voices
-- **Andrew (Neural)** - ⭐ Recommended: High-quality English male voice
-- **Andrew (Multilingual)** - Advanced multilingual support
-- **Jenny (Neural)** - Friendly and considerate female voice
-- **Aria (Neural)** - Positive and confident female voice
-- **Guy (Neural)** - Passionate male voice for engaging content
-- **Christopher (Neural)** - Reliable and authoritative male voice
+
+#### American English (EN-US)
+**Premium Quality:**
+- **Heart (Female) ⭐** - Grade A: Premium American English female voice
+- **Bella (Female)** - Grade A-: High-quality warm female voice
+
+**High Quality:**
+- **Nicole (Female)** - Grade B-: Headphone-optimized female voice
+
+**Good Quality:**
+- **Sarah (Female)** - Grade C+: Natural female voice
+- **Aoede (Female)** - Grade C+: Smooth female voice
+- **Kore (Female)** - Grade C+: Clear female voice
+- **Michael (Male)** - Grade C+: Strong male voice
+- **Fenrir (Male)** - Grade C+: Deep male voice
+- **Puck (Male)** - Grade C+: Energetic male voice
+
+**Additional Voices:**
+- Alloy, Nova, Sky, Jessica, River (Female)
+- Echo, Eric, Liam, Onyx, Santa, Adam (Male)
+
+#### British English (EN-GB)
+**High Quality:**
+- **Emma (Female)** - Grade B-: High-quality British English female voice
+
+**Good Quality:**
+- **Isabella (Female)** - Grade C: Refined British English female voice
+- **George (Male)** - Grade C: Distinguished British English male voice
+- **Fable (Male)** - Grade C: Narrative British English male voice
+
+**Additional Voices:**
+- Alice, Lily (Female)
+- Lewis, Daniel (Male)
+
+All voices support phoneme-based generation with proper EN-US or EN-GB pronunciation.
 
 ## 🔌 API Reference
 
@@ -148,7 +177,7 @@ curl -X POST -F "file=@document.pdf" http://localhost:8000/api/upload
 ```json
 {
   "text": "Text to convert to speech",
-  "model": "edge-tts-andrew"
+  "model": "kokoro-af-heart"
 }
 ```
 
@@ -199,7 +228,7 @@ ebook-reader/
 - **Flask**: Web framework and API server
 - **pdfplumber**: Primary PDF text extraction
 - **PyPDF2**: Fallback PDF text extraction
-- **edge-tts**: Microsoft Edge Text-to-Speech
+- **Kokoro**: High-quality neural Text-to-Speech
 - **soundfile**: Audio file processing
 - **numpy**: Numerical operations for audio
 
@@ -209,10 +238,11 @@ Edit `config.py` and add new voice configurations to `AVAILABLE_MODELS`:
 'new-voice-key': {
     'name': 'Voice Name',
     'description': 'Voice description',
-    'voice_id': 'edge-tts-voice-id',
+    'voice_id': 'kokoro-voice-id',
+    'lang_code': 'a',  # Language code (a=American English)
     'speed': 'Real-time streaming',
     'sample_rate': 24000,
-    'type': 'edge-tts'
+    'type': 'kokoro'
 }
 ```
 

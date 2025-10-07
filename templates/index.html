@@ -251,7 +251,7 @@
                                     <div class="relative">
                                         <select id="default-voice-select" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 pr-10 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
                                             {% for key, model in models.items() %}
-                                            <option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>
+                                            <option value="{{ key }}" {% if key == 'kokoro-af-heart' %}selected{% endif %}>{{ model.name }}</option>
                                             {% endfor %}
                                         </select>
                                         <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
@@ -409,7 +409,7 @@
                     <div class="flex items-center gap-2 min-w-0">
                         <div class="text-xs text-slate-400 hidden lg:block">Voice:</div>
                         <select id="sticky-voice-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none min-w-0 flex-shrink">
-                            {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                            {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'kokoro-af-heart' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="flex items-center gap-2">
@@ -501,7 +501,7 @@
                     <div class="flex items-center justify-between">
                         <label for="mobile-voice-select" class="text-sm text-slate-400">Voice</label>
                         <select id="mobile-voice-select" class="bg-slate-700 text-white text-sm rounded-md px-3 py-1.5 border border-slate-600 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
-                             {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'edge-tts-andrew' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
+                             {% for key, model in models.items() %}<option value="{{ key }}" {% if key == 'kokoro-af-heart' %}selected{% endif %}>{{ model.name }}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="flex items-center justify-between">
@@ -626,7 +626,7 @@
         let currentFileId = null;
         let progressSaveInterval = null;
         let progressUpdateInterval = null;
-        let audioCache = new Map(), gaplessPlayer = null, isPaused = false, currentPlaybackRate = 1.0, selectedModel = 'edge-tts-andrew';
+        let audioCache = new Map(), gaplessPlayer = null, isPaused = false, currentPlaybackRate = 1.0, selectedModel = 'kokoro-af-heart';
         let currentViewingPage = 1;
         let isViewChanging = false;
         let hasUserInteracted = false;
@@ -2299,7 +2299,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.preferences) {
-                        selectedModel = data.preferences.voice_model || 'edge-tts-andrew';
+                        selectedModel = data.preferences.voice_model || 'kokoro-af-heart';
                         currentPlaybackRate = data.preferences.voice_speed || 1.0;
                         skipPatterns = data.preferences.skip_patterns || false;
                         console.log("Loaded user preferences from database:", data.preferences);
@@ -2317,7 +2317,7 @@
         }
 
         function setDefaultPreferences() {
-            selectedModel = 'edge-tts-andrew';
+            selectedModel = 'kokoro-af-heart';
             currentPlaybackRate = 1.0;
             skipPatterns = false;
         }
@@ -2640,7 +2640,7 @@
                         console.log('Book preferences loaded:', data.preferences);
                         
                         // Apply book preferences
-                        selectedModel = data.preferences.voice_model || 'edge-tts-andrew';
+                        selectedModel = data.preferences.voice_model || 'kokoro-af-heart';
                         currentPlaybackRate = data.preferences.voice_speed || 1.0;
                         skipPatterns = data.preferences.skip_patterns || false;
                         

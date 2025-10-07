@@ -718,7 +718,7 @@ class AuthService:
                 # Create default preferences for the user
                 default_prefs = {
                     'user_id': user_id,
-                    'voice_model': 'edge-tts-andrew',
+                    'voice_model': 'kokoro-af-heart',
                     'voice_speed': 1.0,
                     'skip_patterns': False
                 }
@@ -766,7 +766,7 @@ class AuthService:
                 # If no rows were updated, create new preferences
                 new_prefs = {
                     'user_id': user_id,
-                    'voice_model': update_data.get('voice_model', 'edge-tts-andrew'),
+                    'voice_model': update_data.get('voice_model', 'kokoro-af-heart'),
                     'voice_speed': update_data.get('voice_speed', 1.0),
                     'skip_patterns': update_data.get('skip_patterns', False)
                 }
@@ -897,7 +897,7 @@ class AuthService:
                 return {
                     'success': True,
                     'preferences': {
-                        'voice_model': 'edge-tts-andrew',
+                        'voice_model': 'kokoro-af-heart',
                         'voice_speed': 1.0,
                         'skip_patterns': False,
                         'background_music_enabled': False,

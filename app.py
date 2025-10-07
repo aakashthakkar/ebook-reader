@@ -10,11 +10,10 @@ import soundfile as sf
 import tempfile
 import traceback
 from config import Config
-import asyncio
 import numpy as np
-import edge_tts
 import base64
 from auth_service import auth_service, token_required
+from kokoro import KPipeline
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -385,40 +384,48 @@ def group_words_by_lines_converted(words, y_tolerance=3):
     
     return lines
 
-async def generate_audio_edge_tts_async(text, voice_id):
-    """Generate audio using Edge TTS asynchronously"""
+# Initialize Kokoro pipelines globally for better performance
+# Maintain separate pipelines for different language codes (EN-US 'a' and EN-GB 'b')
+kokoro_pipelines = {}
+
+def get_kokoro_pipeline(lang_code='a'):
+    """Get or initialize Kokoro pipeline (singleton pattern for performance)"""
+    global kokoro_pipelines
+    if lang_code not in kokoro_pipelines:
+        logger.info(f"Initializing Kokoro pipeline with lang_code: {lang_code}")
+        kokoro_pipelines[lang_code] = KPipeline(lang_code=lang_code)
+        logger.info(f"Kokoro pipeline for lang_code '{lang_code}' initialized successfully")
+    return kokoro_pipelines[lang_code]
+
+def generate_audio_kokoro(text, voice_id, lang_code='a'):
+    """Generate audio using Kokoro TTS"""
     try:
-        logger.info(f"Generating audio with Edge TTS ({voice_id}) for text: {text[:50]}...")
+        logger.info(f"Generating audio with Kokoro ({voice_id}) for text: {text[:50]}...")
         
-        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_file:
-            temp_path = temp_file.name
+        # Get or initialize pipeline
+        pipeline = get_kokoro_pipeline(lang_code)
         
-        communicate = edge_tts.Communicate(text, voice_id)
-        await communicate.save(temp_path)
+        # Generate audio - Kokoro returns a generator that yields (graphemes, phonemes, audio)
+        # We collect all audio chunks and concatenate them
+        audio_chunks = []
+        for gs, ps, audio in pipeline(text, voice=voice_id):
+            audio_chunks.append(audio)
         
-        audio_data, sample_rate = sf.read(temp_path)
+        # Concatenate all audio chunks
+        if audio_chunks:
+            audio_data = np.concatenate(audio_chunks)
+        else:
+            raise ValueError("No audio generated from Kokoro")
         
-        os.unlink(temp_path)
+        # Kokoro outputs at 24kHz by default
+        sample_rate = 24000
         
-        logger.info(f"Edge TTS completed: {len(audio_data)} samples at {sample_rate}Hz")
+        logger.info(f"Kokoro TTS completed: {len(audio_data)} samples at {sample_rate}Hz")
         return audio_data, sample_rate
         
     except Exception as e:
-        logger.error(f"Error with Edge TTS: {e}")
-        raise
-
-def generate_audio_edge_tts_sync(text, voice_id):
-    """Synchronous wrapper for Edge TTS"""
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    
-    try:
-        return loop.run_until_complete(generate_audio_edge_tts_async(text, voice_id))
-    except Exception as e:
-        logger.error(f"Error in Edge TTS sync wrapper: {e}")
+        logger.error(f"Error with Kokoro TTS: {e}")
+        traceback.print_exc()
         raise
 
 def has_significant_indentation_change(line_words, prev_line, main_text_margin):
@@ -884,11 +891,11 @@ def upload_file():
 @app.route('/api/generate-audio', methods=['POST'])
 @token_required
 def generate_audio():
-    """Generate audio using Edge TTS (protected route)"""
+    """Generate audio using Kokoro TTS (protected route)"""
     try:
         data = request.get_json()
         text = data.get('text', '').strip()
-        model_key = data.get('model', 'edge-tts-andrew')
+        model_key = data.get('model', 'kokoro-af-heart')
         
         if not text:
             return jsonify({'error': 'No text provided'}), 400
@@ -901,9 +908,11 @@ def generate_audio():
         
         voice_config = Config.AVAILABLE_MODELS[model_key]
         voice_id = voice_config['voice_id']
+        lang_code = voice_config.get('lang_code', 'a')  # Default to American English
         
         logger.info(f"Generating audio with {voice_id} for {len(text)} characters")
-        audio_data, sample_rate = generate_audio_edge_tts_sync(text, voice_id)
+        
+        audio_data, sample_rate = generate_audio_kokoro(text, voice_id, lang_code)
         
         buffer = io.BytesIO()
         sf.write(buffer, audio_data, sample_rate, format='WAV')

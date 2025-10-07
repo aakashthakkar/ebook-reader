@@ -13,4 +13,5 @@ flask-jwt-extended>=4.6.0
 bcrypt>=4.0.1
 psycopg2-binary>=2.9.7
 kokoro>=0.9.4
-# Note: torch is installed separately in Dockerfile with CUDA support for GPU acceleration
+# Note: torch is pre-installed in the pytorch/pytorch base image (Dockerfile) 
+# or installed conditionally by architecture (Dockerfile.multiarch)

@@ -1,6 +1,7 @@
 # Multi-stage build with explicit architecture support
-# Use official Python image with explicit platform support
-FROM python:3.12-slim
+# Use pre-built PyTorch image for faster builds (has torch already installed)
+# This image includes Python 3.11, PyTorch 2.5.1, CUDA 11.8, and cuDNN 9
+FROM pytorch/pytorch:2.5.1-cuda11.8-cudnn9-runtime
 
 # Build arguments for cache busting - forces fresh git clone
 ARG CACHEBUST=1
@@ -60,16 +61,8 @@ RUN echo "Cache bust value: ${CACHEBUST}" && \
     find . -name "*.py" -type f
 
 # Upgrade pip and install Python dependencies
-# Install PyTorch with CUDA support for x86_64, CPU-only for ARM64
+# Note: PyTorch is already installed in the base image, so we only install additional dependencies
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then \
-        echo "Detected ARM64 architecture - installing CPU-only PyTorch..."; \
-        pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu; \
-    else \
-        echo "Detected x86_64 architecture - installing CUDA-enabled PyTorch..."; \
-        pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118; \
-    fi && \
     pip install --no-cache-dir -r requirements.txt && \
     python -m spacy download en_core_web_sm
 

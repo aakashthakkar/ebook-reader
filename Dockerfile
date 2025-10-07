@@ -60,8 +60,11 @@ RUN echo "Cache bust value: ${CACHEBUST}" && \
     find . -name "*.py" -type f
 
 # Upgrade pip and install Python dependencies
+# Install PyTorch with CUDA 11.8 support (compatible with most GPUs, falls back to CPU if no GPU)
 RUN python -m pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 && \
+    pip install --no-cache-dir -r requirements.txt && \
+    python -m spacy download en_core_web_sm
 
 # Create storage directories and set up user
 RUN useradd -m -u 1000 appuser && \

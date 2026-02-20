@@ -13,5 +13,8 @@ flask-jwt-extended>=4.6.0
 bcrypt>=4.0.1
 psycopg2-binary>=2.9.7
 kokoro>=0.9.4
+EbookLib>=0.18
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
 # Note: torch is pre-installed in the pytorch/pytorch base image (Dockerfile) 
 # or installed conditionally by architecture (Dockerfile.multiarch)

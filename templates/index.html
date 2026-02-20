@@ -73,6 +73,54 @@
             transform: scale(1.02);
             background-color: hsl(var(--secondary));
         }
+
+        .speed-dialog-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 10001;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .speed-dialog-overlay.active { opacity: 1; pointer-events: auto; }
+        .speed-dialog {
+            background: hsl(222.2 84% 6.9%);
+            border: 1px solid hsl(217.2 32.6% 17.5%);
+            border-radius: 1.5rem; padding: 1.5rem 2rem;
+            width: min(320px, 90vw);
+            transform: scale(0.95); transition: transform 0.2s ease;
+        }
+        .speed-dialog-overlay.active .speed-dialog { transform: scale(1); }
+        .speed-dial-svg { touch-action: none; cursor: pointer; user-select: none; }
+        .speed-dial-track { fill: none; stroke: hsl(217.2 32.6% 22%); stroke-width: 14; stroke-linecap: round; }
+        .speed-dial-progress { fill: none; stroke: hsl(217.2 91.2% 59.8%); stroke-width: 14; stroke-linecap: round; }
+        .speed-dial-thumb { fill: white; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); cursor: grab; }
+        .speed-dial-thumb:active { cursor: grabbing; }
+
+        .epub-viewer { position: relative; overflow-y: auto; overflow-x: hidden; height: calc(100vh - 80px); }
+        .epub-content {
+            max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem;
+            font-size: 1.1rem; line-height: 1.8; color: #e2e8f0;
+        }
+        .epub-chapter { margin-bottom: 2rem; }
+        .epub-chapter-title {
+            font-size: 1.5rem; font-weight: 700; color: #f1f5f9;
+            margin-bottom: 1rem; padding-bottom: 0.5rem;
+            border-bottom: 1px solid hsl(217.2 32.6% 17.5%);
+        }
+        .epub-paragraph { margin-bottom: 1rem; text-indent: 1.5em; }
+        .epub-word {
+            cursor: pointer; border-radius: 2px;
+            transition: background-color 0.15s ease;
+        }
+        .epub-word:hover { background-color: hsla(var(--primary), 0.3) !important; }
+        .epub-word.word-playing-chunk { background-color: hsla(217, 91%, 60%, 0.3) !important; }
+        .epub-word.word-next-chunk { background-color: hsla(var(--primary), 0.15) !important; }
+        .epub-word.word-current {
+            background-color: hsla(142, 71%, 41%, 0.6) !important;
+            animation: pulse-word 1.5s infinite;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-200 selection:bg-slate-700">
@@ -102,10 +150,10 @@
             <div class="min-h-screen flex flex-col items-center justify-center p-4 pt-24">
                 <div class="text-center w-full max-w-4xl mx-auto">
                     <h2 class="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4">
-                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Listen to your PDFs,</span>
+                        <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">Listen to your books,</span>
                         <span class="text-slate-200">hands-free.</span>
                     </h2>
-                    <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto">Upload any document and have it read out to you with perfectly synced, real-time text highlighting.</p>
+                    <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto">Upload any PDF or EPUB and have it read out to you with perfectly synced, real-time text highlighting.</p>
 
                     <!-- User's PDF Files Section -->
                     <div id="user-pdfs-section" class="mb-12">
@@ -116,7 +164,7 @@
                         
                         <div id="user-pdfs-list" class="hidden">
                             <div class="flex items-center justify-between mb-8">
-                                <h3 class="text-2xl font-bold text-slate-100">Your PDF Library</h3>
+                                <h3 class="text-2xl font-bold text-slate-100">Your Library</h3>
                                 <span class="text-sm text-slate-400 bg-slate-800/50 px-3 py-1 rounded-full" id="pdf-count">0 documents</span>
                             </div>
                             <div id="pdfs-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -127,8 +175,8 @@
                         <div id="user-pdfs-empty" class="hidden text-center py-12">
                             <div class="bg-slate-800/30 rounded-2xl p-8 max-w-md mx-auto">
                                 <i data-lucide="book-open" class="h-12 w-12 text-slate-500 mx-auto mb-4"></i>
-                                <h4 class="text-lg font-semibold text-slate-200 mb-2">No PDFs yet</h4>
-                                <p class="text-slate-400 text-sm">Upload your first PDF to start listening!</p>
+                                <h4 class="text-lg font-semibold text-slate-200 mb-2">No books yet</h4>
+                                <p class="text-slate-400 text-sm">Upload your first PDF or EPUB to start listening!</p>
                             </div>
                         </div>
                     </div>
@@ -145,8 +193,8 @@
                                     <i data-lucide="file-text" class="h-6 w-6 text-blue-400"></i>
                                 </div>
                                 <div>
-                                    <h3 class="text-lg font-semibold text-slate-100">Upload PDF</h3>
-                                    <p class="text-sm text-slate-400">Add documents to your library</p>
+                                    <h3 class="text-lg font-semibold text-slate-100">Upload Book</h3>
+                                    <p class="text-sm text-slate-400">PDF or EPUB to your library</p>
                                 </div>
                             </div>
                             
@@ -156,12 +204,12 @@
                                         <i data-lucide="upload-cloud" class="h-7 w-7 text-slate-500 group-hover:text-blue-400 transition-colors"></i>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-slate-200 mb-1">Drop your PDF here</h4>
+                                        <h4 class="font-medium text-slate-200 mb-1">Drop your file here</h4>
                                         <p class="text-sm text-slate-400">or <span class="text-blue-400 font-medium hover:text-blue-300 transition-colors">click to browse</span></p>
                                     </div>
-                                    <p class="text-xs text-slate-500">Supports PDF files up to 500MB</p>
+                                    <p class="text-xs text-slate-500">Supports PDF and EPUB files up to 500MB</p>
                                 </div>
-                                <input type="file" id="pdf-input" accept=".pdf" class="hidden">
+                                <input type="file" id="pdf-input" accept=".pdf,.epub" class="hidden">
                             </div>
                         </div>
 
@@ -232,7 +280,7 @@
                     <div class="max-w-2xl mx-auto mt-16">
                         <div class="text-center mb-8">
                             <h3 class="text-2xl font-bold text-slate-100 mb-4">Default Voice Settings</h3>
-                            <p class="text-slate-400">Configure your preferred voice and speed. These settings will be applied to all new PDFs by default.</p>
+                            <p class="text-slate-400">Configure your preferred voice and speed. These settings will be applied to all new books by default.</p>
                         </div>
                         
                         <div class="bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8">
@@ -267,23 +315,14 @@
                                             <i data-lucide="gauge" class="h-5 w-5 text-green-400"></i>
                                         </div>
                                         <div>
-                                            <label for="default-speed-select" class="text-sm font-medium text-slate-200">Speed</label>
+                                            <label class="text-sm font-medium text-slate-200">Speed</label>
                                             <p class="text-xs text-slate-400">Set your reading pace</p>
                                         </div>
                                     </div>
-                                    <div class="relative">
-                                        <select id="default-speed-select" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 pr-10 border border-slate-700 focus:border-green-500 focus:ring-0 outline-none appearance-none">
-                                            <option value="0.5">0.5x (Very Slow)</option>
-                                            <option value="0.75">0.75x (Slow)</option>
-                                            <option value="1.0" selected>1.0x (Normal)</option>
-                                            <option value="1.25">1.25x (Fast)</option>
-                                            <option value="1.5">1.5x (Faster)</option>
-                                            <option value="2.0">2.0x (Very Fast)</option>
-                                        </select>
-                                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                            <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
-                                        </div>
-                                    </div>
+                                    <button id="default-speed-btn" onclick="openSpeedDialog()" class="w-full bg-slate-800 text-white text-sm rounded-lg px-4 py-3 border border-slate-700 hover:border-green-500 outline-none text-left flex items-center justify-between transition-colors">
+                                        <span id="default-speed-display">1.0x (Normal)</span>
+                                        <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                                    </button>
                                 </div>
                             </div>
                             
@@ -386,6 +425,46 @@
             </div>
         </div>
 
+        <!-- EPUB Display -->
+        <div id="epub-display" class="hidden">
+            <div class="bg-slate-900/95 backdrop-blur-sm fixed top-0 left-0 right-0 z-50 border-b border-slate-700">
+                <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+                    <div class="flex items-center h-16 gap-1 sm:gap-2">
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                             <button id="epub-start-reading" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 h-8 w-8 sm:h-9 sm:w-auto sm:px-4 sm:py-2 sm:gap-2">
+                                <i data-lucide="play-circle" class="h-4 w-4"></i>
+                                <span class="hidden sm:inline">Start</span>
+                             </button>
+                             <button id="epub-go-to-current" class="hidden md:inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors border border-slate-600 bg-slate-800 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-3 py-2 gap-2">
+                                <i data-lucide="crosshair" class="h-4 w-4"></i>
+                                <span class="hidden lg:inline">Go to Current</span>
+                             </button>
+                        </div>
+                        <div class="flex items-center text-slate-300 flex-1 justify-center min-w-0">
+                             <div class="flex items-center space-x-2">
+                                <div class="relative w-16 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="epub-reading-progress-bar" class="absolute top-0 left-0 h-full bg-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                                <span id="epub-reading-progress-text" class="text-xs font-medium text-slate-400 w-8 text-center">0%</span>
+                             </div>
+                        </div>
+                        <div class="flex items-center space-x-1 flex-shrink-0">
+                             <span id="epub-chapter-indicator" class="hidden sm:block text-xs font-medium text-slate-400 w-16 text-center">Ch 1</span>
+                             <button id="epub-exit-btn" class="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-purple-600 text-white hover:bg-purple-700 h-8 w-8 sm:h-9 sm:w-auto sm:px-4 sm:py-2 sm:gap-2">
+                                <i data-lucide="x" class="h-4 w-4"></i>
+                                <span class="hidden sm:inline">Exit</span>
+                             </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="epub-container" class="bg-slate-800 pt-16">
+                <div id="epub-viewer" class="epub-viewer">
+                    <div id="epub-content" class="epub-content"></div>
+                </div>
+            </div>
+        </div>
+
         <div id="error-section" class="hidden fixed bottom-24 sm:bottom-4 left-1/2 -translate-x-1/2 w-auto bg-red-600/90 text-white p-4 rounded-lg shadow-lg z-[10000]">
             <p id="error-message"></p>
         </div>
@@ -414,9 +493,9 @@
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="text-xs text-slate-400 hidden md:block">Speed:</div>
-                        <select id="sticky-speed-select" class="bg-slate-800 text-white text-xs rounded-md px-2 py-1 border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none">
-                            <option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="1.0" selected>1.0x</option><option value="1.25">1.25x</option><option value="1.5">1.5x</option><option value="2.0">2.0x</option>
-                        </select>
+                        <button id="sticky-speed-btn" onclick="openSpeedDialog()" class="bg-slate-800 text-white text-xs rounded-md px-3 py-1.5 border border-slate-700 hover:border-blue-500 outline-none transition-colors font-medium">
+                            <span id="sticky-speed-display">1.0x</span>
+                        </button>
                     </div>
                     <div class="hidden xl:flex items-center gap-2">
                         <div class="text-xs text-slate-400">Skip Headers:</div>
@@ -472,19 +551,9 @@
                  <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
             </div>
             <div class="flex items-center justify-between">
-                <div class="relative">
-                    <select id="mobile-speed-select" class="w-16 h-12 bg-slate-800 text-white text-sm font-bold rounded-full border border-slate-700 focus:border-blue-500 focus:ring-0 outline-none appearance-none text-center">
-                        <option value="0.5">0.5x</option>
-                        <option value="0.75">0.75x</option>
-                        <option value="1.0" selected>1.0x</option>
-                        <option value="1.25">1.25x</option>
-                        <option value="1.5">1.5x</option>
-                        <option value="2.0">2.0x</option>
-                    </select>
-                    <div class="absolute inset-y-0 right-1 flex items-center pointer-events-none">
-                        <i data-lucide="chevron-down" class="h-3 w-3 text-slate-400"></i>
-                    </div>
-                </div>
+                <button id="mobile-speed-btn" onclick="openSpeedDialog()" class="w-16 h-12 bg-slate-800 text-white text-sm font-bold rounded-full border border-slate-700 active:bg-slate-700 flex items-center justify-center transition-colors">
+                    <span id="mobile-speed-display">1.0x</span>
+                </button>
                 <div class="flex items-center gap-4">
                      <button id="mobile-rewind-btn" class="p-3 text-slate-300"><i data-lucide="rewind" class="h-6 w-6"></i></button>
                      <button id="mobile-play-pause-btn" class="w-16 h-16 flex items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-500/30"><i data-lucide="pause" class="h-8 w-8"></i></button>
@@ -547,6 +616,29 @@
     <!-- Audio elements -->
     <audio id="audio-player-element" style="display:none;"></audio>
     <audio id="background-music-element" style="display:none;" loop></audio>
+
+    <!-- Speed Dial Dialog -->
+    <div id="speed-dialog-overlay" class="speed-dialog-overlay" onclick="if(event.target===this)closeSpeedDialog()">
+        <div class="speed-dialog">
+            <div class="text-center mb-2">
+                <h3 class="text-lg font-semibold text-slate-100">Playback Speed</h3>
+            </div>
+            <div class="flex justify-center mb-2">
+                <svg id="speed-dial-svg" class="speed-dial-svg" width="200" height="200" viewBox="0 0 200 200">
+                    <path id="speed-dial-track" class="speed-dial-track" />
+                    <path id="speed-dial-progress" class="speed-dial-progress" />
+                    <circle id="speed-dial-thumb" class="speed-dial-thumb" r="16" />
+                    <text x="100" y="90" text-anchor="middle" dominant-baseline="central" fill="white" font-size="38" font-weight="700" font-family="Inter,sans-serif" id="speed-dial-value">1.0x</text>
+                    <text x="100" y="118" text-anchor="middle" fill="#94a3b8" font-size="13" font-family="Inter,sans-serif" id="speed-dial-label">Normal</text>
+                </svg>
+            </div>
+            <div class="flex items-center justify-center gap-6 mb-4">
+                <button id="speed-dial-minus" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white text-2xl font-bold flex items-center justify-center border border-slate-700 transition-colors select-none">&minus;</button>
+                <button id="speed-dial-plus" class="w-14 h-14 rounded-full bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white text-2xl font-bold flex items-center justify-center border border-slate-700 transition-colors select-none">+</button>
+            </div>
+            <button id="speed-dialog-done" class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium rounded-xl transition-colors">Done</button>
+        </div>
+    </div>
 
     <script>
         // --- AUTHENTICATION CHECK --- //
@@ -805,7 +897,6 @@
                 console.log('🔵🔵🔵 FORWARD BUTTON HANDLER COMPLETE 🔵🔵🔵\n\n');
             });
             $('sticky-stop-btn').addEventListener('click', closePlayer);
-            $('sticky-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
             $('sticky-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
 
@@ -820,7 +911,6 @@
             // Mobile player controls
             $('mobile-play-pause-btn').addEventListener('click', togglePlayPause);
             $('mobile-sticky-stop-btn').addEventListener('click', closePlayer);
-            $('mobile-speed-select').addEventListener('change', (e) => changePlaybackRate(e.target.value));
             $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
             $('mobile-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
             $('mobile-options-btn').addEventListener('click', () => {
@@ -873,20 +963,30 @@
             $('test-voice-btn').addEventListener('click', testVoiceAndSpeed);
             $('save-default-prefs-btn').addEventListener('click', saveDefaultPreferences);
             $('default-voice-select').addEventListener('change', updateDefaultPreferencesUI);
-            $('default-speed-select').addEventListener('change', updateDefaultPreferencesUI);
             $('default-skip-patterns').addEventListener('change', updateDefaultPreferencesUI);
         }
 
-        // --- PDF PROCESSING & RENDERING --- //
+        // --- FILE PROCESSING & RENDERING --- //
+        let currentFileType = 'pdf'; // 'pdf' or 'epub'
+
         async function handleFile(file) {
-            if (!file.type.includes('pdf')) return showError('Please select a PDF file.');
+            const isPDF = file.name.toLowerCase().endsWith('.pdf') || file.type.includes('pdf');
+            const isEPUB = file.name.toLowerCase().endsWith('.epub') || file.type === 'application/epub+zip';
+            
+            if (!isPDF && !isEPUB) return showError('Please select a PDF or EPUB file.');
             await stopPlayback();
             resetPdfState();
 
             try {
-                await processPDFFile(file);
+                if (isEPUB) {
+                    currentFileType = 'epub';
+                    await processEPUBFile(file);
+                } else {
+                    currentFileType = 'pdf';
+                    await processPDFFile(file);
+                }
             } catch (error) {
-                showError('Failed to process PDF: ' + error.message);
+                showError('Failed to process file: ' + error.message);
                 console.error(error);
                 resetToUpload();
             }
@@ -1117,7 +1217,6 @@
         async function scrollToWord(wordIndex, forceScroll = false) {
             if (isViewChanging) return;
             
-            // Check if auto-scroll is enabled and user is not browsing, or if forced
             if (!forceScroll && autoScrollEnabled && isUserBrowsing) {
                 console.log('Auto-scroll paused - user is browsing');
                 return;
@@ -1125,6 +1224,16 @@
 
             const wordInfo = wordMap[wordIndex];
             if (!wordInfo) return;
+
+            if (currentFileType === 'epub') {
+                setTimeout(() => {
+                    const wordSpan = document.querySelector(`[data-word-index="${wordIndex}"]`);
+                    if (wordSpan) {
+                        wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 50);
+                return;
+            }
 
             const targetPageNum = wordInfo.page;
             const viewer = $('pdf-viewer');
@@ -1140,7 +1249,6 @@
                     const startPage = Math.max(1, targetPageNum - 2);
                     const endPage = Math.min(pdfTotalPages, targetPageNum + 2);
 
-                    // Use a document fragment to build all pages before adding to DOM
                     const fragment = document.createDocumentFragment();
                     for (let i = startPage; i <= endPage; i++) {
                         await renderSinglePage(i, fragment);
@@ -1155,9 +1263,8 @@
                 }
             }
             
-            // Wait a tick to ensure DOM is updated before scrolling
             setTimeout(() => {
-                const wordSpan = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+                const wordSpan = document.querySelector(`[data-word-index="${wordIndex}"]`);
                 if (wordSpan) {
                     wordSpan.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     currentViewingPage = targetPageNum;
@@ -2102,7 +2209,8 @@
 
         // --- UI & STATE MANAGEMENT --- //
         function updateHighlighting() {
-            document.querySelectorAll('.text-span.word-playing-chunk').forEach(s => s.classList.remove('word-playing-chunk'));
+            document.querySelectorAll('.word-playing-chunk').forEach(s => s.classList.remove('word-playing-chunk'));
+            document.querySelectorAll('.word-current').forEach(s => s.classList.remove('word-current'));
             
             if (!currentChunk || (!isPlaying && !isPaused)) {
                 updateGoToCurrentButton();
@@ -2110,11 +2218,13 @@
             }
 
             for (let i = currentChunk.startIndex; i <= currentChunk.endIndex; i++) {
-                const span = document.querySelector(`.text-span[data-word-index="${i}"]`);
-                if (span) span.classList.add('word-playing-chunk');
+                const span = document.querySelector(`[data-word-index="${i}"]`);
+                if (span) {
+                    span.classList.add('word-playing-chunk');
+                    if (i === currentChunk.startIndex) span.classList.add('word-current');
+                }
             }
             
-            // Update the go to current button based on browsing state
             updateGoToCurrentButton();
         }
 
@@ -2232,7 +2342,6 @@
         async function resetToUpload() {
             showUploadLoading('Exiting...');
             try {
-                // Save progress before exiting PDF (only if audio was played)
                 if (currentFileId && wordMap.length > 0 && currentChunk) {
                     await saveReadingProgress();
                 }
@@ -2240,18 +2349,18 @@
                 
                 closePlayer();
                 $('pdf-display').classList.add('hidden');
+                $('epub-display').classList.add('hidden');
                 $('upload-container').classList.remove('hidden');
                 document.body.classList.remove('reading');
                 $('app-container').style.paddingBottom = '0px';
                 resetPdfState();
                 $('pdf-input').value = '';
                 
-                // Reload the PDF library to show updated progress
                 await loadUserPDFs();
                 
-                // Clear current file ID and saved progress when exiting
                 currentFileId = null;
                 savedProgress = null;
+                currentFileType = 'pdf';
             } finally {
                 hideUploadLoading();
             }
@@ -2260,6 +2369,7 @@
         function resetPdfState() {
             pdfDoc = null; wordMap = []; audioCache.clear(); currentChunk = null;
             if ($('pdf-viewer')) $('pdf-viewer').innerHTML = '';
+            if ($('epub-content')) $('epub-content').innerHTML = '';
         }
 
         async function loadUserPreferences() {
@@ -2389,13 +2499,7 @@
             $('sticky-voice-select').value = selectedModel;
             $('mobile-voice-select').value = selectedModel;
             
-            let speedValue = String(currentPlaybackRate);
-            // If the number is an integer (e.g., 1, 2), format it with one decimal place.
-            if (currentPlaybackRate % 1 === 0) {
-                speedValue = currentPlaybackRate.toFixed(1);
-            }
-            $('sticky-speed-select').value = speedValue;
-            $('mobile-speed-select').value = speedValue;
+            updateSpeedDisplays();
             
             // Apply skip patterns preference
             $('sticky-skip-patterns').checked = skipPatterns;
@@ -2407,10 +2511,15 @@
 
 
 
-        function showUploadLoading(show, text = '') {
-            $('upload-loading').classList.toggle('hidden', !show);
-            if (show) $('upload-loading-text').textContent = text;
-            $('upload-area').style.pointerEvents = show ? 'none' : 'auto';
+        function showUploadLoading(showOrText, text) {
+            if (showOrText === false) { hideUploadLoading(); return; }
+            const loadingEl = $('upload-loading-text');
+            const loadingTextEl = $('upload-loading-text-inner');
+            const msg = typeof showOrText === 'string' ? showOrText : (text || 'Loading...');
+            if (loadingEl && loadingTextEl) {
+                loadingTextEl.textContent = msg;
+                loadingEl.classList.remove('hidden');
+            }
         }
 
         function showLoading(text) { 
@@ -2553,78 +2662,70 @@
             if (!wordMap.length) return;
             
             let progressPercentage = 0;
-            
             if (currentChunk) {
-                // Calculate progress based on current audio chunk position
-                const currentWordIndex = currentChunk.startIndex;
-                progressPercentage = Math.round((currentWordIndex / wordMap.length) * 100);
+                progressPercentage = Math.round((currentChunk.startIndex / wordMap.length) * 100);
             }
-            // If no currentChunk, progress stays at 0% or shows last saved progress
             
-            // Update header progress bar
-            const progressBar = $('reading-progress-bar');
-            const progressText = $('reading-progress-text');
-            
-            if (progressBar && progressText) {
-                progressBar.style.width = `${progressPercentage}%`;
-                progressText.textContent = `${progressPercentage}%`;
-            }
+            ['reading-progress-bar', 'epub-reading-progress-bar'].forEach(id => {
+                const el = $(id); if (el) el.style.width = `${progressPercentage}%`;
+            });
+            ['reading-progress-text', 'epub-reading-progress-text'].forEach(id => {
+                const el = $(id); if (el) el.textContent = `${progressPercentage}%`;
+            });
         }
         
         function updateHeaderButtonForResume(hasProgress = false) {
-            const startButton = $('pdf-start-reading');
-            console.log('updateHeaderButtonForResume called with hasProgress:', hasProgress, 'savedProgress:', savedProgress);
-            if (startButton && hasProgress) {
-                startButton.innerHTML = `
-                    <i data-lucide="play-circle" class="h-5 w-5"></i>
-                    <span class="hidden md:inline">Resume</span>
-                `;
-                // Remove all existing event listeners by cloning the button
-                const buttonContainer = startButton.parentElement;
-                const newButton = startButton.cloneNode(true);
-                startButton.parentNode.replaceChild(newButton, startButton);
-                // Set the new event handler
-                newButton.onclick = () => resumeFromSavedPosition();
-                
-                // Add start over button next to it
-                if (!$('pdf-start-over')) {
-                    const startOverButton = document.createElement('button');
-                    startOverButton.id = 'pdf-start-over';
-                    startOverButton.className = 'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors outline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring/70 disabled:pointer-events-none disabled:opacity-50 border border-slate-600 bg-slate-800 shadow-sm shadow-black/5 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-4 py-2 gap-2';
-                    startOverButton.innerHTML = `
-                        <i data-lucide="rotate-ccw" class="h-5 w-5"></i>
-                        <span class="hidden md:inline">Start Over</span>
+            const buttonIds = currentFileType === 'epub' ? ['epub-start-reading'] : ['pdf-start-reading'];
+            
+            for (const btnId of buttonIds) {
+                const startButton = $(btnId);
+                if (startButton && hasProgress) {
+                    startButton.innerHTML = `
+                        <i data-lucide="play-circle" class="h-5 w-5"></i>
+                        <span class="hidden md:inline">Resume</span>
                     `;
-                    startOverButton.onclick = () => playFromWord(0);
-                    buttonContainer.insertBefore(startOverButton, newButton.nextSibling);
+                    const buttonContainer = startButton.parentElement;
+                    const newButton = startButton.cloneNode(true);
+                    startButton.parentNode.replaceChild(newButton, startButton);
+                    newButton.onclick = () => resumeFromSavedPosition();
                     
-                    // Reinitialize icons
-                    lucide.createIcons();
+                    const startOverId = btnId.replace('start-reading', 'start-over');
+                    if (!$(startOverId)) {
+                        const startOverButton = document.createElement('button');
+                        startOverButton.id = startOverId;
+                        startOverButton.className = 'inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-colors border border-slate-600 bg-slate-800 hover:bg-slate-700 hover:text-slate-200 text-slate-300 h-9 px-4 py-2 gap-2';
+                        startOverButton.innerHTML = `
+                            <i data-lucide="rotate-ccw" class="h-5 w-5"></i>
+                            <span class="hidden md:inline">Start Over</span>
+                        `;
+                        startOverButton.onclick = () => playFromWord(0);
+                        buttonContainer.insertBefore(startOverButton, newButton.nextSibling);
+                        lucide.createIcons();
+                    }
                 }
             }
         }
         
         function updateHeaderButtonForStart() {
-            const startButton = $('pdf-start-reading');
-            if (startButton) {
-                startButton.innerHTML = `
-                    <i data-lucide="play-circle" class="h-5 w-5"></i>
-                    <span class="hidden md:inline">Start Reading</span>
-                `;
-                // Remove all existing event listeners by cloning the button
-                const newButton = startButton.cloneNode(true);
-                startButton.parentNode.replaceChild(newButton, startButton);
-                // Set the new event handler
-                newButton.onclick = () => playFromWord(0);
-                
-                // Remove start over button if it exists
-                const startOverButton = $('pdf-start-over');
-                if (startOverButton) {
-                    startOverButton.remove();
+            const buttonIds = currentFileType === 'epub' ? ['epub-start-reading'] : ['pdf-start-reading'];
+            
+            for (const btnId of buttonIds) {
+                const startButton = $(btnId);
+                if (startButton) {
+                    startButton.innerHTML = `
+                        <i data-lucide="play-circle" class="h-5 w-5"></i>
+                        <span class="hidden md:inline">Start Reading</span>
+                    `;
+                    const newButton = startButton.cloneNode(true);
+                    startButton.parentNode.replaceChild(newButton, startButton);
+                    newButton.onclick = () => playFromWord(0);
+                    
+                    const startOverId = btnId.replace('start-reading', 'start-over');
+                    const startOverButton = $(startOverId);
+                    if (startOverButton) startOverButton.remove();
+                    
+                    lucide.createIcons();
                 }
-                
-                // Reinitialize icons
-                lucide.createIcons();
             }
         }
         
@@ -2745,19 +2846,16 @@
         }
         
         function displaySavedProgress() {
-            const progressBar = $('reading-progress-bar');
-            const progressText = $('reading-progress-text');
+            const barIds = ['reading-progress-bar', 'epub-reading-progress-bar'];
+            const textIds = ['reading-progress-text', 'epub-reading-progress-text'];
             
-            if (progressBar && progressText) {
-                if (savedProgress && savedProgress.total_words > 0) {
-                    const progressPercentage = Math.round((savedProgress.current_word_index / savedProgress.total_words) * 100);
-                    progressBar.style.width = `${progressPercentage}%`;
-                    progressText.textContent = `${progressPercentage}%`;
-                } else {
-                    progressBar.style.width = '0%';
-                    progressText.textContent = '0%';
-                }
+            let pct = 0;
+            if (savedProgress && savedProgress.total_words > 0) {
+                pct = Math.round((savedProgress.current_word_index / savedProgress.total_words) * 100);
             }
+            
+            barIds.forEach(id => { const el = $(id); if (el) el.style.width = `${pct}%`; });
+            textIds.forEach(id => { const el = $(id); if (el) el.textContent = `${pct}%`; });
         }
         
         function resumeFromSavedPosition() {
@@ -2901,15 +2999,19 @@
                 console.log('Could not fetch progress for PDF:', pdf.filename);
             }
             
-            // Generate PDF thumbnail
-            let thumbnailElement = `<i data-lucide="file-text" class="h-8 w-8 text-blue-400"></i>`;
-            try {
-                const thumbnailDataUrl = await generatePDFThumbnail(pdf.file_id);
-                if (thumbnailDataUrl) {
-                    thumbnailElement = `<img src="${thumbnailDataUrl}" alt="PDF thumbnail" class="w-full h-full object-cover rounded">`;
+            const isEpub = pdf.filename.toLowerCase().endsWith('.epub');
+            let thumbnailElement = isEpub 
+                ? `<i data-lucide="book-open" class="h-8 w-8 text-purple-400"></i>`
+                : `<i data-lucide="file-text" class="h-8 w-8 text-blue-400"></i>`;
+            if (!isEpub) {
+                try {
+                    const thumbnailDataUrl = await generatePDFThumbnail(pdf.file_id);
+                    if (thumbnailDataUrl) {
+                        thumbnailElement = `<img src="${thumbnailDataUrl}" alt="PDF thumbnail" class="w-full h-full object-cover rounded">`;
+                    }
+                } catch (error) {
+                    console.log('Could not generate thumbnail for:', pdf.filename);
                 }
-            } catch (error) {
-                console.log('Could not generate thumbnail for PDF:', pdf.filename);
             }
             
             const progressColor = progressPercentage > 90 ? 'bg-green-500' : progressPercentage > 50 ? 'bg-blue-500' : 'bg-gray-500';
@@ -2972,7 +3074,11 @@
             
             loadBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                loadExistingPDF(pdf.file_id, pdf.filename);
+                if (pdf.filename.toLowerCase().endsWith('.epub')) {
+                    loadExistingEPUB(pdf.file_id, pdf.filename);
+                } else {
+                    loadExistingPDF(pdf.file_id, pdf.filename);
+                }
             });
             
             deleteBtn.addEventListener('click', (e) => {
@@ -3025,6 +3131,7 @@
         
         async function loadExistingPDF(fileId, filename) {
             try {
+                currentFileType = 'pdf';
                 showUploadLoading(true, 'Loading PDF...');
                 
                 // Get PDF file data
@@ -3460,7 +3567,7 @@
         }
         
         function scrollToWordByIndex(wordIndex) {
-            const span = document.querySelector(`.text-span[data-word-index="${wordIndex}"]`);
+            const span = document.querySelector(`[data-word-index="${wordIndex}"]`);
             if (span) {
                 span.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
@@ -4124,9 +4231,8 @@
                 return;
             }
             
-            // Get selected voice and speed
             const selectedVoice = $('default-voice-select').value;
-            const selectedSpeed = parseFloat($('default-speed-select').value);
+            const selectedSpeed = currentPlaybackRate;
             
             // Sample text for testing
             const sampleText = "Hello! This is a preview of how your selected voice and speed will sound when reading your PDFs. You can adjust these settings anytime in your preferences.";
@@ -4208,7 +4314,7 @@
         async function saveDefaultPreferences() {
             const saveBtn = $('save-default-prefs-btn');
             const selectedVoice = $('default-voice-select').value;
-            const selectedSpeed = parseFloat($('default-speed-select').value);
+            const selectedSpeed = currentPlaybackRate;
             const selectedSkipPatterns = $('default-skip-patterns').checked;
             
             try {
@@ -4239,16 +4345,13 @@
                 selectedModel = selectedVoice;
                 currentPlaybackRate = selectedSpeed;
                 
-                // Sync with PDF player controls if they exist
+                // Sync with player controls
                 const desktopVoiceSelect = $('sticky-voice-select');
                 const mobileVoiceSelect = $('mobile-voice-select');
-                const desktopSpeedSelect = $('sticky-speed-select');
-                const mobileSpeedSelect = $('mobile-speed-select');
                 
                 if (desktopVoiceSelect) desktopVoiceSelect.value = selectedVoice;
                 if (mobileVoiceSelect) mobileVoiceSelect.value = selectedVoice;
-                if (desktopSpeedSelect) desktopSpeedSelect.value = selectedSpeed;
-                if (mobileSpeedSelect) mobileSpeedSelect.value = selectedSpeed;
+                updateSpeedDisplays();
                 
                 showSuccessMessage('Default preferences saved successfully!');
                 
@@ -4262,42 +4365,321 @@
             }
         }
 
-        function updateDefaultPreferencesUI() {
-            // This function can be used to provide real-time feedback 
-            // as user changes selections (future enhancement)
+        function updateDefaultPreferencesUI() {}
+
+        // --- SPEED DIAL DIALOG --- //
+        const SPEED_MIN = 0.1, SPEED_MAX = 3.0, SPEED_STEP = 0.1;
+        const ARC_START = 225, ARC_SWEEP = 270;
+        let speedDialDragging = false;
+
+        function getSpeedLabel(s) {
+            if (s <= 0.3) return 'Very Slow';
+            if (s <= 0.6) return 'Slow';
+            if (s <= 0.8) return 'Moderate';
+            if (s <= 1.1) return 'Normal';
+            if (s <= 1.4) return 'Fast';
+            if (s <= 1.8) return 'Faster';
+            if (s <= 2.3) return 'Very Fast';
+            return 'Maximum';
+        }
+
+        function speedToAngle(speed) {
+            return ARC_START + ((speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * ARC_SWEEP;
+        }
+
+        function angleToPoint(deg, r, cx, cy) {
+            const rad = deg * Math.PI / 180;
+            return { x: cx + r * Math.sin(rad), y: cy - r * Math.cos(rad) };
+        }
+
+        function describeArc(cx, cy, r, startDeg, endDeg) {
+            const s = angleToPoint(startDeg, r, cx, cy);
+            const e = angleToPoint(endDeg, r, cx, cy);
+            let sweep = endDeg - startDeg;
+            if (sweep < 0) sweep += 360;
+            return `M ${s.x} ${s.y} A ${r} ${r} 0 ${sweep > 180 ? 1 : 0} 1 ${e.x} ${e.y}`;
+        }
+
+        function updateSpeedDial(speed) {
+            const cx = 100, cy = 100, r = 80;
+            $('speed-dial-track').setAttribute('d', describeArc(cx, cy, r, ARC_START, ARC_START + ARC_SWEEP));
+            const angle = speedToAngle(speed);
+            const sweepDeg = angle - ARC_START;
+            $('speed-dial-progress').setAttribute('d', sweepDeg > 0.5 ? describeArc(cx, cy, r, ARC_START, angle) : '');
+            const tp = angleToPoint(angle, r, cx, cy);
+            $('speed-dial-thumb').setAttribute('cx', tp.x);
+            $('speed-dial-thumb').setAttribute('cy', tp.y);
+            $('speed-dial-value').textContent = speed.toFixed(1) + 'x';
+            $('speed-dial-label').textContent = getSpeedLabel(speed);
+        }
+
+        function updateSpeedDisplays() {
+            const txt = currentPlaybackRate.toFixed(1) + 'x';
+            const full = txt + ' (' + getSpeedLabel(currentPlaybackRate) + ')';
+            const els = {
+                'sticky-speed-display': txt,
+                'mobile-speed-display': txt,
+                'default-speed-display': full
+            };
+            for (const [id, val] of Object.entries(els)) {
+                const el = $(id);
+                if (el) el.textContent = val;
+            }
+        }
+
+        function openSpeedDialog() {
+            updateSpeedDial(currentPlaybackRate);
+            $('speed-dialog-overlay').classList.add('active');
+        }
+
+        function closeSpeedDialog() {
+            $('speed-dialog-overlay').classList.remove('active');
+            speedDialDragging = false;
+            saveUserPreferences();
+        }
+
+        function applyDialSpeed(speed) {
+            speed = Math.round(Math.max(SPEED_MIN, Math.min(SPEED_MAX, speed)) * 10) / 10;
+            currentPlaybackRate = speed;
+            updateSpeedDial(speed);
+            updateSpeedDisplays();
+            if (gaplessPlayer) gaplessPlayer.changeSpeed(speed);
+        }
+
+        (function setupSpeedDialEvents() {
+            document.addEventListener('DOMContentLoaded', () => {
+                const svg = $('speed-dial-svg');
+                if (!svg) return;
+                const cx = 100, cy = 100;
+
+                function getAngleFromEvent(e) {
+                    const rect = svg.getBoundingClientRect();
+                    const sx = 200 / rect.width, sy = 200 / rect.height;
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    const x = (clientX - rect.left) * sx, y = (clientY - rect.top) * sy;
+                    let angle = Math.atan2(x - cx, cy - y) * 180 / Math.PI;
+                    if (angle < 0) angle += 360;
+                    return angle;
+                }
+
+                function handleDrag(e) {
+                    if (!speedDialDragging) return;
+                    e.preventDefault();
+                    let angle = getAngleFromEvent(e);
+                    // Dead zone at bottom (from 135 to 225 going through 180)
+                    if (angle > 135 && angle < 225) {
+                        angle = angle < 180 ? 135 : 225;
+                    }
+                    let norm = angle;
+                    if (norm < ARC_START && norm < 135) norm += 360;
+                    let frac = (norm - ARC_START) / ARC_SWEEP;
+                    frac = Math.max(0, Math.min(1, frac));
+                    applyDialSpeed(SPEED_MIN + frac * (SPEED_MAX - SPEED_MIN));
+                }
+
+                svg.addEventListener('mousedown', (e) => { speedDialDragging = true; handleDrag(e); });
+                svg.addEventListener('touchstart', (e) => { speedDialDragging = true; handleDrag(e); }, { passive: false });
+                document.addEventListener('mousemove', handleDrag);
+                document.addEventListener('touchmove', handleDrag, { passive: false });
+                document.addEventListener('mouseup', () => { if (speedDialDragging) { speedDialDragging = false; saveUserPreferences(); } });
+                document.addEventListener('touchend', () => { if (speedDialDragging) { speedDialDragging = false; saveUserPreferences(); } });
+
+                $('speed-dial-minus').addEventListener('click', () => applyDialSpeed(currentPlaybackRate - SPEED_STEP));
+                $('speed-dial-plus').addEventListener('click', () => applyDialSpeed(currentPlaybackRate + SPEED_STEP));
+                $('speed-dialog-done').addEventListener('click', closeSpeedDialog);
+            });
+        })();
+
+        // --- EPUB PROCESSING & RENDERING --- //
+        async function processEPUBFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            showUploadLoading(true, 'Processing EPUB...');
+            
+            try {
+                const response = await makeAuthenticatedRequest('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Upload failed');
+                }
+                
+                const data = await response.json();
+                wordMap = data.words || [];
+                
+                showUploadLoading(false);
+                await displayEPUB();
+                
+                currentFileId = data.file_id;
+                await loadUserPDFs();
+                
+            } catch (error) {
+                showUploadLoading(false);
+                throw error;
+            }
+        }
+
+        async function displayEPUB() {
+            showLoading('Loading EPUB viewer...');
+            
+            $('upload-container').classList.add('hidden');
+            $('epub-display').classList.remove('hidden');
+            
+            renderEPUBContent();
+            setupEPUBEventListeners();
+            
+            hideLoading();
+        }
+
+        function renderEPUBContent() {
+            const container = $('epub-content');
+            container.innerHTML = '';
+            
+            if (!wordMap.length) return;
+            
+            let currentPage = -1;
+            let currentParagraphId = -1;
+            let chapterDiv = null;
+            let paraDiv = null;
+            
+            for (const word of wordMap) {
+                if (word.page !== currentPage) {
+                    currentPage = word.page;
+                    chapterDiv = document.createElement('div');
+                    chapterDiv.className = 'epub-chapter';
+                    chapterDiv.dataset.chapter = currentPage;
+                    container.appendChild(chapterDiv);
+                    currentParagraphId = -1;
+                }
+                
+                if (word.paragraph_id !== currentParagraphId) {
+                    currentParagraphId = word.paragraph_id;
+                    paraDiv = document.createElement('p');
+                    paraDiv.className = 'epub-paragraph';
+                    chapterDiv.appendChild(paraDiv);
+                }
+                
+                const span = document.createElement('span');
+                span.className = 'epub-word';
+                span.dataset.wordIndex = word.index;
+                span.textContent = word.text;
+                span.addEventListener('click', () => {
+                    playFromWord(word.index);
+                });
+                
+                paraDiv.appendChild(span);
+                paraDiv.appendChild(document.createTextNode(' '));
+            }
+        }
+
+        function setupEPUBEventListeners() {
+            const startBtn = $('epub-start-reading');
+            if (startBtn) {
+                startBtn.onclick = () => playFromWord(0);
+            }
+            
+            const goToCurrentBtn = $('epub-go-to-current');
+            if (goToCurrentBtn) {
+                goToCurrentBtn.onclick = goToCurrentHighlight;
+            }
+            
+            const exitBtn = $('epub-exit-btn');
+            if (exitBtn) {
+                exitBtn.onclick = resetToUpload;
+            }
+            
+            // Set up scroll listener for EPUB viewer
+            const viewer = $('epub-viewer');
+            if (viewer) {
+                viewer.addEventListener('scroll', () => {
+                    if (isPlaying || isPaused) {
+                        detectUserBrowsing();
+                    }
+                }, { passive: true });
+            }
+            
+            lucide.createIcons();
+        }
+
+        async function loadExistingEPUB(fileId, filename) {
+            try {
+                showUploadLoading(true, 'Loading EPUB...');
+                currentFileType = 'epub';
+                
+                // Try cached word data first
+                const url = new URL(`/api/user/pdfs/${fileId}/words`, window.location.origin);
+                const cachedResponse = await makeAuthenticatedRequest(url);
+                
+                if (cachedResponse.ok) {
+                    const cachedData = await cachedResponse.json();
+                    if (cachedData.cached && cachedData.words && cachedData.words.length > 0) {
+                        wordMap = cachedData.words;
+                        showUploadLoading(false);
+                        await displayEPUB();
+                        currentFileId = fileId;
+                        await loadReadingProgress(fileId);
+                        return;
+                    }
+                }
+                
+                // No cache - need to re-extract. Get the file and re-upload for extraction
+                const fileResponse = await makeAuthenticatedRequest(`/api/user/pdfs/${fileId}`);
+                if (!fileResponse.ok) throw new Error('Failed to load EPUB file');
+                
+                const blob = await fileResponse.blob();
+                const file = new File([blob], filename, { type: 'application/epub+zip' });
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('file_id', fileId);
+                
+                const extractResponse = await makeAuthenticatedRequest('/api/extract-words', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (extractResponse.ok) {
+                    const data = await extractResponse.json();
+                    wordMap = data.words || [];
+                } else {
+                    throw new Error('Failed to extract words from EPUB');
+                }
+                
+                showUploadLoading(false);
+                await displayEPUB();
+                currentFileId = fileId;
+                await loadReadingProgress(fileId);
+                
+            } catch (error) {
+                console.error('Error loading existing EPUB:', error);
+                showError('Failed to load EPUB: ' + error.message);
+                showUploadLoading(false);
+            }
         }
 
         function applyPreferencesToDefaultUI() {
-            // Apply loaded user preferences to the default preferences UI
             try {
                 const defaultVoiceSelect = $('default-voice-select');
-                const defaultSpeedSelect = $('default-speed-select');
                 const defaultSkipPatterns = $('default-skip-patterns');
                 
                 if (defaultVoiceSelect && selectedModel) {
                     defaultVoiceSelect.value = selectedModel;
                 }
-                if (defaultSpeedSelect && currentPlaybackRate) {
-                    defaultSpeedSelect.value = currentPlaybackRate;
-                }
                 if (defaultSkipPatterns) {
                     defaultSkipPatterns.checked = skipPatterns;
                 }
+                updateSpeedDisplays();
             } catch (error) {
-                console.log('Default preferences UI not available (user might be in PDF view)');
+                console.log('Default preferences UI not available');
             }
         }
 
-        // PDF Loading Indicator
-        function showUploadLoading(text) {
-            const loadingEl = $('upload-loading-text');
-            const loadingTextEl = $('upload-loading-text-inner');
-            if (loadingEl && loadingTextEl) {
-                // If text is not a valid string, show a default message
-                loadingTextEl.textContent = (typeof text === 'string' && text.length > 0) ? text : 'Loading...';
-                loadingEl.classList.remove('hidden');
-            }
-        }
+        // showUploadLoading is defined earlier, this is just hideUploadLoading
 
         function hideUploadLoading() {
             const loadingEl = $('upload-loading-text');

@@ -2,6 +2,7 @@ import os
 import io
 import json
 import logging
+import re
 from flask import Flask, request, render_template, jsonify, redirect, url_for, make_response
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -14,6 +15,9 @@ import numpy as np
 import base64
 from auth_service import auth_service, token_required
 from kokoro import KPipeline
+import ebooklib
+from ebooklib import epub
+from bs4 import BeautifulSoup
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -383,6 +387,86 @@ def group_words_by_lines_converted(words, y_tolerance=3):
         lines.append(current_line)
     
     return lines
+
+def extract_words_from_epub_bytes(file_bytes):
+    """Extract words and paragraph structure from EPUB bytes."""
+    all_words = []
+    global_word_index = 0
+    global_paragraph_id = 0
+    
+    try:
+        book = epub.read_epub(io.BytesIO(file_bytes))
+        
+        chapter_num = 0
+        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+            content = item.get_content()
+            soup = BeautifulSoup(content, 'lxml')
+            
+            body = soup.find('body')
+            if not body:
+                continue
+            
+            body_text = body.get_text(strip=True)
+            if not body_text or len(body_text) < 10:
+                continue
+            
+            chapter_num += 1
+            
+            block_tags = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'blockquote']
+            paragraphs = body.find_all(block_tags)
+            
+            if not paragraphs:
+                # Fallback: try divs that are leaf-level (contain text directly)
+                divs = body.find_all('div')
+                paragraphs = [d for d in divs if d.string or (d.get_text(strip=True) and not d.find(block_tags))]
+            
+            if not paragraphs:
+                full_text = body.get_text(separator=' ', strip=True)
+                if full_text:
+                    class FakeParagraph:
+                        def __init__(self, t): self._t = t
+                        def get_text(self, strip=False): return self._t.strip() if strip else self._t
+                    paragraphs = [FakeParagraph(full_text)]
+            
+            seen_texts = set()
+            for p_tag in paragraphs:
+                text = p_tag.get_text(strip=True) if hasattr(p_tag, 'get_text') else str(p_tag)
+                text = re.sub(r'\s+', ' ', text).strip()
+                
+                if not text or len(text) < 2:
+                    continue
+                
+                # Skip duplicate text from nested elements
+                if text in seen_texts:
+                    continue
+                seen_texts.add(text)
+                
+                words = text.split()
+                if not words:
+                    continue
+                
+                for i, word_text in enumerate(words):
+                    all_words.append({
+                        "text": word_text,
+                        "page": chapter_num,
+                        "index": global_word_index,
+                        "paragraph_id": global_paragraph_id,
+                        "paragraph_start": i == 0,
+                        "paragraph_end": i == len(words) - 1,
+                        "x": 0, "y": 0, "width": 0, "height": 0,
+                        "page_width": 0, "page_height": 0
+                    })
+                    global_word_index += 1
+                global_paragraph_id += 1
+        
+        logger.info(f"EPUB extraction: {len(all_words)} words from {chapter_num} chapters")
+        
+    except Exception as e:
+        logger.error(f"EPUB extraction failed: {e}")
+        traceback.print_exc()
+        return None
+    
+    return all_words
 
 # Initialize Kokoro pipelines globally for better performance
 # Maintain separate pipelines for different language codes (EN-US 'a' and EN-GB 'b')
@@ -826,7 +910,7 @@ def get_user_pdfs():
 @app.route('/api/upload', methods=['POST'])
 @token_required
 def upload_file():
-    """Handle PDF file upload and extract word data (protected route)."""
+    """Handle PDF or EPUB file upload and extract word data (protected route)."""
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
@@ -835,36 +919,39 @@ def upload_file():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
-        if not file.filename.lower().endswith('.pdf'):
-            return jsonify({'error': 'Please upload a PDF file'}), 400
+        filename_lower = file.filename.lower()
+        is_pdf = filename_lower.endswith('.pdf')
+        is_epub = filename_lower.endswith('.epub')
         
-        # Get pattern filtering preference from form data
+        if not is_pdf and not is_epub:
+            return jsonify({'error': 'Please upload a PDF or EPUB file'}), 400
+        
         skip_patterns = request.form.get('skip_patterns', 'false').lower() == 'true'
         
         file_bytes = file.read()
-        words_data = extract_words_from_pdf_bytes(file_bytes)
+        
+        if is_epub:
+            words_data = extract_words_from_epub_bytes(file_bytes)
+        else:
+            words_data = extract_words_from_pdf_bytes(file_bytes)
         
         if words_data is None:
-            return jsonify({'error': 'Could not extract words from PDF'}), 500
+            return jsonify({'error': 'Could not extract words from file'}), 500
         
-        # Apply pattern filtering if requested
         original_word_count = len(words_data)
         pattern_info = {'total_filtered': 0}
         
-        if skip_patterns:
+        if skip_patterns and is_pdf:
             words_data, pattern_info = filter_patterns_from_words(words_data, skip_patterns=True)
             logger.info(f"Pattern filtering: {pattern_info['total_filtered']} words filtered from {original_word_count}")
         
-        # Save PDF to user's storage
         user_id = request.current_user['id']
         filename = secure_filename(file.filename)
         
         pdf_result = auth_service.save_user_pdf(user_id, filename, file_bytes)
         if 'error' in pdf_result:
-            logger.warning(f"Failed to save PDF to storage: {pdf_result['error']}")
-            # Continue anyway for now, just log the error
+            logger.warning(f"Failed to save file to storage: {pdf_result['error']}")
         
-        # Cache the extracted words if PDF was saved successfully
         file_id = None
         if 'pdf' in pdf_result and 'file_id' in pdf_result['pdf']:
             file_id = pdf_result['pdf']['file_id']
@@ -1034,8 +1121,12 @@ def get_user_pdf_file(file_id):
         file_data = result['file_data']
         metadata = result['metadata']
         
+        content_type = 'application/pdf'
+        if metadata['filename'].lower().endswith('.epub'):
+            content_type = 'application/epub+zip'
+        
         response = make_response(file_data)
-        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Type'] = content_type
         response.headers['Content-Disposition'] = f'inline; filename="{metadata["filename"]}"'
         response.headers['Content-Length'] = len(file_data)
         
@@ -1153,11 +1244,15 @@ def extract_words_only():
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
         
-        if not file.filename.lower().endswith('.pdf'):
-            return jsonify({'error': 'Please upload a PDF file'}), 400
+        filename_lower = file.filename.lower()
+        if not filename_lower.endswith('.pdf') and not filename_lower.endswith('.epub'):
+            return jsonify({'error': 'Please upload a PDF or EPUB file'}), 400
         
         file_bytes = file.read()
-        words_data = extract_words_from_pdf_bytes(file_bytes)
+        if filename_lower.endswith('.epub'):
+            words_data = extract_words_from_epub_bytes(file_bytes)
+        else:
+            words_data = extract_words_from_pdf_bytes(file_bytes)
         
         if words_data is None:
             return jsonify({'error': 'Could not extract words from PDF'}), 500

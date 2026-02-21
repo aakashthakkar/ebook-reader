@@ -18,6 +18,8 @@ from kokoro import KPipeline
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="bs4")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -388,6 +390,47 @@ def group_words_by_lines_converted(words, y_tolerance=3):
     
     return lines
 
+def _get_epub_content_items(book):
+    """Get content items from EPUB in spine order, handling all item types.
+    
+    Many EPUBs use text/html with .html extensions which ebooklib classifies as
+    ITEM_UNKNOWN rather than ITEM_DOCUMENT. We use the spine for reading order
+    and fall back to scanning all HTML-like items.
+    """
+    items_by_id = {}
+    items_by_name = {}
+    html_extensions = ('.xhtml', '.html', '.htm', '.xml')
+    html_media_types = ('application/xhtml+xml', 'text/html', 'application/html')
+
+    for item in book.get_items():
+        item_id = item.get_id() if hasattr(item, 'get_id') else None
+        item_name = item.get_name()
+        if item_id:
+            items_by_id[item_id] = item
+        if item_name:
+            items_by_name[item_name] = item
+
+    ordered = []
+    seen = set()
+    for spine_entry in book.spine:
+        item_id = spine_entry[0] if isinstance(spine_entry, (list, tuple)) else spine_entry
+        item = items_by_id.get(item_id)
+        if item and item.get_name() not in seen:
+            seen.add(item.get_name())
+            ordered.append(item)
+
+    if not ordered:
+        for item in book.get_items():
+            name = item.get_name()
+            media = getattr(item, 'media_type', '') or ''
+            is_html = any(name.lower().endswith(ext) for ext in html_extensions) or media in html_media_types
+            if is_html and name not in seen:
+                seen.add(name)
+                ordered.append(item)
+
+    return ordered
+
+
 def extract_words_from_epub_bytes(file_bytes):
     """Extract words and paragraph structure from EPUB bytes."""
     all_words = []
@@ -396,15 +439,16 @@ def extract_words_from_epub_bytes(file_bytes):
     
     try:
         book = epub.read_epub(io.BytesIO(file_bytes))
+        content_items = _get_epub_content_items(book)
         
         chapter_num = 0
-        for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+        for item in content_items:
             content = item.get_content()
             soup = BeautifulSoup(content, 'lxml')
             
             body = soup.find('body')
             if not body:
-                continue
+                body = soup  # some fragments lack <body>
             
             body_text = body.get_text(strip=True)
             if not body_text or len(body_text) < 10:
@@ -416,7 +460,6 @@ def extract_words_from_epub_bytes(file_bytes):
             paragraphs = body.find_all(block_tags)
             
             if not paragraphs:
-                # Fallback: try divs that are leaf-level (contain text directly)
                 divs = body.find_all('div')
                 paragraphs = [d for d in divs if d.string or (d.get_text(strip=True) and not d.find(block_tags))]
             
@@ -436,7 +479,6 @@ def extract_words_from_epub_bytes(file_bytes):
                 if not text or len(text) < 2:
                     continue
                 
-                # Skip duplicate text from nested elements
                 if text in seen_texts:
                     continue
                 seen_texts.add(text)
@@ -1174,11 +1216,16 @@ def get_pdf_words(file_id):
         skip_patterns = request.args.get('skip_patterns', 'false').lower() == 'true'
         
         result = auth_service.get_cached_words(user_id, file_id)
+        if isinstance(result, tuple):
+            return jsonify(result[0]), result[1]
         
         if 'error' in result:
             return jsonify(result), 500
         
-        # Apply pattern filtering if requested
+        # Treat empty cached data as uncached so the frontend triggers re-extraction
+        if result.get('cached') and (not result.get('words') or len(result['words']) == 0):
+            result['cached'] = False
+        
         if skip_patterns and result.get('cached') and 'words' in result:
             original_word_count = len(result['words'])
             filtered_words, pattern_info = filter_patterns_from_words(result['words'], skip_patterns=True)
@@ -1211,17 +1258,17 @@ def extract_words_only():
         # Check if file_id is provided for caching
         file_id = request.form.get('file_id')
         
-        # First check if we have cached data for this file
-        if file_id:
+        # Check cache only when no file is uploaded alongside the request
+        has_file = 'file' in request.files and request.files['file'].filename != ''
+        if file_id and not has_file:
             cached_result = auth_service.get_cached_words(user_id, file_id)
-            if cached_result['cached']:
+            if cached_result['cached'] and cached_result.get('words') and len(cached_result['words']) > 0:
                 logger.info(f"Using cached word data for file {file_id}")
                 
                 words_data = cached_result['words']
                 original_word_count = len(words_data)
                 pattern_info = {'total_filtered': 0}
                 
-                # Apply pattern filtering if requested
                 if skip_patterns:
                     words_data, pattern_info = filter_patterns_from_words(words_data, skip_patterns=True)
                     logger.info(f"Pattern filtering on cached data: {pattern_info['total_filtered']} words filtered from {original_word_count}")
@@ -1236,7 +1283,7 @@ def extract_words_only():
                     'cached_at': cached_result['cached_at']
                 })
         
-        # No cache or file_id not provided, extract words from uploaded file
+        # No usable cache - extract words from uploaded file
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
         
@@ -1255,8 +1302,8 @@ def extract_words_only():
             words_data = extract_words_from_pdf_bytes(file_bytes)
         
         if words_data is None:
-            return jsonify({'error': 'Could not extract words from PDF'}), 500
-        
+            return jsonify({'error': 'Could not extract words from file'}), 500
+
         # Apply pattern filtering if requested
         original_word_count = len(words_data)
         pattern_info = {'total_filtered': 0}
@@ -1268,7 +1315,10 @@ def extract_words_only():
         # Cache the results if file_id is provided (cache the original unfiltered data)
         if file_id:
             # Always cache the original unfiltered data so we can apply different filtering later
-            original_words = extract_words_from_pdf_bytes(file_bytes) if skip_patterns else words_data
+            if skip_patterns:
+                original_words = extract_words_from_epub_bytes(file_bytes) if filename_lower.endswith('.epub') else extract_words_from_pdf_bytes(file_bytes)
+            else:
+                original_words = words_data
             cache_result = auth_service.save_word_cache(user_id, file_id, original_words)
             if 'error' not in cache_result:
                 logger.info(f"Cached word data for file {file_id}: {len(original_words)} words")

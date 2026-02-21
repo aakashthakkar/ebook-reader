@@ -68,6 +68,34 @@
         }
         @keyframes pulse-word { 0%, 100% { transform: scale(1.0); } 50% { transform: scale(1.05); } }
 
+        /* Touch Lock - prevents accidental text taps during playback */
+        body.touch-locked .text-span,
+        body.touch-locked .epub-word {
+            pointer-events: none !important;
+            cursor: default !important;
+        }
+        body.touch-locked .text-span:hover,
+        body.touch-locked .epub-word:hover {
+            background-color: transparent !important;
+        }
+        .touch-lock-btn-active {
+            background-color: rgba(234, 179, 8, 0.25) !important;
+            border: 1px solid rgb(234, 179, 8) !important;
+            color: rgb(234, 179, 8) !important;
+        }
+        #touch-lock-banner {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        #touch-lock-banner.hidden {
+            opacity: 0;
+            transform: translate(-50%, -10px);
+            pointer-events: none;
+        }
+        #touch-lock-banner:not(.hidden) {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
         .upload-area.dragover {
             border-color: hsl(var(--primary));
             transform: scale(1.02);
@@ -470,6 +498,12 @@
         </div>
     </main>
 
+    <!-- Touch Lock Banner -->
+    <div id="touch-lock-banner" class="hidden fixed top-20 left-1/2 z-[9998] bg-amber-500/90 backdrop-blur text-black px-4 py-2 rounded-full shadow-lg text-sm font-semibold flex items-center gap-2 select-none">
+        <i data-lucide="lock" class="h-4 w-4"></i>
+        Screen Locked — Tap lock to unlock
+    </div>
+
     <div id="sticky-audio-player" class="fixed bottom-0 left-0 right-0 z-[9999] bg-slate-900/80 backdrop-blur-xl border-t border-slate-700 transform translate-y-full transition-transform duration-300 ease-in-out">
         <!-- This is the player for larger screens -->
         <div class="hidden sm:block p-3 max-w-6xl mx-auto">
@@ -505,6 +539,9 @@
                         </label>
                     </div>
                 </div>
+                <button id="sticky-touch-lock-btn" class="p-2 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-300 transition-all flex-shrink-0" title="Lock screen to prevent accidental taps">
+                    <i data-lucide="lock-open" class="h-5 w-5"></i>
+                </button>
                 <button id="sticky-stop-btn" class="p-2 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-300 transition-all flex-shrink-0">
                     <i data-lucide="x" class="h-5 w-5"></i>
                 </button>
@@ -548,7 +585,12 @@
                         <div id="mobile-bg-music-status" class="hidden text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">🎵 BG</div>
                     </div>
                 </div>
-                 <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
+                 <div class="flex items-center gap-2">
+                    <button id="mobile-touch-lock-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700" title="Lock screen">
+                        <i data-lucide="lock-open" class="h-5 w-5"></i>
+                    </button>
+                    <button id="mobile-sticky-stop-btn" class="p-1.5 rounded-full text-slate-400 hover:bg-slate-700"><i data-lucide="x" class="h-5 w-5"></i></button>
+                 </div>
             </div>
             <div class="flex items-center justify-between">
                 <button id="mobile-speed-btn" onclick="openSpeedDialog()" class="w-16 h-12 bg-slate-800 text-white text-sm font-bold rounded-full border border-slate-700 active:bg-slate-700 flex items-center justify-center transition-colors">
@@ -754,6 +796,9 @@
         let wakeLock = null;
         let isWakeLockSupported = 'wakeLock' in navigator;
         
+        // Touch Lock State - prevents accidental taps from interrupting playback
+        let touchLockEnabled = false;
+        
 
         
 
@@ -897,6 +942,7 @@
                 console.log('🔵🔵🔵 FORWARD BUTTON HANDLER COMPLETE 🔵🔵🔵\n\n');
             });
             $('sticky-stop-btn').addEventListener('click', closePlayer);
+            $('sticky-touch-lock-btn').addEventListener('click', toggleTouchLock);
             $('sticky-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
             $('sticky-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
 
@@ -911,6 +957,7 @@
             // Mobile player controls
             $('mobile-play-pause-btn').addEventListener('click', togglePlayPause);
             $('mobile-sticky-stop-btn').addEventListener('click', closePlayer);
+            $('mobile-touch-lock-btn').addEventListener('click', toggleTouchLock);
             $('mobile-voice-select').addEventListener('change', (e) => handleVoiceChange(e.target.value));
             $('mobile-skip-patterns').addEventListener('change', (e) => handleSkipPatternsChange(e.target.checked));
             $('mobile-options-btn').addEventListener('click', () => {
@@ -1696,6 +1743,9 @@
             stopProgressTracking();
             
             isPlaying = false; isPaused = false; currentChunk = null;
+            
+            // Reset touch lock when playback stops
+            if (touchLockEnabled) setTouchLock(false);
             
             // Reset auto-scroll state
             isUserBrowsing = false;
@@ -2563,6 +2613,50 @@
             player.classList.add('translate-y-full');
             document.body.classList.remove('reading');
             $('app-container').style.paddingBottom = '0px';
+            
+            if (touchLockEnabled) setTouchLock(false);
+        }
+
+        function toggleTouchLock() {
+            setTouchLock(!touchLockEnabled);
+        }
+
+        function setTouchLock(enabled) {
+            touchLockEnabled = enabled;
+            
+            if (enabled) {
+                document.body.classList.add('touch-locked');
+            } else {
+                document.body.classList.remove('touch-locked');
+            }
+            
+            const icon = enabled ? 'lock' : 'lock-open';
+            const title = enabled ? 'Unlock screen' : 'Lock screen to prevent accidental taps';
+            
+            const stickyBtn = $('sticky-touch-lock-btn');
+            const mobileBtn = $('mobile-touch-lock-btn');
+            
+            if (stickyBtn) {
+                stickyBtn.innerHTML = `<i data-lucide="${icon}" class="h-5 w-5"></i>`;
+                stickyBtn.title = title;
+                stickyBtn.classList.toggle('touch-lock-btn-active', enabled);
+            }
+            if (mobileBtn) {
+                mobileBtn.innerHTML = `<i data-lucide="${icon}" class="h-5 w-5"></i>`;
+                mobileBtn.title = title;
+                mobileBtn.classList.toggle('touch-lock-btn-active', enabled);
+            }
+            
+            const banner = $('touch-lock-banner');
+            if (banner) {
+                if (enabled) {
+                    banner.classList.remove('hidden');
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+            
+            lucide.createIcons();
         }
 
         // --- WEB AUDIO PLAYER (HTML5 Audio Element based) --- //

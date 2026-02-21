@@ -1226,6 +1226,11 @@
             if (!wordInfo) return;
 
             if (currentFileType === 'epub') {
+                const targetChapter = wordInfo.page;
+                const chapterIdx = epubChapterIndex.findIndex(c => c.chapter === targetChapter);
+                if (chapterIdx >= 0 && !epubRenderedChapters.has(chapterIdx)) {
+                    epubEnsureChapterRendered(chapterIdx);
+                }
                 setTimeout(() => {
                     const wordSpan = document.querySelector(`[data-word-index="${wordIndex}"]`);
                     if (wordSpan) {
@@ -1406,38 +1411,36 @@
             const finalWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
             const finalText = finalWordsInChunk.map(w => w.text).join(' ');
             
-            // Safety check: ensure minimum chunk size to avoid TTS failures
-            const MIN_CHUNK_CHARACTERS = 10;
-            const MIN_CHUNK_WORDS = 3;
+            // Merge with next paragraph(s) if chunk is too small for natural TTS
+            const MIN_CHUNK_CHARACTERS = 20;
+            const MIN_CHUNK_WORDS = 5;
             
             if (finalText.length < MIN_CHUNK_CHARACTERS || finalWordsInChunk.length < MIN_CHUNK_WORDS) {
-                console.log(`Chunk too small (${finalText.length} chars, ${finalWordsInChunk.length} words), expanding to minimum size`);
-                // Expand to at least MIN_CHUNK_WORDS or MIN_CHUNK_CHARACTERS
-                let expandedEndIndex = endIndex;
+                console.log(`Chunk too small (${finalText.length} chars, ${finalWordsInChunk.length} words), merging with next paragraph`);
+                let mergedEndIndex = endIndex;
+                // Merge whole paragraphs to preserve sentence boundaries
                 for (let i = endIndex + 1; i < wordMap.length; i++) {
-                    const expandedWords = wordMap.slice(startIndex, i + 1);
-                    const expandedText = expandedWords.map(w => w.text).join(' ');
-                    
-                    if (expandedText.length >= MIN_CHUNK_CHARACTERS && expandedWords.length >= MIN_CHUNK_WORDS) {
-                        expandedEndIndex = i;
-                        break;
+                    mergedEndIndex = i;
+                    // Stop at the end of the next paragraph that makes us large enough
+                    if (wordMap[i].paragraph_end) {
+                        const mergedWords = wordMap.slice(startIndex, i + 1);
+                        const mergedText = mergedWords.map(w => w.text).join(' ');
+                        if (mergedText.length >= MIN_CHUNK_CHARACTERS && mergedWords.length >= MIN_CHUNK_WORDS) {
+                            break;
+                        }
                     }
-                    
-                    expandedEndIndex = i;
-                    
-                    // Safety limit: don't expand indefinitely
-                    if (expandedWords.length >= 50) break;
+                    if (i - startIndex >= 50) break;
                 }
                 
-                endIndex = expandedEndIndex;
-                const expandedWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
-                const expandedText = expandedWordsInChunk.map(w => w.text).join(' ');
-                console.log(`Expanded chunk to ${expandedWordsInChunk.length} words, ${expandedText.length} characters`);
+                endIndex = mergedEndIndex;
+                const mergedWordsInChunk = wordMap.slice(startIndex, endIndex + 1);
+                const mergedText = mergedWordsInChunk.map(w => w.text).join(' ');
+                console.log(`Merged chunk to ${mergedWordsInChunk.length} words, ${mergedText.length} characters`);
                 
                 return {
                     startIndex: startIndex,
                     endIndex: endIndex,
-                    text: expandedText,
+                    text: mergedText,
                     id: `chunk-${startIndex}`,
                     paragraphId: startWord.paragraph_id
                 };
@@ -2370,6 +2373,8 @@
             pdfDoc = null; wordMap = []; audioCache.clear(); currentChunk = null;
             if ($('pdf-viewer')) $('pdf-viewer').innerHTML = '';
             if ($('epub-content')) $('epub-content').innerHTML = '';
+            epubChapterIndex = [];
+            epubRenderedChapters = new Set();
         }
 
         async function loadUserPreferences() {
@@ -4524,57 +4529,126 @@
             }
         }
 
+        let epubChapterIndex = [];  // [{chapter, startWord, endWord}]
+        let epubRenderedChapters = new Set();
+        const EPUB_INITIAL_CHAPTERS = 5;
+        const EPUB_LOAD_AHEAD = 3;
+        let epubIsLoadingMore = false;
+
         async function displayEPUB() {
             showLoading('Loading EPUB viewer...');
             
             $('upload-container').classList.add('hidden');
             $('epub-display').classList.remove('hidden');
             
-            renderEPUBContent();
+            buildEpubChapterIndex();
+            renderEPUBInitial();
             setupEPUBEventListeners();
             
             hideLoading();
         }
 
-        function renderEPUBContent() {
-            const container = $('epub-content');
-            container.innerHTML = '';
-            
+        function buildEpubChapterIndex() {
+            epubChapterIndex = [];
+            epubRenderedChapters = new Set();
             if (!wordMap.length) return;
             
             let currentPage = -1;
+            for (let i = 0; i < wordMap.length; i++) {
+                if (wordMap[i].page !== currentPage) {
+                    if (epubChapterIndex.length > 0) {
+                        epubChapterIndex[epubChapterIndex.length - 1].endWord = i - 1;
+                    }
+                    currentPage = wordMap[i].page;
+                    epubChapterIndex.push({ chapter: currentPage, startWord: i, endWord: i });
+                }
+            }
+            if (epubChapterIndex.length > 0) {
+                epubChapterIndex[epubChapterIndex.length - 1].endWord = wordMap.length - 1;
+            }
+        }
+
+        function renderEPUBInitial() {
+            const container = $('epub-content');
+            container.innerHTML = '';
+            if (!wordMap.length) return;
+
+            const count = Math.min(EPUB_INITIAL_CHAPTERS, epubChapterIndex.length);
+            const fragment = document.createDocumentFragment();
+            for (let i = 0; i < count; i++) {
+                renderEPUBChapter(i, fragment);
+            }
+            container.appendChild(fragment);
+        }
+
+        function renderEPUBChapter(chapterIdx, parent) {
+            if (chapterIdx >= epubChapterIndex.length || epubRenderedChapters.has(chapterIdx)) return;
+            epubRenderedChapters.add(chapterIdx);
+            
+            const info = epubChapterIndex[chapterIdx];
+            const chapterDiv = document.createElement('div');
+            chapterDiv.className = 'epub-chapter';
+            chapterDiv.dataset.chapter = info.chapter;
+            chapterDiv.dataset.chapterIdx = chapterIdx;
+            
             let currentParagraphId = -1;
-            let chapterDiv = null;
             let paraDiv = null;
             
-            for (const word of wordMap) {
-                if (word.page !== currentPage) {
-                    currentPage = word.page;
-                    chapterDiv = document.createElement('div');
-                    chapterDiv.className = 'epub-chapter';
-                    chapterDiv.dataset.chapter = currentPage;
-                    container.appendChild(chapterDiv);
-                    currentParagraphId = -1;
-                }
-                
+            for (let wi = info.startWord; wi <= info.endWord; wi++) {
+                const word = wordMap[wi];
                 if (word.paragraph_id !== currentParagraphId) {
                     currentParagraphId = word.paragraph_id;
                     paraDiv = document.createElement('p');
                     paraDiv.className = 'epub-paragraph';
                     chapterDiv.appendChild(paraDiv);
                 }
-                
                 const span = document.createElement('span');
                 span.className = 'epub-word';
                 span.dataset.wordIndex = word.index;
                 span.textContent = word.text;
-                span.addEventListener('click', () => {
-                    playFromWord(word.index);
-                });
-                
+                span.addEventListener('click', () => playFromWord(word.index));
                 paraDiv.appendChild(span);
                 paraDiv.appendChild(document.createTextNode(' '));
             }
+            parent.appendChild(chapterDiv);
+        }
+
+        function epubLoadMoreChapters() {
+            if (epubIsLoadingMore) return;
+            epubIsLoadingMore = true;
+            
+            const maxRendered = Math.max(...epubRenderedChapters, -1);
+            const nextStart = maxRendered + 1;
+            const nextEnd = Math.min(nextStart + EPUB_LOAD_AHEAD, epubChapterIndex.length);
+            
+            if (nextStart >= epubChapterIndex.length) {
+                epubIsLoadingMore = false;
+                return;
+            }
+            
+            const container = $('epub-content');
+            const fragment = document.createDocumentFragment();
+            for (let i = nextStart; i < nextEnd; i++) {
+                renderEPUBChapter(i, fragment);
+            }
+            container.appendChild(fragment);
+            epubIsLoadingMore = false;
+        }
+
+        function epubEnsureChapterRendered(chapterIdx) {
+            if (epubRenderedChapters.has(chapterIdx)) return;
+            
+            const container = $('epub-content');
+            container.innerHTML = '';
+            epubRenderedChapters = new Set();
+            
+            const startIdx = Math.max(0, chapterIdx - 2);
+            const endIdx = Math.min(epubChapterIndex.length, chapterIdx + EPUB_INITIAL_CHAPTERS);
+            const fragment = document.createDocumentFragment();
+            for (let i = startIdx; i < endIdx; i++) {
+                renderEPUBChapter(i, fragment);
+            }
+            container.appendChild(fragment);
         }
 
         function setupEPUBEventListeners() {
@@ -4593,12 +4667,15 @@
                 exitBtn.onclick = resetToUpload;
             }
             
-            // Set up scroll listener for EPUB viewer
             const viewer = $('epub-viewer');
             if (viewer) {
                 viewer.addEventListener('scroll', () => {
                     if (isPlaying || isPaused) {
                         detectUserBrowsing();
+                    }
+                    const { scrollTop, scrollHeight, clientHeight } = viewer;
+                    if (scrollHeight - scrollTop - clientHeight < clientHeight * 1.5) {
+                        epubLoadMoreChapters();
                     }
                 }, { passive: true });
             }
